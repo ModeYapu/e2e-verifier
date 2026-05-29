@@ -220,7 +220,7 @@ RULES:
           'Authorization': `Bearer ${llmCfg.apiKey}`,
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(600000),
       });
 
       if (!resp.ok) {
