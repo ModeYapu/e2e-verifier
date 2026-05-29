@@ -1,0 +1,283 @@
+{
+  "summary": {
+    "pagesExplored": 2,
+    "testsPlanned": 18,
+    "testsPassed": 16,
+    "testsFailed": 2,
+    "duration": 99913,
+    "totalTokens": 0,
+    "screenshotsTaken": 20
+  },
+  "config": {
+    "url": "http://127.0.0.1/logmon/",
+    "maxPages": 2,
+    "maxDepth": 1,
+    "useLlm": false
+  },
+  "discovery": {
+    "pagesExplored": 2,
+    "pages": [
+      {
+        "url": "http://127.0.0.1/logmon/",
+        "title": "LogMonitor Dashboard",
+        "depth": 0,
+        "screenshot": "explorer-output/screenshots/http___127_0_0_1_logmon_-1779957674544.png",
+        "navigationCount": 8,
+        "interactiveElementCount": 11,
+        "formCount": 0,
+        "tableCount": 2
+      },
+      {
+        "url": "http://127.0.0.1/logmon/logs",
+        "title": "LogMonitor Dashboard",
+        "depth": 1,
+        "screenshot": "explorer-output/screenshots/http___127_0_0_1_logmon_logs-1779957684806.png",
+        "navigationCount": 0,
+        "interactiveElementCount": 14,
+        "formCount": 1,
+        "tableCount": 2
+      }
+    ]
+  },
+  "testPlan": {
+    "totalTests": 18,
+    "pages": [
+      {
+        "url": "http://127.0.0.1/logmon/",
+        "pageName": "LogMonitor Dashboard",
+        "testCount": 8,
+        "tests": [
+          {
+            "name": "LogMonitor Dashboard loads correctly",
+            "priority": "high",
+            "description": "Verify http://127.0.0.1/logmon/ loads with correct title"
+          },
+          {
+            "name": "Table 1 has data rows",
+            "priority": "high",
+            "description": "Verify table with headers [应用 ID, 版本, 总事件数, 错误数, 最后活跃, 操作] has rows"
+          },
+          {
+            "name": "Table 2 has data rows",
+            "priority": "high",
+            "description": "Verify table with headers [2026-05-28 16:41:14, 查看日志] has rows"
+          },
+          {
+            "name": "No undefined or NaN text",
+            "priority": "high",
+            "description": "Verify page text does not contain undefined or NaN"
+          },
+          {
+            "name": "11 interactive elements present",
+            "priority": "medium",
+            "description": "Verify page has expected interactive elements"
+          },
+          {
+            "name": "Verify all buttons are clickable and trigger expected actions",
+            "priority": "medium",
+            "description": "Verify all buttons are clickable and trigger expected actions"
+          },
+          {
+            "name": "Verify table displays data correctly (0 rows)",
+            "priority": "medium",
+            "description": "Verify table displays data correctly (0 rows)"
+          },
+          {
+            "name": "Verify table displays data correctly (4 rows)",
+            "priority": "medium",
+            "description": "Verify table displays data correctly (4 rows)"
+          }
+        ]
+      },
+      {
+        "url": "http://127.0.0.1/logmon/logs",
+        "pageName": "LogMonitor Dashboard",
+        "testCount": 10,
+        "tests": [
+          {
+            "name": "LogMonitor Dashboard loads correctly",
+            "priority": "high",
+            "description": "Verify http://127.0.0.1/logmon/logs loads with correct title"
+          },
+          {
+            "name": "Table 1 has data rows",
+            "priority": "high",
+            "description": "Verify table with headers [时间, 级别, 类型, 消息, 来源, 浏览器] has rows"
+          },
+          {
+            "name": "Table 2 has data rows",
+            "priority": "high",
+            "description": "Verify table with headers [] has rows"
+          },
+          {
+            "name": "Form 1 is functional",
+            "priority": "medium",
+            "description": "Verify form with 4 fields is present"
+          },
+          {
+            "name": "No undefined or NaN text",
+            "priority": "high",
+            "description": "Verify page text does not contain undefined or NaN"
+          },
+          {
+            "name": "14 interactive elements present",
+            "priority": "medium",
+            "description": "Verify page has expected interactive elements"
+          },
+          {
+            "name": "Verify form \"form\" can be submitted",
+            "priority": "medium",
+            "description": "Verify form \"form\" can be submitted"
+          },
+          {
+            "name": "Verify all buttons are clickable and trigger expected actions",
+            "priority": "medium",
+            "description": "Verify all buttons are clickable and trigger expected actions"
+          },
+          {
+            "name": "Verify table displays data correctly (0 rows)",
+            "priority": "medium",
+            "description": "Verify table displays data correctly (0 rows)"
+          },
+          {
+            "name": "Verify table displays data correctly (0 rows)",
+            "priority": "medium",
+            "description": "Verify table displays data correctly (0 rows)"
+          }
+        ]
+      }
+    ]
+  },
+  "executions": [
+    {
+      "testName": "LogMonitor Dashboard loads correctly",
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "duration": 4942,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Table 1 has data rows",
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "duration": 4675,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Table 2 has data rows",
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "duration": 4769,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "No undefined or NaN text",
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "duration": 4679,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "11 interactive elements present",
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "duration": 4699,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Verify all buttons are clickable and trigger expected actions",
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "duration": 4937,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Verify table displays data correctly (0 rows)",
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "duration": 4949,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Verify table displays data correctly (4 rows)",
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "duration": 4752,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "LogMonitor Dashboard loads correctly",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "duration": 5115,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Table 1 has data rows",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": false,
+      "duration": 4851,
+      "error": "Command failed: npx ts-node explorer-output/scripts/table-1-has-data-rows-10.ts\n",
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Table 2 has data rows",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": false,
+      "duration": 4867,
+      "error": "Command failed: npx ts-node explorer-output/scripts/table-2-has-data-rows-11.ts\n",
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Form 1 is functional",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "duration": 4844,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "No undefined or NaN text",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "duration": 5019,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "14 interactive elements present",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "duration": 4867,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Verify form \"form\" can be submitted",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "duration": 5037,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Verify all buttons are clickable and trigger expected actions",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "duration": 4859,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Verify table displays data correctly (0 rows)",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "duration": 4703,
+      "hasScreenshot": true
+    },
+    {
+      "testName": "Verify table displays data correctly (0 rows)",
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "duration": 4826,
+      "hasScreenshot": true
+    }
+  ],
+  "finalScript": "explorer-output/scripts/final/final-test-suite-2026-05-28T08-42-52-325Z-2026-05-28T08-42-52-325Z.ts",
+  "timestamp": "2026-05-28T08:42:52.369Z"
+}

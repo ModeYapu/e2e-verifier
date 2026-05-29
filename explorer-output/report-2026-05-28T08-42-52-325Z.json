@@ -1,0 +1,678 @@
+{
+  "discovery": {
+    "pages": [
+      {
+        "url": "http://127.0.0.1/logmon/",
+        "title": "LogMonitor Dashboard",
+        "screenshot": "explorer-output/screenshots/http___127_0_0_1_logmon_-1779957674544.png",
+        "depth": 0
+      },
+      {
+        "url": "http://127.0.0.1/logmon/logs",
+        "title": "LogMonitor Dashboard",
+        "screenshot": "explorer-output/screenshots/http___127_0_0_1_logmon_logs-1779957684806.png",
+        "depth": 1
+      }
+    ],
+    "siteMap": {
+      "url": "http://127.0.0.1/logmon/",
+      "title": "LogMonitor Dashboard",
+      "children": [
+        {
+          "url": "http://127.0.0.1/logmon/logs",
+          "title": "LogMonitor Dashboard",
+          "children": [],
+          "depth": 1
+        }
+      ],
+      "depth": 0
+    },
+    "uniqueUrls": [
+      "http://127.0.0.1/logmon/",
+      "http://127.0.0.1/logmon/logs"
+    ]
+  },
+  "testPlan": {
+    "pages": [
+      {
+        "url": "http://127.0.0.1/logmon/",
+        "pageName": "LogMonitor Dashboard",
+        "tests": [
+          {
+            "name": "LogMonitor Dashboard loads correctly",
+            "description": "Verify http://127.0.0.1/logmon/ loads with correct title",
+            "steps": [
+              "Navigate to page",
+              "Wait for load",
+              "Check title is not empty"
+            ],
+            "assertions": [
+              "Page title is not empty",
+              "No console errors"
+            ],
+            "priority": "high"
+          },
+          {
+            "name": "Table 1 has data rows",
+            "description": "Verify table with headers [应用 ID, 版本, 总事件数, 错误数, 最后活跃, 操作] has rows",
+            "steps": [
+              "Find table",
+              "Count rows",
+              "Verify row count > 0"
+            ],
+            "assertions": [
+              "Table has 0 rows",
+              "Headers match expected columns"
+            ],
+            "priority": "high"
+          },
+          {
+            "name": "Table 2 has data rows",
+            "description": "Verify table with headers [2026-05-28 16:41:14, 查看日志] has rows",
+            "steps": [
+              "Find table",
+              "Count rows",
+              "Verify row count > 0"
+            ],
+            "assertions": [
+              "Table has 4 rows",
+              "Headers match expected columns"
+            ],
+            "priority": "high"
+          },
+          {
+            "name": "No undefined or NaN text",
+            "description": "Verify page text does not contain undefined or NaN",
+            "steps": [
+              "Get page text",
+              "Check for undefined",
+              "Check for NaN"
+            ],
+            "assertions": [
+              "No \"undefined\" in page text",
+              "No \"NaN\" in page text"
+            ],
+            "priority": "high"
+          },
+          {
+            "name": "11 interactive elements present",
+            "description": "Verify page has expected interactive elements",
+            "steps": [
+              "Count buttons",
+              "Count inputs",
+              "Count selects"
+            ],
+            "assertions": [
+              "11 interactive elements found"
+            ],
+            "priority": "medium"
+          },
+          {
+            "name": "Verify all buttons are clickable and trigger expected actions",
+            "description": "Verify all buttons are clickable and trigger expected actions",
+            "steps": [
+              "Execute suggested test"
+            ],
+            "assertions": [
+              "Test passes"
+            ],
+            "priority": "medium"
+          },
+          {
+            "name": "Verify table displays data correctly (0 rows)",
+            "description": "Verify table displays data correctly (0 rows)",
+            "steps": [
+              "Execute suggested test"
+            ],
+            "assertions": [
+              "Test passes"
+            ],
+            "priority": "medium"
+          },
+          {
+            "name": "Verify table displays data correctly (4 rows)",
+            "description": "Verify table displays data correctly (4 rows)",
+            "steps": [
+              "Execute suggested test"
+            ],
+            "assertions": [
+              "Test passes"
+            ],
+            "priority": "medium"
+          }
+        ]
+      },
+      {
+        "url": "http://127.0.0.1/logmon/logs",
+        "pageName": "LogMonitor Dashboard",
+        "tests": [
+          {
+            "name": "LogMonitor Dashboard loads correctly",
+            "description": "Verify http://127.0.0.1/logmon/logs loads with correct title",
+            "steps": [
+              "Navigate to page",
+              "Wait for load",
+              "Check title is not empty"
+            ],
+            "assertions": [
+              "Page title is not empty",
+              "No console errors"
+            ],
+            "priority": "high"
+          },
+          {
+            "name": "Table 1 has data rows",
+            "description": "Verify table with headers [时间, 级别, 类型, 消息, 来源, 浏览器] has rows",
+            "steps": [
+              "Find table",
+              "Count rows",
+              "Verify row count > 0"
+            ],
+            "assertions": [
+              "Table has 0 rows",
+              "Headers match expected columns"
+            ],
+            "priority": "high"
+          },
+          {
+            "name": "Table 2 has data rows",
+            "description": "Verify table with headers [] has rows",
+            "steps": [
+              "Find table",
+              "Count rows",
+              "Verify row count > 0"
+            ],
+            "assertions": [
+              "Table has 0 rows",
+              "Headers match expected columns"
+            ],
+            "priority": "high"
+          },
+          {
+            "name": "Form 1 is functional",
+            "description": "Verify form with 4 fields is present",
+            "steps": [
+              "Find form",
+              "Count input fields",
+              "Verify submit button exists"
+            ],
+            "assertions": [
+              "Form has 4 input fields",
+              "Submit button exists"
+            ],
+            "priority": "medium"
+          },
+          {
+            "name": "No undefined or NaN text",
+            "description": "Verify page text does not contain undefined or NaN",
+            "steps": [
+              "Get page text",
+              "Check for undefined",
+              "Check for NaN"
+            ],
+            "assertions": [
+              "No \"undefined\" in page text",
+              "No \"NaN\" in page text"
+            ],
+            "priority": "high"
+          },
+          {
+            "name": "14 interactive elements present",
+            "description": "Verify page has expected interactive elements",
+            "steps": [
+              "Count buttons",
+              "Count inputs",
+              "Count selects"
+            ],
+            "assertions": [
+              "14 interactive elements found"
+            ],
+            "priority": "medium"
+          },
+          {
+            "name": "Verify form \"form\" can be submitted",
+            "description": "Verify form \"form\" can be submitted",
+            "steps": [
+              "Execute suggested test"
+            ],
+            "assertions": [
+              "Test passes"
+            ],
+            "priority": "medium"
+          },
+          {
+            "name": "Verify all buttons are clickable and trigger expected actions",
+            "description": "Verify all buttons are clickable and trigger expected actions",
+            "steps": [
+              "Execute suggested test"
+            ],
+            "assertions": [
+              "Test passes"
+            ],
+            "priority": "medium"
+          },
+          {
+            "name": "Verify table displays data correctly (0 rows)",
+            "description": "Verify table displays data correctly (0 rows)",
+            "steps": [
+              "Execute suggested test"
+            ],
+            "assertions": [
+              "Test passes"
+            ],
+            "priority": "medium"
+          },
+          {
+            "name": "Verify table displays data correctly (0 rows)",
+            "description": "Verify table displays data correctly (0 rows)",
+            "steps": [
+              "Execute suggested test"
+            ],
+            "assertions": [
+              "Test passes"
+            ],
+            "priority": "medium"
+          }
+        ]
+      }
+    ],
+    "totalTests": 18,
+    "timestamp": "2026-05-28T08:41:24.928Z"
+  },
+  "executions": [
+    {
+      "testCase": {
+        "name": "LogMonitor Dashboard loads correctly",
+        "description": "Verify http://127.0.0.1/logmon/ loads with correct title",
+        "steps": [
+          "Navigate to page",
+          "Wait for load",
+          "Check title is not empty"
+        ],
+        "assertions": [
+          "Page title is not empty",
+          "No console errors"
+        ],
+        "priority": "high"
+      },
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/LogMonitor-Dashboard-loads-correctly-1779957689780-2026-05-28T08-41-29-780Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: LogMonitor Dashboard loads correctly');\n\n    // Check page title is not empty\n    const title = await page.title();\n    if (!title || title.trim() === '') {\n      console.log('FAIL: Page title is empty');\n      process.exit(1);\n    }\n    console.log('INFO: Title = ' + title);\n\n    // Check not redirected to login\n    const currentUrl = page.url();\n    if (currentUrl.includes('login')) {\n      console.log('FAIL: Redirected to login page');\n      process.exit(1);\n    }\n\n    console.log('PASS: LogMonitor Dashboard loads correctly');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: LogMonitor Dashboard loads correctly\nINFO: Title = LogMonitor Dashboard\nPASS: LogMonitor Dashboard loads correctly\n",
+      "duration": 4942,
+      "timestamp": "2026-05-28T08:41:29.871Z"
+    },
+    {
+      "testCase": {
+        "name": "Table 1 has data rows",
+        "description": "Verify table with headers [应用 ID, 版本, 总事件数, 错误数, 最后活跃, 操作] has rows",
+        "steps": [
+          "Find table",
+          "Count rows",
+          "Verify row count > 0"
+        ],
+        "assertions": [
+          "Table has 0 rows",
+          "Headers match expected columns"
+        ],
+        "priority": "high"
+      },
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Table-1-has-data-rows-1779957694473-2026-05-28T08-41-34-473Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Table 1 has data rows');\n\n    // Check table has data rows\n    const rows = await page.locator('.el-table__body-wrapper tbody tr, table tbody tr').nth(0).count();\n    if (rows === 0) {\n      console.log('FAIL: Table 1 has no rows');\n      process.exit(1);\n    }\n    console.log('INFO: Table 1 has ' + rows + ' rows');\n\n    // Check table headers contain expected columns\n    const headerText = await page.locator('.el-table__header-wrapper th, table thead th').nth(0).allTextContents();\n    const headerStr = headerText.join(' ');\n    const expectedHeaders = [\"应用 ID\", \"版本\", \"总事件数\", \"错误数\", \"最后活跃\", \"操作\"];\n    for (const h of expectedHeaders) {\n      if (!headerStr.includes(h)) {\n        console.log('WARN: Missing header: ' + h);\n      }\n    }\n\n    console.log('PASS: Table 1 has data rows');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Table 1 has data rows\nINFO: Table 1 has 1 rows\nWARN: Missing header: 版本\nWARN: Missing header: 总事件数\nWARN: Missing header: 错误数\nWARN: Missing header: 最后活跃\nWARN: Missing header: 操作\nPASS: Table 1 has data rows\n",
+      "duration": 4675,
+      "timestamp": "2026-05-28T08:41:34.546Z"
+    },
+    {
+      "testCase": {
+        "name": "Table 2 has data rows",
+        "description": "Verify table with headers [2026-05-28 16:41:14, 查看日志] has rows",
+        "steps": [
+          "Find table",
+          "Count rows",
+          "Verify row count > 0"
+        ],
+        "assertions": [
+          "Table has 4 rows",
+          "Headers match expected columns"
+        ],
+        "priority": "high"
+      },
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Table-2-has-data-rows-1779957699237-2026-05-28T08-41-39-237Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Table 2 has data rows');\n\n    // Check table has data rows\n    const rows = await page.locator('.el-table__body-wrapper tbody tr, table tbody tr').nth(1).count();\n    if (rows === 0) {\n      console.log('FAIL: Table 2 has no rows');\n      process.exit(1);\n    }\n    console.log('INFO: Table 2 has ' + rows + ' rows');\n\n    // Check table headers contain expected columns\n    const headerText = await page.locator('.el-table__header-wrapper th, table thead th').nth(1).allTextContents();\n    const headerStr = headerText.join(' ');\n    const expectedHeaders = [\"2026-05-28 16:41:14\", \"查看日志\"];\n    for (const h of expectedHeaders) {\n      if (!headerStr.includes(h)) {\n        console.log('WARN: Missing header: ' + h);\n      }\n    }\n\n    console.log('PASS: Table 2 has data rows');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Table 2 has data rows\nINFO: Table 2 has 1 rows\nWARN: Missing header: 2026-05-28 16:41:14\nWARN: Missing header: 查看日志\nPASS: Table 2 has data rows\n",
+      "duration": 4769,
+      "timestamp": "2026-05-28T08:41:39.315Z"
+    },
+    {
+      "testCase": {
+        "name": "No undefined or NaN text",
+        "description": "Verify page text does not contain undefined or NaN",
+        "steps": [
+          "Get page text",
+          "Check for undefined",
+          "Check for NaN"
+        ],
+        "assertions": [
+          "No \"undefined\" in page text",
+          "No \"NaN\" in page text"
+        ],
+        "priority": "high"
+      },
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/No-undefined-or-NaN-text-1779957703923-2026-05-28T08-41-43-923Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: No undefined or NaN text');\n\n    // Check page content for undefined/NaN\n    const bodyText = await page.evaluate(() => document.body.innerText);\n    const problems = [];\n    if (bodyText.includes('undefined')) problems.push('undefined');\n    if (bodyText.includes('NaN')) problems.push('NaN');\n    if (bodyText.includes('null')) problems.push('null');\n    if (problems.length > 0) {\n      console.log('FAIL: Page contains ' + problems.join(', '));\n      process.exit(1);\n    }\n\n    console.log('PASS: No undefined or NaN text');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: No undefined or NaN text\nPASS: No undefined or NaN text\n",
+      "duration": 4679,
+      "timestamp": "2026-05-28T08:41:43.994Z"
+    },
+    {
+      "testCase": {
+        "name": "11 interactive elements present",
+        "description": "Verify page has expected interactive elements",
+        "steps": [
+          "Count buttons",
+          "Count inputs",
+          "Count selects"
+        ],
+        "assertions": [
+          "11 interactive elements found"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/11-interactive-elements-present-1779957708598-2026-05-28T08-41-48-598Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: 11 interactive elements present');\n\n    // Check interactive elements count\n    const buttons = await page.locator('button').count();\n    const inputs = await page.locator('input, select, textarea').count();\n    const links = await page.locator('a').count();\n    const total = buttons + inputs + links;\n    console.log('INFO: Buttons=' + buttons + ' Inputs=' + inputs + ' Links=' + links + ' Total=' + total);\n    if (total < 5) {\n      console.log('FAIL: Expected at least 5 interactive elements, found ' + total);\n      process.exit(1);\n    }\n\n    console.log('PASS: 11 interactive elements present');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: 11 interactive elements present\nINFO: Buttons=8 Inputs=2 Links=0 Total=10\nPASS: 11 interactive elements present\n",
+      "duration": 4699,
+      "timestamp": "2026-05-28T08:41:48.694Z"
+    },
+    {
+      "testCase": {
+        "name": "Verify all buttons are clickable and trigger expected actions",
+        "description": "Verify all buttons are clickable and trigger expected actions",
+        "steps": [
+          "Execute suggested test"
+        ],
+        "assertions": [
+          "Test passes"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Verify-all-buttons-are-clickable-and-trigger-expected-actions-1779957713556-2026-05-28T08-41-53-556Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Verify all buttons are clickable and trigger expected actions');\n\n    // Check all visible buttons are enabled\n    const buttons = await page.locator('button:visible').all();\n    let disabledCount = 0;\n    for (const btn of buttons) {\n      const disabled = await btn.isDisabled();\n      if (disabled) disabledCount++;\n    }\n    console.log('INFO: ' + buttons.length + ' buttons found, ' + disabledCount + ' disabled');\n\n    console.log('PASS: Verify all buttons are clickable and trigger expected actions');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Verify all buttons are clickable and trigger expected actions\nINFO: 8 buttons found, 0 disabled\nPASS: Verify all buttons are clickable and trigger expected actions\n",
+      "duration": 4937,
+      "timestamp": "2026-05-28T08:41:53.631Z"
+    },
+    {
+      "testCase": {
+        "name": "Verify table displays data correctly (0 rows)",
+        "description": "Verify table displays data correctly (0 rows)",
+        "steps": [
+          "Execute suggested test"
+        ],
+        "assertions": [
+          "Test passes"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Verify-table-displays-data-correctly-(0-rows)-1779957718502-2026-05-28T08-41-58-502Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Verify table displays data correctly (0 rows)');\n\n    // Generic check: page loaded and has content\n    const bodyText = await page.evaluate(() => document.body.innerText);\n    if (!bodyText || bodyText.trim().length < 10) {\n      console.log('FAIL: Page appears empty');\n      process.exit(1);\n    }\n\n    console.log('PASS: Verify table displays data correctly (0 rows)');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Verify table displays data correctly (0 rows)\nPASS: Verify table displays data correctly (0 rows)\n",
+      "duration": 4949,
+      "timestamp": "2026-05-28T08:41:58.580Z"
+    },
+    {
+      "testCase": {
+        "name": "Verify table displays data correctly (4 rows)",
+        "description": "Verify table displays data correctly (4 rows)",
+        "steps": [
+          "Execute suggested test"
+        ],
+        "assertions": [
+          "Test passes"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Verify-table-displays-data-correctly-(4-rows)-1779957723260-2026-05-28T08-42-03-260Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Verify table displays data correctly (4 rows)');\n\n    // Check table has expected number of rows\n    const rows = await page.locator('.el-table__body-wrapper tbody tr, table tbody tr').count();\n    console.log('INFO: Found ' + rows + ' rows (expected 4)');\n    if (rows < 1) {\n      console.log('FAIL: Expected 4 rows but found ' + rows);\n      process.exit(1);\n    }\n\n    console.log('PASS: Verify table displays data correctly (4 rows)');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Verify table displays data correctly (4 rows)\nINFO: Found 5 rows (expected 4)\nPASS: Verify table displays data correctly (4 rows)\n",
+      "duration": 4752,
+      "timestamp": "2026-05-28T08:42:03.332Z"
+    },
+    {
+      "testCase": {
+        "name": "LogMonitor Dashboard loads correctly",
+        "description": "Verify http://127.0.0.1/logmon/logs loads with correct title",
+        "steps": [
+          "Navigate to page",
+          "Wait for load",
+          "Check title is not empty"
+        ],
+        "assertions": [
+          "Page title is not empty",
+          "No console errors"
+        ],
+        "priority": "high"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/LogMonitor-Dashboard-loads-correctly-1779957728365-2026-05-28T08-42-08-365Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: LogMonitor Dashboard loads correctly');\n\n    // Check page title is not empty\n    const title = await page.title();\n    if (!title || title.trim() === '') {\n      console.log('FAIL: Page title is empty');\n      process.exit(1);\n    }\n    console.log('INFO: Title = ' + title);\n\n    // Check not redirected to login\n    const currentUrl = page.url();\n    if (currentUrl.includes('login')) {\n      console.log('FAIL: Redirected to login page');\n      process.exit(1);\n    }\n\n    console.log('PASS: LogMonitor Dashboard loads correctly');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: LogMonitor Dashboard loads correctly\nINFO: Title = LogMonitor Dashboard\nPASS: LogMonitor Dashboard loads correctly\n",
+      "duration": 5115,
+      "timestamp": "2026-05-28T08:42:08.447Z"
+    },
+    {
+      "testCase": {
+        "name": "Table 1 has data rows",
+        "description": "Verify table with headers [时间, 级别, 类型, 消息, 来源, 浏览器] has rows",
+        "steps": [
+          "Find table",
+          "Count rows",
+          "Verify row count > 0"
+        ],
+        "assertions": [
+          "Table has 0 rows",
+          "Headers match expected columns"
+        ],
+        "priority": "high"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": false,
+      "screenshot": "explorer-output/screenshots/explorer/Table-1-has-data-rows-1779957733215-2026-05-28T08-42-13-215Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Table 1 has data rows');\n\n    // Check table has data rows\n    const rows = await page.locator('.el-table__body-wrapper tbody tr, table tbody tr').nth(0).count();\n    if (rows === 0) {\n      console.log('FAIL: Table 1 has no rows');\n      process.exit(1);\n    }\n    console.log('INFO: Table 1 has ' + rows + ' rows');\n\n    // Check table headers contain expected columns\n    const headerText = await page.locator('.el-table__header-wrapper th, table thead th').nth(0).allTextContents();\n    const headerStr = headerText.join(' ');\n    const expectedHeaders = [\"时间\", \"级别\", \"类型\", \"消息\", \"来源\", \"浏览器\"];\n    for (const h of expectedHeaders) {\n      if (!headerStr.includes(h)) {\n        console.log('WARN: Missing header: ' + h);\n      }\n    }\n\n    console.log('PASS: Table 1 has data rows');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Table 1 has data rows\nFAIL: Table 1 has no rows\n",
+      "error": "Command failed: npx ts-node explorer-output/scripts/table-1-has-data-rows-10.ts\n",
+      "duration": 4851,
+      "timestamp": "2026-05-28T08:42:13.298Z"
+    },
+    {
+      "testCase": {
+        "name": "Table 2 has data rows",
+        "description": "Verify table with headers [] has rows",
+        "steps": [
+          "Find table",
+          "Count rows",
+          "Verify row count > 0"
+        ],
+        "assertions": [
+          "Table has 0 rows",
+          "Headers match expected columns"
+        ],
+        "priority": "high"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": false,
+      "screenshot": "explorer-output/screenshots/explorer/Table-2-has-data-rows-1779957738075-2026-05-28T08-42-18-075Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Table 2 has data rows');\n\n    // Check table has data rows\n    const rows = await page.locator('.el-table__body-wrapper tbody tr, table tbody tr').nth(1).count();\n    if (rows === 0) {\n      console.log('FAIL: Table 2 has no rows');\n      process.exit(1);\n    }\n    console.log('INFO: Table 2 has ' + rows + ' rows');\n\n    console.log('PASS: Table 2 has data rows');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Table 2 has data rows\nFAIL: Table 2 has no rows\n",
+      "error": "Command failed: npx ts-node explorer-output/scripts/table-2-has-data-rows-11.ts\n",
+      "duration": 4867,
+      "timestamp": "2026-05-28T08:42:18.166Z"
+    },
+    {
+      "testCase": {
+        "name": "Form 1 is functional",
+        "description": "Verify form with 4 fields is present",
+        "steps": [
+          "Find form",
+          "Count input fields",
+          "Verify submit button exists"
+        ],
+        "assertions": [
+          "Form has 4 input fields",
+          "Submit button exists"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Form-1-is-functional-1779957742934-2026-05-28T08-42-22-934Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Form 1 is functional');\n\n    // Check form has input fields\n    const formEl = page.locator('form, .el-form').nth(0);\n    const inputCount = await formEl.locator('input, select, textarea').count();\n    if (inputCount === 0) {\n      console.log('FAIL: Form 1 has no input fields');\n      process.exit(1);\n    }\n    console.log('INFO: Form 1 has ' + inputCount + ' input fields');\n\n    // Check form has submit/save button\n    const submitBtn = formEl.locator('button[type=submit], button:has-text(\"保存\"), button:has-text(\"提交\"), button:has-text(\"确定\")');\n    const hasSubmit = await submitBtn.count();\n    if (hasSubmit === 0) {\n      console.log('WARN: Form 1 has no submit button');\n    }\n\n    console.log('PASS: Form 1 is functional');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Form 1 is functional\nINFO: Form 1 has 4 input fields\nWARN: Form 1 has no submit button\nPASS: Form 1 is functional\n",
+      "duration": 4844,
+      "timestamp": "2026-05-28T08:42:23.011Z"
+    },
+    {
+      "testCase": {
+        "name": "No undefined or NaN text",
+        "description": "Verify page text does not contain undefined or NaN",
+        "steps": [
+          "Get page text",
+          "Check for undefined",
+          "Check for NaN"
+        ],
+        "assertions": [
+          "No \"undefined\" in page text",
+          "No \"NaN\" in page text"
+        ],
+        "priority": "high"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/No-undefined-or-NaN-text-1779957747953-2026-05-28T08-42-27-953Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: No undefined or NaN text');\n\n    // Check page content for undefined/NaN\n    const bodyText = await page.evaluate(() => document.body.innerText);\n    const problems = [];\n    if (bodyText.includes('undefined')) problems.push('undefined');\n    if (bodyText.includes('NaN')) problems.push('NaN');\n    if (bodyText.includes('null')) problems.push('null');\n    if (problems.length > 0) {\n      console.log('FAIL: Page contains ' + problems.join(', '));\n      process.exit(1);\n    }\n\n    console.log('PASS: No undefined or NaN text');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: No undefined or NaN text\nPASS: No undefined or NaN text\n",
+      "duration": 5019,
+      "timestamp": "2026-05-28T08:42:28.030Z"
+    },
+    {
+      "testCase": {
+        "name": "14 interactive elements present",
+        "description": "Verify page has expected interactive elements",
+        "steps": [
+          "Count buttons",
+          "Count inputs",
+          "Count selects"
+        ],
+        "assertions": [
+          "14 interactive elements found"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/14-interactive-elements-present-1779957752816-2026-05-28T08-42-32-816Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: 14 interactive elements present');\n\n    // Check interactive elements count\n    const buttons = await page.locator('button').count();\n    const inputs = await page.locator('input, select, textarea').count();\n    const links = await page.locator('a').count();\n    const total = buttons + inputs + links;\n    console.log('INFO: Buttons=' + buttons + ' Inputs=' + inputs + ' Links=' + links + ' Total=' + total);\n    if (total < 7) {\n      console.log('FAIL: Expected at least 7 interactive elements, found ' + total);\n      process.exit(1);\n    }\n\n    console.log('PASS: 14 interactive elements present');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: 14 interactive elements present\nINFO: Buttons=6 Inputs=7 Links=0 Total=13\nPASS: 14 interactive elements present\n",
+      "duration": 4867,
+      "timestamp": "2026-05-28T08:42:32.897Z"
+    },
+    {
+      "testCase": {
+        "name": "Verify form \"form\" can be submitted",
+        "description": "Verify form \"form\" can be submitted",
+        "steps": [
+          "Execute suggested test"
+        ],
+        "assertions": [
+          "Test passes"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Verify-form-\"form\"-can-be-submitted-1779957757844-2026-05-28T08-42-37-844Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Verify form \"form\" can be submitted');\n\n    // Check form exists and is submittable\n    const forms = await page.locator('form, .el-form').count();\n    console.log('INFO: Found ' + forms + ' forms');\n\n    console.log('PASS: Verify form \"form\" can be submitted');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Verify form \"form\" can be submitted\nINFO: Found 1 forms\nPASS: Verify form \"form\" can be submitted\n",
+      "duration": 5037,
+      "timestamp": "2026-05-28T08:42:37.935Z"
+    },
+    {
+      "testCase": {
+        "name": "Verify all buttons are clickable and trigger expected actions",
+        "description": "Verify all buttons are clickable and trigger expected actions",
+        "steps": [
+          "Execute suggested test"
+        ],
+        "assertions": [
+          "Test passes"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Verify-all-buttons-are-clickable-and-trigger-expected-actions-1779957762716-2026-05-28T08-42-42-716Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Verify all buttons are clickable and trigger expected actions');\n\n    // Check all visible buttons are enabled\n    const buttons = await page.locator('button:visible').all();\n    let disabledCount = 0;\n    for (const btn of buttons) {\n      const disabled = await btn.isDisabled();\n      if (disabled) disabledCount++;\n    }\n    console.log('INFO: ' + buttons.length + ' buttons found, ' + disabledCount + ' disabled');\n\n    console.log('PASS: Verify all buttons are clickable and trigger expected actions');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Verify all buttons are clickable and trigger expected actions\nINFO: 6 buttons found, 2 disabled\nPASS: Verify all buttons are clickable and trigger expected actions\n",
+      "duration": 4859,
+      "timestamp": "2026-05-28T08:42:42.794Z"
+    },
+    {
+      "testCase": {
+        "name": "Verify table displays data correctly (0 rows)",
+        "description": "Verify table displays data correctly (0 rows)",
+        "steps": [
+          "Execute suggested test"
+        ],
+        "assertions": [
+          "Test passes"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Verify-table-displays-data-correctly-(0-rows)-1779957767424-2026-05-28T08-42-47-424Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Verify table displays data correctly (0 rows)');\n\n    // Generic check: page loaded and has content\n    const bodyText = await page.evaluate(() => document.body.innerText);\n    if (!bodyText || bodyText.trim().length < 10) {\n      console.log('FAIL: Page appears empty');\n      process.exit(1);\n    }\n\n    console.log('PASS: Verify table displays data correctly (0 rows)');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Verify table displays data correctly (0 rows)\nPASS: Verify table displays data correctly (0 rows)\n",
+      "duration": 4703,
+      "timestamp": "2026-05-28T08:42:47.497Z"
+    },
+    {
+      "testCase": {
+        "name": "Verify table displays data correctly (0 rows)",
+        "description": "Verify table displays data correctly (0 rows)",
+        "steps": [
+          "Execute suggested test"
+        ],
+        "assertions": [
+          "Test passes"
+        ],
+        "priority": "medium"
+      },
+      "url": "http://127.0.0.1/logmon/logs",
+      "passed": true,
+      "screenshot": "explorer-output/screenshots/explorer/Verify-table-displays-data-correctly-(0-rows)-1779957772229-2026-05-28T08-42-52-229Z.png",
+      "script": "import { chromium } from '@playwright/test';\n\nasync function main() {\n  const browser = await chromium.launch({ headless: true });\n  const page = await browser.newPage();\n  try {\n\n    // --- Auto Login ---\n    await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: 'networkidle', timeout: 15000 });\n    const loginForm = page.locator(`.el-form`).first();\n    await loginForm.locator(`input:not([type='password'])`).first().fill(`admin`);\n    await loginForm.locator(`input[type='password']`).first().fill(`admin123`);\n    await loginForm.locator('button').filter({ hasText: /登录|login|sign|submit/i }).first().click();\n    await page.waitForURL(/\\/logmon\\/(?!login)/, { timeout: 10000 });\n    // --- End Login ---\n\n    // --- Navigate to target page ---\n    await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: 'networkidle', timeout: 15000 });\n    console.log('Testing: Verify table displays data correctly (0 rows)');\n\n    // Generic check: page loaded and has content\n    const bodyText = await page.evaluate(() => document.body.innerText);\n    if (!bodyText || bodyText.trim().length < 10) {\n      console.log('FAIL: Page appears empty');\n      process.exit(1);\n    }\n\n    console.log('PASS: Verify table displays data correctly (0 rows)');\n  } finally {\n    await browser.close();\n  }\n}\n\nmain().catch(e => { console.error('FAIL:', e.message); process.exit(1); });\n",
+      "output": "Testing: Verify table displays data correctly (0 rows)\nPASS: Verify table displays data correctly (0 rows)\n",
+      "duration": 4826,
+      "timestamp": "2026-05-28T08:42:52.323Z"
+    }
+  ],
+  "timestamp": "2026-05-28T08:42:52.326Z"
+}

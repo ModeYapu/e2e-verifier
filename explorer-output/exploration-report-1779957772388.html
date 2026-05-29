@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autonomous Exploration Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      line-height: 1.6;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #58a6ff; margin-bottom: 5px; font-size: 28px; }
+    h2 { color: #58a6ff; margin: 30px 0 15px; font-size: 20px; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+    h3 { color: #8b949e; margin: 20px 0 10px; font-size: 16px; }
+    .timestamp { color: #8b949e; margin-bottom: 30px; }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .summary-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    .summary-card .value {
+      font-size: 36px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .summary-card .label { color: #8b949e; font-size: 13px; }
+    .summary-card.passed .value { color: #3fb950; }
+    .summary-card.failed .value { color: #f85149; }
+    .summary-card.neutral .value { color: #58a6ff; }
+
+    .section {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    /* Page cards */
+    .pages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 15px;
+    }
+    .page-card {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .page-card-header {
+      padding: 15px;
+      background: #1c2128;
+      border-bottom: 1px solid #30363d;
+    }
+    .page-title { font-weight: 600; color: #c9d1d9; }
+    .page-url { color: #8b949e; font-size: 12px; margin-top: 5px; word-break: break-all; }
+    .page-card-body { padding: 15px; }
+    .page-stats {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .page-stat {
+      background: #30363d;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #8b949e;
+    }
+    .page-screenshot {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .page-screenshot:hover { transform: scale(1.02); }
+
+    /* Test results table */
+    .test-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .test-table th, .test-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #30363d;
+    }
+    .test-table th {
+      background: #21262d;
+      color: #8b949e;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .test-table tr:hover { background: #21262d; }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge.passed { background: #238636; color: #fff; }
+    .badge.failed { background: #da3633; color: #fff; }
+    .badge.high { background: #d73a49; color: #fff; }
+    .badge.medium { background: #db6d28; color: #fff; }
+    .badge.low { background: #30363d; color: #8b949e; }
+
+    /* Site map */
+    .site-map {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .site-map-item {
+      padding: 5px 0;
+    }
+    .site-map-link {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    .site-map-link:hover { text-decoration: underline; }
+    .site-map-depth {
+      display: inline-block;
+      width: 20px;
+      color: #8b949e;
+    }
+
+    /* Script section */
+    .script-block {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 15px;
+      overflow-x: auto;
+    }
+    .script-block pre {
+      margin: 0;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #8b949e;
+    }
+    .copy-button {
+      float: right;
+      padding: 5px 15px;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      color: #c9d1d9;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .copy-button:hover { background: #30363d; }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+    .modal.open { display: flex; }
+    .modal img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+    }
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #fff;
+      font-size: 30px;
+      cursor: pointer;
+    }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 5px; margin-bottom: 20px; }
+    .tab {
+      padding: 10px 20px;
+      background: #21262d;
+      border: none;
+      border-radius: 6px 6px 0 0;
+      color: #8b949e;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .tab.active {
+      background: #30363d;
+      color: #c9d1d9;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Autonomous Exploration Report</h1>
+    <div class="timestamp">Generated: 5/28/2026, 4:42:52 PM</div>
+
+    <div class="summary">
+      <div class="summary-card neutral">
+        <div class="value">2</div>
+        <div class="label">Pages Explored</div>
+      </div>
+      <div class="summary-card neutral">
+        <div class="value">18</div>
+        <div class="label">Tests Planned</div>
+      </div>
+      <div class="summary-card passed">
+        <div class="value">16</div>
+        <div class="label">Tests Passed</div>
+      </div>
+      <div class="summary-card failed">
+        <div class="value">2</div>
+        <div class="label">Tests Failed</div>
+      </div>
+      <div class="summary-card neutral">
+        <div class="value">88.9%</div>
+        <div class="label">Pass Rate</div>
+      </div>
+      <div class="summary-card neutral">
+        <div class="value">100s</div>
+        <div class="label">Duration</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('discovery')">Discovery</button>
+      <button class="tab" onclick="showTab('tests')">Test Results</button>
+      <button class="tab" onclick="showTab('sitemap')">Site Map</button>
+      <button class="tab" onclick="showTab('script')">Final Script</button>
+    </div>
+
+    <div id="discovery" class="tab-content active">
+      <h2>📄 Discovered Pages</h2>
+      <div class="pages-grid">
+        
+        <div class="page-card">
+          
+            <img src="explorer-output/screenshots/http___127_0_0_1_logmon_-1779957674544.png" alt="LogMonitor Dashboard" class="page-screenshot"
+                 onerror="this.style.display='none'">
+          
+          <div class="page-card-header">
+            <div class="page-title">LogMonitor Dashboard</div>
+            <div class="page-url">http://127.0.0.1/logmon/</div>
+          </div>
+          <div class="page-card-body">
+            <div class="page-stats">
+              <span class="page-stat">Depth: 0</span>
+              <span class="page-stat">🔗 8 links</span>
+              <span class="page-stat">🖱️ 11 interactive</span>
+              
+              <span class="page-stat">📊 2 tables</span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="page-card">
+          
+            <img src="explorer-output/screenshots/http___127_0_0_1_logmon_logs-1779957684806.png" alt="LogMonitor Dashboard" class="page-screenshot"
+                 onerror="this.style.display='none'">
+          
+          <div class="page-card-header">
+            <div class="page-title">LogMonitor Dashboard</div>
+            <div class="page-url">http://127.0.0.1/logmon/logs</div>
+          </div>
+          <div class="page-card-body">
+            <div class="page-stats">
+              <span class="page-stat">Depth: 1</span>
+              <span class="page-stat">🔗 0 links</span>
+              <span class="page-stat">🖱️ 14 interactive</span>
+              <span class="page-stat">📝 1 forms</span>
+              <span class="page-stat">📊 2 tables</span>
+            </div>
+          </div>
+        </div>
+      
+      </div>
+    </div>
+
+    <div id="tests" class="tab-content">
+      <h2>🧪 Test Results</h2>
+      <div class="section">
+        <table class="test-table">
+          <thead>
+            <tr>
+              <th>Test Name</th>
+              <th>Page</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+        <tr>
+          <td>LogMonitor Dashboard loads correctly</td>
+          <td>http://127.0.0.1/logmon/</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge high">high</span></td>
+          <td>4942ms</td>
+        </tr>
+      
+        <tr>
+          <td>Table 1 has data rows</td>
+          <td>http://127.0.0.1/logmon/</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge high">high</span></td>
+          <td>4675ms</td>
+        </tr>
+      
+        <tr>
+          <td>Table 2 has data rows</td>
+          <td>http://127.0.0.1/logmon/</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge high">high</span></td>
+          <td>4769ms</td>
+        </tr>
+      
+        <tr>
+          <td>No undefined or NaN text</td>
+          <td>http://127.0.0.1/logmon/</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge high">high</span></td>
+          <td>4679ms</td>
+        </tr>
+      
+        <tr>
+          <td>11 interactive elements present</td>
+          <td>http://127.0.0.1/logmon/</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4699ms</td>
+        </tr>
+      
+        <tr>
+          <td>Verify all buttons are clickable and trigger expected actions</td>
+          <td>http://127.0.0.1/logmon/</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4937ms</td>
+        </tr>
+      
+        <tr>
+          <td>Verify table displays data correctly (0 rows)</td>
+          <td>http://127.0.0.1/logmon/</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4949ms</td>
+        </tr>
+      
+        <tr>
+          <td>Verify table displays data correctly (4 rows)</td>
+          <td>http://127.0.0.1/logmon/</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4752ms</td>
+        </tr>
+      
+        <tr>
+          <td>LogMonitor Dashboard loads correctly</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge high">high</span></td>
+          <td>5115ms</td>
+        </tr>
+      
+        <tr>
+          <td>Table 1 has data rows</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge failed">FAILED</span></td>
+          <td><span class="badge high">high</span></td>
+          <td>4851ms</td>
+        </tr>
+      
+        <tr>
+          <td>Table 2 has data rows</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge failed">FAILED</span></td>
+          <td><span class="badge high">high</span></td>
+          <td>4867ms</td>
+        </tr>
+      
+        <tr>
+          <td>Form 1 is functional</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4844ms</td>
+        </tr>
+      
+        <tr>
+          <td>No undefined or NaN text</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge high">high</span></td>
+          <td>5019ms</td>
+        </tr>
+      
+        <tr>
+          <td>14 interactive elements present</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4867ms</td>
+        </tr>
+      
+        <tr>
+          <td>Verify form &quot;form&quot; can be submitted</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>5037ms</td>
+        </tr>
+      
+        <tr>
+          <td>Verify all buttons are clickable and trigger expected actions</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4859ms</td>
+        </tr>
+      
+        <tr>
+          <td>Verify table displays data correctly (0 rows)</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4703ms</td>
+        </tr>
+      
+        <tr>
+          <td>Verify table displays data correctly (0 rows)</td>
+          <td>http://127.0.0.1/logmon/logs</td>
+          <td><span class="badge passed">PASSED</span></td>
+          <td><span class="badge medium">medium</span></td>
+          <td>4826ms</td>
+        </tr>
+      
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="sitemap" class="tab-content">
+      <h2>🗺️ Site Map</h2>
+      <div class="section">
+        <div class="site-map">
+          
+        <div class="site-map-item">
+          <span class="site-map-depth"></span>
+          🏠 
+          <a href="http://127.0.0.1/logmon/" class="site-map-link" target="_blank">LogMonitor Dashboard</a>
+        </div>
+      
+        <div class="site-map-item">
+          <span class="site-map-depth">│ </span>
+          └─ 
+          <a href="http://127.0.0.1/logmon/logs" class="site-map-link" target="_blank">LogMonitor Dashboard</a>
+        </div>
+      
+        </div>
+      </div>
+    </div>
+
+    <div id="script" class="tab-content">
+      <h2>📜 Final Test Script</h2>
+      <div class="section">
+        <button class="copy-button" onclick="copyScript()">Copy Script</button>
+        <div class="script-block">
+          <pre>import { chromium } from &#039;@playwright/test&#039;;
+
+/**
+ * Auto-generated E2E test suite from autonomous exploration
+ * Generated: 2026-05-28T08:42:52.325Z
+ * LLM mode: disabled (heuristic-based tests)
+ */
+
+async function performLogin(page: Page) {
+  await page.goto(&#039;http://127.0.0.1/logmon/login&#039;);
+  const form = page.locator(&#039;.el-form&#039;).first();
+  await form.locator(&#039;input:not([type=&#039;password&#039;])&#039;).fill(&#039;admin&#039;);
+  await form.locator(&#039;input[type=&#039;password&#039;]&#039;).fill(&#039;admin123&#039;);
+  await form.locator(&#039;button&#039;).click();
+  await page.waitForURL(new RegExp(&#039;/logmon/(?!login)&#039;));
+}
+
+async function test1(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: LogMonitor Dashboard loads correctly&#039;);
+  
+      // Check page title is not empty
+      const title = await page.title();
+      if (!title || title.trim() === &#039;&#039;) {
+        console.log(&#039;FAIL: Page title is empty&#039;);
+        process.exit(1);
+      }
+      console.log(&#039;INFO: Title = &#039; + title);
+  
+      // Check not redirected to login
+      const currentUrl = page.url();
+      if (currentUrl.includes(&#039;login&#039;)) {
+        console.log(&#039;FAIL: Redirected to login page&#039;);
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: LogMonitor Dashboard loads correctly&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test2(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Table 1 has data rows&#039;);
+  
+      // Check table has data rows
+      const rows = await page.locator(&#039;.el-table__body-wrapper tbody tr, table tbody tr&#039;).nth(0).count();
+      if (rows === 0) {
+        console.log(&#039;FAIL: Table 1 has no rows&#039;);
+        process.exit(1);
+      }
+      console.log(&#039;INFO: Table 1 has &#039; + rows + &#039; rows&#039;);
+  
+      // Check table headers contain expected columns
+      const headerText = await page.locator(&#039;.el-table__header-wrapper th, table thead th&#039;).nth(0).allTextContents();
+      const headerStr = headerText.join(&#039; &#039;);
+      const expectedHeaders = [&quot;应用 ID&quot;, &quot;版本&quot;, &quot;总事件数&quot;, &quot;错误数&quot;, &quot;最后活跃&quot;, &quot;操作&quot;];
+      for (const h of expectedHeaders) {
+        if (!headerStr.includes(h)) {
+          console.log(&#039;WARN: Missing header: &#039; + h);
+        }
+      }
+  
+      console.log(&#039;PASS: Table 1 has data rows&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test3(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Table 2 has data rows&#039;);
+  
+      // Check table has data rows
+      const rows = await page.locator(&#039;.el-table__body-wrapper tbody tr, table tbody tr&#039;).nth(1).count();
+      if (rows === 0) {
+        console.log(&#039;FAIL: Table 2 has no rows&#039;);
+        process.exit(1);
+      }
+      console.log(&#039;INFO: Table 2 has &#039; + rows + &#039; rows&#039;);
+  
+      // Check table headers contain expected columns
+      const headerText = await page.locator(&#039;.el-table__header-wrapper th, table thead th&#039;).nth(1).allTextContents();
+      const headerStr = headerText.join(&#039; &#039;);
+      const expectedHeaders = [&quot;2026-05-28 16:41:14&quot;, &quot;查看日志&quot;];
+      for (const h of expectedHeaders) {
+        if (!headerStr.includes(h)) {
+          console.log(&#039;WARN: Missing header: &#039; + h);
+        }
+      }
+  
+      console.log(&#039;PASS: Table 2 has data rows&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test4(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: No undefined or NaN text&#039;);
+  
+      // Check page content for undefined/NaN
+      const bodyText = await page.evaluate(() =&gt; document.body.innerText);
+      const problems = [];
+      if (bodyText.includes(&#039;undefined&#039;)) problems.push(&#039;undefined&#039;);
+      if (bodyText.includes(&#039;NaN&#039;)) problems.push(&#039;NaN&#039;);
+      if (bodyText.includes(&#039;null&#039;)) problems.push(&#039;null&#039;);
+      if (problems.length &gt; 0) {
+        console.log(&#039;FAIL: Page contains &#039; + problems.join(&#039;, &#039;));
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: No undefined or NaN text&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test5(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: 11 interactive elements present&#039;);
+  
+      // Check interactive elements count
+      const buttons = await page.locator(&#039;button&#039;).count();
+      const inputs = await page.locator(&#039;input, select, textarea&#039;).count();
+      const links = await page.locator(&#039;a&#039;).count();
+      const total = buttons + inputs + links;
+      console.log(&#039;INFO: Buttons=&#039; + buttons + &#039; Inputs=&#039; + inputs + &#039; Links=&#039; + links + &#039; Total=&#039; + total);
+      if (total &lt; 5) {
+        console.log(&#039;FAIL: Expected at least 5 interactive elements, found &#039; + total);
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: 11 interactive elements present&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test6(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Verify all buttons are clickable and trigger expected actions&#039;);
+  
+      // Check all visible buttons are enabled
+      const buttons = await page.locator(&#039;button:visible&#039;).all();
+      let disabledCount = 0;
+      for (const btn of buttons) {
+        const disabled = await btn.isDisabled();
+        if (disabled) disabledCount++;
+      }
+      console.log(&#039;INFO: &#039; + buttons.length + &#039; buttons found, &#039; + disabledCount + &#039; disabled&#039;);
+  
+      console.log(&#039;PASS: Verify all buttons are clickable and trigger expected actions&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test7(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Verify table displays data correctly (0 rows)&#039;);
+  
+      // Generic check: page loaded and has content
+      const bodyText = await page.evaluate(() =&gt; document.body.innerText);
+      if (!bodyText || bodyText.trim().length &lt; 10) {
+        console.log(&#039;FAIL: Page appears empty&#039;);
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: Verify table displays data correctly (0 rows)&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test8(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Verify table displays data correctly (4 rows)&#039;);
+  
+      // Check table has expected number of rows
+      const rows = await page.locator(&#039;.el-table__body-wrapper tbody tr, table tbody tr&#039;).count();
+      console.log(&#039;INFO: Found &#039; + rows + &#039; rows (expected 4)&#039;);
+      if (rows &lt; 1) {
+        console.log(&#039;FAIL: Expected 4 rows but found &#039; + rows);
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: Verify table displays data correctly (4 rows)&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test9(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: LogMonitor Dashboard loads correctly&#039;);
+  
+      // Check page title is not empty
+      const title = await page.title();
+      if (!title || title.trim() === &#039;&#039;) {
+        console.log(&#039;FAIL: Page title is empty&#039;);
+        process.exit(1);
+      }
+      console.log(&#039;INFO: Title = &#039; + title);
+  
+      // Check not redirected to login
+      const currentUrl = page.url();
+      if (currentUrl.includes(&#039;login&#039;)) {
+        console.log(&#039;FAIL: Redirected to login page&#039;);
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: LogMonitor Dashboard loads correctly&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test10(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Form 1 is functional&#039;);
+  
+      // Check form has input fields
+      const formEl = page.locator(&#039;form, .el-form&#039;).nth(0);
+      const inputCount = await formEl.locator(&#039;input, select, textarea&#039;).count();
+      if (inputCount === 0) {
+        console.log(&#039;FAIL: Form 1 has no input fields&#039;);
+        process.exit(1);
+      }
+      console.log(&#039;INFO: Form 1 has &#039; + inputCount + &#039; input fields&#039;);
+  
+      // Check form has submit/save button
+      const submitBtn = formEl.locator(&#039;button[type=submit], button:has-text(&quot;保存&quot;), button:has-text(&quot;提交&quot;), button:has-text(&quot;确定&quot;)&#039;);
+      const hasSubmit = await submitBtn.count();
+      if (hasSubmit === 0) {
+        console.log(&#039;WARN: Form 1 has no submit button&#039;);
+      }
+  
+      console.log(&#039;PASS: Form 1 is functional&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test11(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: No undefined or NaN text&#039;);
+  
+      // Check page content for undefined/NaN
+      const bodyText = await page.evaluate(() =&gt; document.body.innerText);
+      const problems = [];
+      if (bodyText.includes(&#039;undefined&#039;)) problems.push(&#039;undefined&#039;);
+      if (bodyText.includes(&#039;NaN&#039;)) problems.push(&#039;NaN&#039;);
+      if (bodyText.includes(&#039;null&#039;)) problems.push(&#039;null&#039;);
+      if (problems.length &gt; 0) {
+        console.log(&#039;FAIL: Page contains &#039; + problems.join(&#039;, &#039;));
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: No undefined or NaN text&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test12(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: 14 interactive elements present&#039;);
+  
+      // Check interactive elements count
+      const buttons = await page.locator(&#039;button&#039;).count();
+      const inputs = await page.locator(&#039;input, select, textarea&#039;).count();
+      const links = await page.locator(&#039;a&#039;).count();
+      const total = buttons + inputs + links;
+      console.log(&#039;INFO: Buttons=&#039; + buttons + &#039; Inputs=&#039; + inputs + &#039; Links=&#039; + links + &#039; Total=&#039; + total);
+      if (total &lt; 7) {
+        console.log(&#039;FAIL: Expected at least 7 interactive elements, found &#039; + total);
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: 14 interactive elements present&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test13(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Verify form &quot;form&quot; can be submitted&#039;);
+  
+      // Check form exists and is submittable
+      const forms = await page.locator(&#039;form, .el-form&#039;).count();
+      console.log(&#039;INFO: Found &#039; + forms + &#039; forms&#039;);
+  
+      console.log(&#039;PASS: Verify form &quot;form&quot; can be submitted&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test14(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Verify all buttons are clickable and trigger expected actions&#039;);
+  
+      // Check all visible buttons are enabled
+      const buttons = await page.locator(&#039;button:visible&#039;).all();
+      let disabledCount = 0;
+      for (const btn of buttons) {
+        const disabled = await btn.isDisabled();
+        if (disabled) disabledCount++;
+      }
+      console.log(&#039;INFO: &#039; + buttons.length + &#039; buttons found, &#039; + disabledCount + &#039; disabled&#039;);
+  
+      console.log(&#039;PASS: Verify all buttons are clickable and trigger expected actions&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test15(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Verify table displays data correctly (0 rows)&#039;);
+  
+      // Generic check: page loaded and has content
+      const bodyText = await page.evaluate(() =&gt; document.body.innerText);
+      if (!bodyText || bodyText.trim().length &lt; 10) {
+        console.log(&#039;FAIL: Page appears empty&#039;);
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: Verify table displays data correctly (0 rows)&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function test16(page: Page) {
+  
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    try {
+  
+      // --- Auto Login ---
+      await page.goto(`http://127.0.0.1/logmon/login`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      const loginForm = page.locator(`.el-form`).first();
+      await loginForm.locator(`input:not([type=&#039;password&#039;])`).first().fill(`admin`);
+      await loginForm.locator(`input[type=&#039;password&#039;]`).first().fill(`admin123`);
+      await loginForm.locator(&#039;button&#039;).filter({ hasText: /登录|login|sign|submit/i }).first().click();
+      await page.waitForURL(/\/logmon\/(?!login)/, { timeout: 10000 });
+      // --- End Login ---
+  
+      // --- Navigate to target page ---
+      await page.goto(`http://127.0.0.1/logmon/logs`, { waitUntil: &#039;networkidle&#039;, timeout: 15000 });
+      console.log(&#039;Testing: Verify table displays data correctly (0 rows)&#039;);
+  
+      // Generic check: page loaded and has content
+      const bodyText = await page.evaluate(() =&gt; document.body.innerText);
+      if (!bodyText || bodyText.trim().length &lt; 10) {
+        console.log(&#039;FAIL: Page appears empty&#039;);
+        process.exit(1);
+      }
+  
+      console.log(&#039;PASS: Verify table displays data correctly (0 rows)&#039;);
+    } finally {
+      await browser.close();
+    }
+  }
+  
+  main().catch(e =&gt; { console.error(&#039;FAIL:&#039;, e.message); process.exit(1); 
+}
+
+async function runAllTests(baseUrl: string) {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+
+  try {
+    console.log(&#039;Starting E2E test suite...&#039;);
+
+    await test1(page);
+    console.log(&#039;Test 1 completed&#039;);
+    await test2(page);
+    console.log(&#039;Test 2 completed&#039;);
+    await test3(page);
+    console.log(&#039;Test 3 completed&#039;);
+    await test4(page);
+    console.log(&#039;Test 4 completed&#039;);
+    await test5(page);
+    console.log(&#039;Test 5 completed&#039;);
+    await test6(page);
+    console.log(&#039;Test 6 completed&#039;);
+    await test7(page);
+    console.log(&#039;Test 7 completed&#039;);
+    await test8(page);
+    console.log(&#039;Test 8 completed&#039;);
+    await test9(page);
+    console.log(&#039;Test 9 completed&#039;);
+    await test10(page);
+    console.log(&#039;Test 10 completed&#039;);
+    await test11(page);
+    console.log(&#039;Test 11 completed&#039;);
+    await test12(page);
+    console.log(&#039;Test 12 completed&#039;);
+    await test13(page);
+    console.log(&#039;Test 13 completed&#039;);
+    await test14(page);
+    console.log(&#039;Test 14 completed&#039;);
+    await test15(page);
+    console.log(&#039;Test 15 completed&#039;);
+    await test16(page);
+    console.log(&#039;Test 16 completed&#039;);
+
+    console.log(&#039;All tests completed&#039;);
+  } finally {
+    await browser.close();
+  }
+}
+
+if (require.main === module) {
+  runAllTests(process.argv[2] || &#039;http://localhost:3000&#039;).catch(console.error);
+}
+
+export { runAllTests };
+</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="imageModal" onclick="this.classList.remove('open')">
+    <span class="modal-close">&times;</span>
+    <img id="modalImage" src="" alt="">
+  </div>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector(`.tab[onclick="showTab('${tabId})"]`).classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function copyScript() {
+      const script = document.querySelector('.script-block pre').textContent;
+      navigator.clipboard.writeText(script);
+      alert('Script copied to clipboard!');
+    }
+
+    document.querySelectorAll('.page-screenshot').forEach(img => {
+      img.addEventListener('click', (e) => {
+        document.getElementById('imageModal').classList.add('open');
+        document.getElementById('modalImage').src = e.target.src;
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>E2E Convergence Report</title>
+      <style>
+        body { font-family: system-ui; background: #0f172a; color: #e2e8f0; padding: 2rem; }
+        h1 { color: #60a5fa; } h2 { color: #94a3b8; margin-top: 2rem; }
+        table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+        th, td { border: 1px solid #334155; padding: 8px 12px; text-align: left; }
+        th { background: #1e293b; color: #60a5fa; }
+        .result { font-size: 1.5rem; font-weight: bold; padding: 1rem; border-radius: 8px; text-align: center; margin: 1rem 0; }
+        .all_passed { background: #065f46; color: #6ee7b7; }
+        .converged { background: #713f12; color: #fcd34d; }
+        .max_rounds { background: #7f1d1d; color: #fca5a5; }
+      </style>
+    </head><body>
+      <h1>🔍 E2E Convergence Report</h1>
+      <p>Time: 2026-05-28T14:02:04.864Z | Rounds: 1</p>
+      <div class="result max_rounds">MAX ROUNDS</div>
+      
+      <h2>Project Summary</h2>
+      <table><tr><th>Project</th><th>Round 1</th><th>Final</th><th>Change</th><th>Explored</th><th>Remaining</th></tr>
+        <tr>
+        <td>logmonitor</td>
+        <td>73%</td>
+        <td>73%</td>
+        <td>➡️ 0%</td>
+        <td>8 pages</td>
+        <td>12 issues</td>
+      </tr>
+      </table>
+
+      
+      <h2>Remaining Issues (12)</h2>
+      <table><tr><th>Project</th><th>Check</th><th>Reason</th><th>Category</th></tr>
+        <tr>
+      <td>Login Page</td><td>Accessibility</td><td>2 errors</td><td>app_bug</td>
+    </tr><tr>
+      <td>Login Page</td><td>SEO</td><td>Failed: Meta description, Favicon, Open Graph tags</td><td>app_bug</td>
+    </tr><tr>
+      <td>Login Page</td><td>Console Errors</td><td>2 error(s): Failed to load resource: the server responded with a status of 401 (Unauthorized); API Error: AxiosError: Request failed with status code 401
+    at Wn (http://127.0.0.1/logmon/assets/index-OOsacttK.js:12:10032)
+    at XMLHttpRequest.R (http://127.0.0.1/logmon/assets/index-OOsacttK....</td><td>app_bug</td>
+    </tr><tr>
+      <td>Overview Dashboard</td><td>Accessibility</td><td>2 errors</td><td>app_bug</td>
+    </tr><tr>
+      <td>Overview Dashboard</td><td>SEO</td><td>Failed: Meta description, H1 tag, Favicon, Open Graph tags</td><td>app_bug</td>
+    </tr><tr>
+      <td>Overview Dashboard</td><td>Console Errors</td><td>5 error(s): TypeError: Cannot read properties of undefined (reading 'toString')
+    at i (http://127.0.0.1/logmon/assets/formatters-Bg3Xk62h.js:1:329)
+    at http://127.0.0.1/logmon/assets/Overview-DZoQkuo5.js:1:...</td><td>app_bug</td>
+    </tr><tr>
+      <td>Recordings List</td><td>Accessibility</td><td>8 errors</td><td>app_bug</td>
+    </tr><tr>
+      <td>Recordings List</td><td>SEO</td><td>Failed: Meta description, H1 tag, Favicon, Open Graph tags</td><td>app_bug</td>
+    </tr><tr>
+      <td>Logs Page</td><td>Accessibility</td><td>3 errors</td><td>app_bug</td>
+    </tr><tr>
+      <td>Logs Page</td><td>SEO</td><td>Failed: Meta description, H1 tag, Favicon, Open Graph tags</td><td>app_bug</td>
+    </tr><tr>
+      <td>User Management</td><td>Accessibility</td><td>2 errors</td><td>app_bug</td>
+    </tr><tr>
+      <td>User Management</td><td>SEO</td><td>Failed: Meta description, H1 tag, Favicon, Open Graph tags</td><td>app_bug</td>
+    </tr>
+      </table>
+    </body></html>

@@ -1,0 +1,172 @@
+{
+  "timestamp": "2026-05-28T14:17:24.954Z",
+  "totalRounds": 1,
+  "result": "max_rounds",
+  "projects": {
+    "logmonitor": {
+      "rounds": [
+        {
+          "round": 1,
+          "timestamp": "2026-05-28T14:17:24.953Z",
+          "project": "logmonitor",
+          "totalChecks": 44,
+          "passed": 32,
+          "failed": 12,
+          "explorePassed": 70,
+          "exploreFailed": 0,
+          "explorePages": 8,
+          "failures": [
+            {
+              "page": "Login Page",
+              "check": "Accessibility",
+              "reason": "2 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Login Page",
+              "check": "SEO",
+              "reason": "Failed: Meta description, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Login Page",
+              "check": "Console Errors",
+              "reason": "2 error(s): Failed to load resource: the server responded with a status of 401 (Unauthorized); API Error: AxiosError: Request failed with status code 401\n    at Wn (http://127.0.0.1/logmon/assets/index-OOsacttK.js:12:10032)\n    at XMLHttpRequest.R (http://127.0.0.1/logmon/assets/index-OOsacttK....",
+              "category": "app_bug"
+            },
+            {
+              "page": "Overview Dashboard",
+              "check": "Accessibility",
+              "reason": "2 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Overview Dashboard",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Overview Dashboard",
+              "check": "Console Errors",
+              "reason": "5 error(s): TypeError: Cannot read properties of undefined (reading 'toString')\n    at i (http://127.0.0.1/logmon/assets/formatters-Bg3Xk62h.js:1:329)\n    at http://127.0.0.1/logmon/assets/Overview-DZoQkuo5.js:1:...",
+              "category": "app_bug"
+            },
+            {
+              "page": "Recordings List",
+              "check": "Accessibility",
+              "reason": "8 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Recordings List",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Logs Page",
+              "check": "Accessibility",
+              "reason": "3 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Logs Page",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "User Management",
+              "check": "Accessibility",
+              "reason": "2 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "User Management",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            }
+          ],
+          "duration": 424172
+        }
+      ],
+      "improvement": 0
+    }
+  },
+  "remainingIssues": [
+    {
+      "page": "Login Page",
+      "check": "Accessibility",
+      "reason": "2 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Login Page",
+      "check": "SEO",
+      "reason": "Failed: Meta description, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Login Page",
+      "check": "Console Errors",
+      "reason": "2 error(s): Failed to load resource: the server responded with a status of 401 (Unauthorized); API Error: AxiosError: Request failed with status code 401\n    at Wn (http://127.0.0.1/logmon/assets/index-OOsacttK.js:12:10032)\n    at XMLHttpRequest.R (http://127.0.0.1/logmon/assets/index-OOsacttK....",
+      "category": "app_bug"
+    },
+    {
+      "page": "Overview Dashboard",
+      "check": "Accessibility",
+      "reason": "2 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Overview Dashboard",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Overview Dashboard",
+      "check": "Console Errors",
+      "reason": "5 error(s): TypeError: Cannot read properties of undefined (reading 'toString')\n    at i (http://127.0.0.1/logmon/assets/formatters-Bg3Xk62h.js:1:329)\n    at http://127.0.0.1/logmon/assets/Overview-DZoQkuo5.js:1:...",
+      "category": "app_bug"
+    },
+    {
+      "page": "Recordings List",
+      "check": "Accessibility",
+      "reason": "8 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Recordings List",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Logs Page",
+      "check": "Accessibility",
+      "reason": "3 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Logs Page",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "User Management",
+      "check": "Accessibility",
+      "reason": "2 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "User Management",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    }
+  ]
+}

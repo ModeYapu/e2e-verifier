@@ -1,0 +1,457 @@
+{
+  "timestamp": "2026-05-28T10:29:04.701Z",
+  "totalRounds": 1,
+  "result": "max_rounds",
+  "projects": {
+    "vault-reader": {
+      "rounds": [
+        {
+          "round": 1,
+          "timestamp": "2026-05-28T10:25:38.466Z",
+          "project": "vault-reader",
+          "totalChecks": 11,
+          "passed": 4,
+          "failed": 7,
+          "explorePassed": 0,
+          "exploreFailed": 5,
+          "explorePages": 1,
+          "failures": [
+            {
+              "page": "Vault Reader",
+              "check": "Accessibility",
+              "reason": "1 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "No undefined text",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "No NaN text",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "Has navigation links",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "No console errors",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "Console Errors",
+              "reason": "2 error(s): Failed to load resource: the server responded with a status of 404 (Not Found); Refused to execute script from 'http://127.0.0.1/vendor/mermaid.min.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+              "category": "app_bug"
+            }
+          ],
+          "duration": 20375
+        }
+      ],
+      "improvement": 0
+    },
+    "logmonitor": {
+      "rounds": [
+        {
+          "round": 1,
+          "timestamp": "2026-05-28T10:28:29.680Z",
+          "project": "logmonitor",
+          "totalChecks": 44,
+          "passed": 32,
+          "failed": 12,
+          "explorePassed": 0,
+          "exploreFailed": 70,
+          "explorePages": 8,
+          "failures": [
+            {
+              "page": "Login Page",
+              "check": "Accessibility",
+              "reason": "2 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Login Page",
+              "check": "SEO",
+              "reason": "Failed: Meta description, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Login Page",
+              "check": "Console Errors",
+              "reason": "2 error(s): Failed to load resource: the server responded with a status of 401 (Unauthorized); API Error: AxiosError: Request failed with status code 401\n    at Wn (http://127.0.0.1/logmon/assets/index-OOsacttK.js:12:10032)\n    at XMLHttpRequest.R (http://127.0.0.1/logmon/assets/index-OOsacttK....",
+              "category": "app_bug"
+            },
+            {
+              "page": "Overview Dashboard",
+              "check": "Accessibility",
+              "reason": "2 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Overview Dashboard",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Overview Dashboard",
+              "check": "Console Errors",
+              "reason": "5 error(s): TypeError: Cannot read properties of undefined (reading 'toString')\n    at i (http://127.0.0.1/logmon/assets/formatters-Bg3Xk62h.js:1:329)\n    at http://127.0.0.1/logmon/assets/Overview-DZoQkuo5.js:1:...",
+              "category": "app_bug"
+            },
+            {
+              "page": "Recordings List",
+              "check": "Accessibility",
+              "reason": "8 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Recordings List",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Logs Page",
+              "check": "Accessibility",
+              "reason": "3 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Logs Page",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "User Management",
+              "check": "Accessibility",
+              "reason": "2 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "User Management",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            }
+          ],
+          "duration": 171214
+        }
+      ],
+      "improvement": 0
+    },
+    "depth3d": {
+      "rounds": [
+        {
+          "round": 1,
+          "timestamp": "2026-05-28T10:28:49.379Z",
+          "project": "depth3d",
+          "totalChecks": 11,
+          "passed": 5,
+          "failed": 6,
+          "explorePassed": 0,
+          "exploreFailed": 4,
+          "explorePages": 1,
+          "failures": [
+            {
+              "page": "Depth3D",
+              "check": "Accessibility",
+              "reason": "8 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Depth3D",
+              "check": "SEO",
+              "reason": "Failed: Meta description, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Depth3D",
+              "check": "No undefined text",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Depth3D",
+              "check": "WebGL context available",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Depth3D",
+              "check": "Upload area exists",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Depth3D",
+              "check": "No JS errors on load",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            }
+          ],
+          "duration": 19699
+        }
+      ],
+      "improvement": 0
+    },
+    "webgpu-studio": {
+      "rounds": [
+        {
+          "round": 1,
+          "timestamp": "2026-05-28T10:29:04.700Z",
+          "project": "webgpu-studio",
+          "totalChecks": 10,
+          "passed": 4,
+          "failed": 6,
+          "explorePassed": 2,
+          "exploreFailed": 0,
+          "explorePages": 1,
+          "failures": [
+            {
+              "page": "WebGPU Studio",
+              "check": "SEO",
+              "reason": "Failed: Meta description, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "WebGPU Studio",
+              "check": "No undefined text",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "WebGPU Studio",
+              "check": "App container rendered",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "WebGPU Studio",
+              "check": "No fatal errors",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "WebGPU Studio",
+              "check": "Has UI elements",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "WebGPU Studio",
+              "check": "Console Errors",
+              "reason": "2 error(s): Failed to initialize app: Error: Failed to initialize WebGPU\n    at Ai.initialize (http://127.0.0.1/webgpu/assets/index-eWmhNue3.js:1048:4939)\n    at async Di (http://127.0.0.1/webgpu/assets/index-eWm...; [WebGPU 3D Studio] Boot failed: Error: Failed to initialize WebGPU\n    at Ai.initialize (http://127.0.0.1/webgpu/assets/index-eWmhNue3.js:1048:4939)\n    at async Di (http://127.0.0.1/webgpu/assets/ind...",
+              "category": "app_bug"
+            }
+          ],
+          "duration": 15321
+        }
+      ],
+      "improvement": 0
+    }
+  },
+  "remainingIssues": [
+    {
+      "page": "Vault Reader",
+      "check": "Accessibility",
+      "reason": "1 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "No undefined text",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "No NaN text",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "Has navigation links",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "No console errors",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "Console Errors",
+      "reason": "2 error(s): Failed to load resource: the server responded with a status of 404 (Not Found); Refused to execute script from 'http://127.0.0.1/vendor/mermaid.min.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+      "category": "app_bug"
+    },
+    {
+      "page": "Login Page",
+      "check": "Accessibility",
+      "reason": "2 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Login Page",
+      "check": "SEO",
+      "reason": "Failed: Meta description, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Login Page",
+      "check": "Console Errors",
+      "reason": "2 error(s): Failed to load resource: the server responded with a status of 401 (Unauthorized); API Error: AxiosError: Request failed with status code 401\n    at Wn (http://127.0.0.1/logmon/assets/index-OOsacttK.js:12:10032)\n    at XMLHttpRequest.R (http://127.0.0.1/logmon/assets/index-OOsacttK....",
+      "category": "app_bug"
+    },
+    {
+      "page": "Overview Dashboard",
+      "check": "Accessibility",
+      "reason": "2 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Overview Dashboard",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Overview Dashboard",
+      "check": "Console Errors",
+      "reason": "5 error(s): TypeError: Cannot read properties of undefined (reading 'toString')\n    at i (http://127.0.0.1/logmon/assets/formatters-Bg3Xk62h.js:1:329)\n    at http://127.0.0.1/logmon/assets/Overview-DZoQkuo5.js:1:...",
+      "category": "app_bug"
+    },
+    {
+      "page": "Recordings List",
+      "check": "Accessibility",
+      "reason": "8 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Recordings List",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Logs Page",
+      "check": "Accessibility",
+      "reason": "3 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Logs Page",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "User Management",
+      "check": "Accessibility",
+      "reason": "2 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "User Management",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Depth3D",
+      "check": "Accessibility",
+      "reason": "8 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Depth3D",
+      "check": "SEO",
+      "reason": "Failed: Meta description, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Depth3D",
+      "check": "No undefined text",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Depth3D",
+      "check": "WebGL context available",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Depth3D",
+      "check": "Upload area exists",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Depth3D",
+      "check": "No JS errors on load",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "WebGPU Studio",
+      "check": "SEO",
+      "reason": "Failed: Meta description, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "WebGPU Studio",
+      "check": "No undefined text",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "WebGPU Studio",
+      "check": "App container rendered",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "WebGPU Studio",
+      "check": "No fatal errors",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "WebGPU Studio",
+      "check": "Has UI elements",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "WebGPU Studio",
+      "check": "Console Errors",
+      "reason": "2 error(s): Failed to initialize app: Error: Failed to initialize WebGPU\n    at Ai.initialize (http://127.0.0.1/webgpu/assets/index-eWmhNue3.js:1048:4939)\n    at async Di (http://127.0.0.1/webgpu/assets/index-eWm...; [WebGPU 3D Studio] Boot failed: Error: Failed to initialize WebGPU\n    at Ai.initialize (http://127.0.0.1/webgpu/assets/index-eWmhNue3.js:1048:4939)\n    at async Di (http://127.0.0.1/webgpu/assets/ind...",
+      "category": "app_bug"
+    }
+  ]
+}

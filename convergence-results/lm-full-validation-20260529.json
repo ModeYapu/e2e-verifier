@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-05-29T03:42:09.794Z",
+  "total": 14,
+  "passed": 14,
+  "failed": 0,
+  "rate": 100,
+  "results": [
+    {
+      "name": "Login",
+      "passed": true,
+      "details": "Logged in successfully",
+      "durationMs": 1631
+    },
+    {
+      "name": "Dashboard",
+      "passed": true,
+      "details": "Stats: true, AppList: true",
+      "durationMs": 2294
+    },
+    {
+      "name": "Logs List",
+      "passed": true,
+      "details": "Table: true, API logs: 80",
+      "durationMs": 2182
+    },
+    {
+      "name": "Logs Search",
+      "passed": true,
+      "details": "Search input: visible, API search: ok",
+      "durationMs": 3696
+    },
+    {
+      "name": "Logs Level Filter",
+      "passed": true,
+      "details": "Tested levels: error, warn, info",
+      "durationMs": 10
+    },
+    {
+      "name": "App Selector",
+      "passed": true,
+      "details": "5 apps, filter by 'webgpu-3d-studio': ok",
+      "durationMs": 6
+    },
+    {
+      "name": "Performance",
+      "passed": true,
+      "details": "Page content: 253 chars",
+      "durationMs": 2163
+    },
+    {
+      "name": "Alerts",
+      "passed": true,
+      "details": "Page: loaded, API: ok",
+      "durationMs": 2170
+    },
+    {
+      "name": "Live Sessions",
+      "passed": true,
+      "details": "UI: user_list=true, viewer=true, live_data=null",
+      "durationMs": 2173
+    },
+    {
+      "name": "Recordings List",
+      "passed": true,
+      "details": "API: 5 recordings, Table rows: 35",
+      "durationMs": 2184
+    },
+    {
+      "name": "Recording Replay",
+      "passed": true,
+      "details": "Session: 3b366fde-b4e..., Events: 6, Stats: true",
+      "durationMs": 2225
+    },
+    {
+      "name": "Settings",
+      "passed": true,
+      "details": "Page content: 808 chars, has settings: true",
+      "durationMs": 2167
+    },
+    {
+      "name": "Users",
+      "passed": true,
+      "details": "API: 1 users, UI shows admin: true",
+      "durationMs": 2183
+    },
+    {
+      "name": "API Data Integrity",
+      "passed": true,
+      "details": "All 4 API checks passed",
+      "durationMs": 17
+    }
+  ]
+}

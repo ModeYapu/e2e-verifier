@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-05-28T10:29:24.690Z",
+  "totalRounds": 1,
+  "result": "max_rounds",
+  "projects": {
+    "vault-reader": {
+      "rounds": [
+        {
+          "round": 1,
+          "timestamp": "2026-05-28T10:29:24.689Z",
+          "project": "vault-reader",
+          "totalChecks": 11,
+          "passed": 4,
+          "failed": 7,
+          "explorePassed": 5,
+          "exploreFailed": 0,
+          "explorePages": 1,
+          "failures": [
+            {
+              "page": "Vault Reader",
+              "check": "Accessibility",
+              "reason": "1 errors",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "SEO",
+              "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "No undefined text",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "No NaN text",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "Has navigation links",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "No console errors",
+              "reason": "Unknown check type: custom",
+              "category": "app_bug"
+            },
+            {
+              "page": "Vault Reader",
+              "check": "Console Errors",
+              "reason": "2 error(s): Failed to load resource: the server responded with a status of 404 (Not Found); Refused to execute script from 'http://127.0.0.1/vendor/mermaid.min.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+              "category": "app_bug"
+            }
+          ],
+          "duration": 33195
+        }
+      ],
+      "improvement": 0
+    }
+  },
+  "remainingIssues": [
+    {
+      "page": "Vault Reader",
+      "check": "Accessibility",
+      "reason": "1 errors",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "SEO",
+      "reason": "Failed: Meta description, H1 tag, Favicon, Open Graph tags",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "No undefined text",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "No NaN text",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "Has navigation links",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "No console errors",
+      "reason": "Unknown check type: custom",
+      "category": "app_bug"
+    },
+    {
+      "page": "Vault Reader",
+      "check": "Console Errors",
+      "reason": "2 error(s): Failed to load resource: the server responded with a status of 404 (Not Found); Refused to execute script from 'http://127.0.0.1/vendor/mermaid.min.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+      "category": "app_bug"
+    }
+  ]
+}
