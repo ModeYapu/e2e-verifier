@@ -359,14 +359,15 @@ Rules:
           code = `
   // Step ${i + 1}: API check
   try {
-    ${apiUrl ? `
+    const ep = '${step.endpoint || step.endpoint_pattern || ''}';
+    const fetchUrl = apiUrl ? apiUrl + ep : baseUrl + ep;
     const resp = await page.evaluate(async (url) => {
-      const r = await fetch(url, { headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') } });
-      return r.json();
-    }, '${apiUrl}${step.endpoint || step.endpoint_pattern || ''}');
-    const assertOk = ${step.assert ? `eval(${JSON.stringify(step.assert)})` : `true`};
-    results.push({ step: 'api check', passed: true, details: JSON.stringify(resp).slice(0, 100) });` : `
-    results.push({ step: 'api check', passed: false, details: 'No api_url' });`}
+      const r = await fetch(url);
+      const text = await r.text();
+      try { return { ok: r.ok, status: r.status, data: JSON.parse(text) }; } catch { return { ok: r.ok, status: r.status, text: text.slice(0, 200) }; }
+    }, fetchUrl);
+    const checkResult = resp.ok && (resp.data ? true : (resp.text || '').length > 0);
+    results.push({ step: 'api check ' + ep, passed: checkResult, details: 'status=' + resp.status + ' ' + JSON.stringify(resp.data || resp.text || '').slice(0, 100) });
   } catch (e) { results.push({ step: 'api check', passed: false, details: String(e) }); }`;
           break;
 
@@ -397,10 +398,17 @@ interface StepResult { step: string; passed: boolean; details: string; }
 
 async function run(page: any, baseUrl: string): Promise<StepResult[]> {
   const results: StepResult[] = [];
+  const apiUrl = '${apiUrl}';
 
-  // Navigate to first page
-  await page.goto(baseUrl + '${scenario.pages[0] || ''}', { waitUntil: 'networkidle', timeout: 15000 });
-  await page.waitForTimeout(2000);
+  // Navigate to first page if specified
+  const firstPage = ${JSON.stringify(scenario.pages?.[0] || '')};
+  if (firstPage) {
+    await page.goto(baseUrl + firstPage, { waitUntil: 'networkidle', timeout: 15000 });
+    await page.waitForTimeout(2000);
+  } else {
+    // API-only scenario: navigate to baseUrl for page.evaluate context
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
+  }
 
 ${stepCode}
 
