@@ -111,7 +111,7 @@ async function main() {
           llmConfig = {
             apiKey: zaiKey,
             apiBase: 'https://open.bigmodel.cn/api/coding/paas/v4',
-            model: 'glm-4.5-flash',  // Free, fast, good enough for test planning
+            model: 'glm-5-turbo',  // Better code generation quality
           };
           logger.info('🤖 LLM Agent enabled: GLM-4.5-Flash (auto-detected from OpenClaw)');
         }
