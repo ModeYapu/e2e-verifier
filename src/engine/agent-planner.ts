@@ -399,6 +399,169 @@ Rules:
   } catch (e) { results.push({ step: 'pagination', passed: true, details: 'no pager needed' }); }`;
           break;
 
+        // ──── 数据验证 Actions ────
+
+        case 'select_and_verify':
+          code = `
+  // Step ${i + 1}: Select dropdown and verify value is not empty/undefined
+  try {
+    const selectSel = ${step.target ? `'${step.target}'` : `'.el-select, select'`};
+    const sel = page.locator(selectSel).first();
+    await sel.waitFor({ state: 'visible', timeout: 5000 });
+    await sel.click();
+    await page.waitForTimeout(800);
+    // Get dropdown options
+    const opts = page.locator('.el-select-dropdown__item, .el-scrollbar__view li, option, [class*="option"]');
+    const optCount = await opts.count();
+    if (optCount === 0) {
+      results.push({ step: 'select and verify', passed: false, details: '下拉框选项为空（0个选项）' });
+    } else {
+      // Click first option
+      const firstOpt = opts.first();
+      const optText = await firstOpt.innerText().catch(() => '');
+      await firstOpt.click();
+      await page.waitForTimeout(500);
+      // Verify the select actually has a value now
+      const selectedValue = await sel.evaluate((el: any) => {
+        // Element Plus v2: check all .el-select__selected-item elements
+        const items = el.querySelectorAll('.el-select__selected-item');
+        const texts: string[] = [];
+        items.forEach((item: any) => { const t = item.textContent?.trim(); if (t) texts.push(t); });
+        if (texts.length > 0) return texts.join(', ');
+        // Fallback: check input
+        const input = el.querySelector('.el-input__inner, input');
+        if (input) return (input as HTMLInputElement).value || '';
+        return el.textContent?.trim() || '';
+      });
+      const hasValidValue = selectedValue.length > 0 && selectedValue !== 'undefined' && selectedValue !== 'null';
+      results.push({ step: 'select and verify', passed: hasValidValue, details: hasValidValue ? '选中: ' + selectedValue + ' (共' + optCount + '个选项)' : '选中值为空或undefined, 选项文本: "' + optText + '", value: "' + selectedValue + '"' });
+    }
+  } catch (e) { results.push({ step: 'select and verify', passed: false, details: String(e) }); }`;
+          break;
+
+        case 'verify_table_not_empty':
+          code = `
+  // Step ${i + 1}: Verify table has data with non-empty content
+  try {
+    const tableSel = ${step.target ? `'${step.target}'` : `'.el-table, table'`};
+    const table = page.locator(tableSel).first();
+    await table.waitFor({ state: 'visible', timeout: 5000 });
+    // Check rows
+    const rows = table.locator('tbody tr, .el-table__row');
+    const rowCount = await rows.count();
+    if (rowCount === 0) {
+      // Check if empty state text
+      const emptyText = await table.locator('.el-table__empty-text, .el-table__empty-block').innerText().catch(() => '');
+      results.push({ step: 'table not empty', passed: false, details: '表格0行' + (emptyText ? ', 空状态: ' + emptyText : '') });
+    } else {
+      // Verify first row has actual content (not just empty cells)
+      const firstRowCells = rows.first().locator('td, .cell');
+      const cellCount = await firstRowCells.count();
+      let hasContent = false;
+      const cellTexts: string[] = [];
+      for (let c = 0; c < Math.min(cellCount, 5); c++) {
+        const txt = await firstRowCells.nth(c).innerText().catch(() => '');
+        cellTexts.push(txt.slice(0, 30));
+        if (txt.trim().length > 0 && txt.trim() !== 'undefined' && txt.trim() !== 'null') hasContent = true;
+      }
+      results.push({ step: 'table not empty', passed: hasContent, details: rowCount + '行, 首行: [' + cellTexts.join(', ') + ']' });
+    }
+  } catch (e) { results.push({ step: 'table not empty', passed: false, details: String(e) }); }`;
+          break;
+
+        case 'submit_and_verify':
+          code = `
+  // Step ${i + 1}: Submit form and verify API response
+  try {
+    // Click submit button
+    const btnSel = ${step.target ? `'${step.target}'` : `'button[type="submit"], button:has-text("查询"), button:has-text("搜索"), button:has-text("提交"), button:has-text("保存"), .el-button--primary'`};
+    const btn = page.locator(btnSel).first();
+    await btn.waitFor({ state: 'visible', timeout: 5000 });
+    // Listen for API response
+    const responsePromise = page.waitForResponse(
+      resp => resp.url().includes('/api/') || resp.url().includes('/query'),
+      { timeout: 10000 }
+    ).catch(() => null);
+    await btn.click();
+    const resp = await responsePromise;
+    if (resp) {
+      const status = resp.status();
+      let body: any = null;
+      try { body = await resp.json(); } catch {}
+      const isOk = status >= 200 && status < 400;
+      // Check if response data is meaningful
+      const hasData = body && (Array.isArray(body) ? body.length > 0 : body.data ? (Array.isArray(body.data) ? body.data.length > 0 : true) : true);
+      results.push({ step: 'submit and verify', passed: isOk && hasData, details: 'HTTP ' + status + ', ' + JSON.stringify(body).slice(0, 100) });
+    } else {
+      results.push({ step: 'submit and verify', passed: false, details: '没有捕获到 API 响应' });
+    }
+  } catch (e) { results.push({ step: 'submit and verify', passed: false, details: String(e) }); }`;
+          break;
+
+        case 'verify_api_response':
+          code = `
+  // Step ${i + 1}: Call API and verify response fields
+  try {
+    const ep = '${step.endpoint || ''}';
+    const fetchUrl = apiUrl ? apiUrl + ep : baseUrl + ep;
+    const expectedField = '${step.expect_field || step.expect || ''}';
+    const expectedValue = '${step.expect_value || ''}';
+    const http = require('http');
+    const nodeResp = await new Promise<{ok: boolean, status: number, data: any}>((resolve) => {
+      const opts = new URL(fetchUrl);
+      const headers: Record<string, string> = {};
+      if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+      const req = http.get(opts, { headers }, (res: any) => {
+        let body = '';
+        res.on('data', (c: any) => body += c);
+        res.on('end', () => {
+          try { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: JSON.parse(body) }); }
+          catch { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: body.slice(0, 200) }); }
+        });
+      });
+      req.on('error', (e: any) => resolve({ ok: false, status: 0, data: e.message }));
+      req.setTimeout(5000, () => { req.destroy(); resolve({ ok: false, status: 0, data: 'timeout' }); });
+    });
+    if (!nodeResp.ok) {
+      results.push({ step: 'api verify ' + ep, passed: false, details: 'status=' + nodeResp.status });
+    } else if (expectedField) {
+      // Navigate nested field like "data.0.app_id"
+      let val: any = nodeResp.data;
+      for (const key of expectedField.split('.')) {
+        val = val?.[isNaN(Number(key)) ? key : Number(key)];
+      }
+      const match = expectedValue ? String(val) === expectedValue : val !== undefined && val !== null && val !== '';
+      results.push({ step: 'api verify ' + ep, passed: match, details: expectedField + '=' + JSON.stringify(val) + (expectedValue ? ' (expected: ' + expectedValue + ')' : '') });
+    } else {
+      // Just verify response has data
+      const hasData = Array.isArray(nodeResp.data) ? nodeResp.data.length > 0 : typeof nodeResp.data === 'object' && nodeResp.data !== null;
+      results.push({ step: 'api verify ' + ep, passed: hasData, details: 'status=' + nodeResp.status + ', data=' + JSON.stringify(nodeResp.data).slice(0, 120) });
+    }
+  } catch (e) { results.push({ step: 'api verify', passed: false, details: String(e) }); }`;
+          break;
+
+        case 'fill_and_submit':
+          code = `
+  // Step ${i + 1}: Fill form fields and submit
+  try {
+    const fields = ${JSON.stringify(step.fields || [])};
+    for (const field of fields) {
+      const input = page.locator(field.selector || 'input').first();
+      await input.waitFor({ state: 'visible', timeout: 3000 });
+      await input.fill(field.value);
+    }
+    const submitBtn = page.locator(${step.submit_selector ? `'${step.submit_selector}'` : `'button[type="submit"], .el-button--primary'`}).first();
+    await submitBtn.click();
+    await page.waitForTimeout(2000);
+    // Check for success/error messages
+    const errorMsg = page.locator('.el-message--error, .el-form-item__error, [class*="error"], [class*="alert"]');
+    const hasError = await errorMsg.count();
+    results.push({ step: 'fill and submit', passed: hasError === 0, details: hasError > 0 ? '有错误提示' : '提交成功' });
+  } catch (e) { results.push({ step: 'fill and submit', passed: false, details: String(e) }); }`;
+          break;
+
+        // ──── 旧 Actions ────
+
         default:
           code = `
   // Step ${i + 1}: ${action} (generic)
