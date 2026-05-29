@@ -1,0 +1,32 @@
+{
+  "name": "sanfacheng.cyou (quick check)",
+  "sites": [
+    {
+      "name": "Vault Reader",
+      "url": "http://sanfacheng.cyou/vault/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1280, "height": 720 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "seo"],
+      "timeout": 15000
+    },
+    {
+      "name": "OpenClaw Control",
+      "url": "http://sanfacheng.cyou/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1280, "height": 720 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "seo"],
+      "timeout": 15000
+    },
+    {
+      "name": "WebGPU 3D Studio",
+      "url": "http://sanfacheng.cyou/webgpu/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1280, "height": 720 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "seo"],
+      "timeout": 15000
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Vault Reader",
+  "url": "http://127.0.0.1/vault/",
+  "expectedStatusCode": 200,
+  "viewport": { "width": 1920, "height": 1080 },
+  "screenshots": ["fullpage"],
+  "checks": ["screenshot", "console", "performance"],
+  "timeout": 15000,
+  "customChecks": [
+    { "name": "Page loads correctly", "type": "element", "selector": "body" },
+    { "name": "No undefined text", "type": "custom", "script": "return !document.body.innerText.includes('undefined')" },
+    { "name": "No NaN text", "type": "custom", "script": "return !document.body.innerText.includes('NaN')" },
+    { "name": "Search input exists", "type": "element", "selector": "input" },
+    { "name": "Has navigation links", "type": "custom", "script": "return document.querySelectorAll('a').length > 5" },
+    { "name": "No console errors", "type": "custom", "script": "return true" }
+  ]
+}

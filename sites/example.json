@@ -1,0 +1,36 @@
+{
+  "name": "example",
+  "url": "https://example.com",
+  "expectedStatusCode": 200,
+  "screenshots": [
+    {
+      "name": "homepage"
+    }
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    }
+  ],
+  "customChecks": [
+    {
+      "name": "Example heading",
+      "type": "text",
+      "selector": "h1",
+      "expected": "Example Domain"
+    },
+    {
+      "name": "Link presence",
+      "type": "element",
+      "selector": "a"
+    }
+  ],
+  "timeout": 30000
+}

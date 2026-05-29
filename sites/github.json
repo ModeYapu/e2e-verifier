@@ -1,0 +1,26 @@
+{
+  "name": "github",
+  "url": "https://github.com",
+  "expectedStatusCode": 200,
+  "screenshots": [
+    {
+      "name": "homepage",
+      "waitForSelector": "header"
+    }
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "customChecks": [
+    {
+      "name": "GitHub logo",
+      "type": "element",
+      "selector": "[aria-label=\"GitHub\"]"
+    }
+  ],
+  "timeout": 30000
+}

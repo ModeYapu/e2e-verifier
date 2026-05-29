@@ -1,0 +1,77 @@
+{
+  "name": "sanfacheng.cyou",
+  "sites": [
+    {
+      "name": "Vault Reader",
+      "url": "http://sanfacheng.cyou/vault/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "accessibility", "seo"],
+      "timeout": 15000
+    },
+    {
+      "name": "OpenClaw Control",
+      "url": "http://sanfacheng.cyou/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "seo"],
+      "timeout": 15000
+    },
+    {
+      "name": "Travel Planner",
+      "url": "http://sanfacheng.cyou/travel/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "accessibility"],
+      "timeout": 15000
+    },
+    {
+      "name": "WebGPU 3D Studio",
+      "url": "http://sanfacheng.cyou/webgpu/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "seo"],
+      "timeout": 15000
+    },
+    {
+      "name": "Static Manager",
+      "url": "http://sanfacheng.cyou/manage/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance"],
+      "timeout": 15000
+    },
+    {
+      "name": "Quiz",
+      "url": "http://sanfacheng.cyou/quiz/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "seo"],
+      "timeout": 15000
+    },
+    {
+      "name": "Depth3D",
+      "url": "http://sanfacheng.cyou/depth3d/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance"],
+      "timeout": 15000
+    },
+    {
+      "name": "System Health",
+      "url": "http://sanfacheng.cyou/health",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": [],
+      "checks": ["performance"],
+      "timeout": 15000
+    }
+  ]
+}

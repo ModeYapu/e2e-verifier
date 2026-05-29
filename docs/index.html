@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E2E Verifier — 自动化验证框架</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a371f7;
+            --accent-yellow: #d29922;
+            --border-color: #30363d;
+            --code-bg: #161b22;
+            --code-line: #1c2128;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 3rem 0;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 0.35rem 0.85rem;
+            font-size: 0.85rem;
+            font-family: var(--font-mono);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .badge:hover {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .badge.success {
+            color: var(--accent-green);
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        nav ul {
+            display: flex;
+            justify-content: center;
+            list-style: none;
+            gap: 2rem;
+            padding: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--accent-green);
+            background: rgba(63, 185, 80, 0.1);
+        }
+
+        /* Main Content */
+        main {
+            padding: 3rem 0;
+        }
+
+        section {
+            margin-bottom: 4rem;
+            scroll-margin-top: 100px;
+        }
+
+        section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+            border-left: 4px solid var(--accent-green);
+            padding-left: 1rem;
+        }
+
+        section h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        /* Quick Start Card */
+        .quick-start {
+            background: linear-gradient(135deg, rgba(63, 185, 80, 0.1) 0%, rgba(88, 166, 255, 0.05) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .quick-start h2 {
+            border: none;
+            padding: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .quick-start .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        /* Command Cards */
+        .command-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .command-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .command-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .command-card:hover {
+            border-color: var(--accent-green);
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .command-card .command-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-family: var(--font-mono);
+        }
+
+        .command-card .command {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--accent-green);
+            overflow-x: auto;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-mono);
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-green);
+            color: white;
+            border-color: var(--accent-green);
+        }
+
+        .copy-btn.copied {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-secondary);
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(48, 54, 61, 0.3);
+        }
+
+        .code-inline {
+            background: var(--code-bg);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent-green);
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .code-block pre {
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 0;
+        }
+
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .code-block .copy-btn {
+            top: 0.75rem;
+            right: 0.75rem;
+        }
+
+        .code-block .language-label {
+            position: absolute;
+            top: 0.5rem;
+            left: 1rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+        }
+
+        /* Syntax highlighting */
+        .keyword { color: var(--accent-purple); }
+        .string { color: var(--accent-green); }
+        .number { color: var(--accent-blue); }
+        .boolean { color: var(--accent-red); }
+        .property { color: var(--accent-blue); }
+        .comment { color: var(--text-muted); font-style: italic; }
+        .operator { color: var(--accent-yellow); }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--accent-green);
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            font-family: var(--font-mono);
+            color: var(--accent-green);
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* File Tree */
+        .file-tree {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .file-tree .tree-line {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem 0;
+        }
+
+        .file-tree .tree-indent {
+            color: var(--border-color);
+            margin-right: 0.5rem;
+        }
+
+        .file-tree .tree-icon {
+            margin-right: 0.5rem;
+        }
+
+        .file-tree .tree-folder {
+            color: var(--accent-blue);
+        }
+
+        .file-tree .tree-file {
+            color: var(--text-secondary);
+        }
+
+        .file-tree .tree-comment {
+            color: var(--text-muted);
+            margin-left: 1rem;
+            font-size: 0.8rem;
+        }
+
+        /* Configuration Section */
+        .config-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .config-section h4 {
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .config-section ul {
+            list-style: none;
+        }
+
+        .config-section li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .config-section li:last-child {
+            border-bottom: none;
+        }
+
+        .config-section .property-name {
+            font-family: var(--font-mono);
+            color: var(--accent-green);
+            font-size: 0.9rem;
+        }
+
+        .config-section .property-desc {
+            color: var(--text-secondary);
+            margin-left: 0.5rem;
+        }
+
+        /* Screenshot Preview */
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .screenshot-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .screenshot-card:hover {
+            border-color: var(--accent-green);
+            box-shadow: var(--shadow);
+        }
+
+        .screenshot-card .screenshot-placeholder {
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%);
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screenshot-card .screenshot-placeholder::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(48, 54, 61, 0.1) 2px,
+                rgba(48, 54, 61, 0.1) 4px
+            );
+        }
+
+        .screenshot-card .screenshot-info {
+            padding: 1rem;
+        }
+
+        .screenshot-card h4 {
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .screenshot-card p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 2rem 0;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        footer p {
+            margin-bottom: 0.5rem;
+        }
+
+        footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        footer a:hover {
+            color: var(--accent-green);
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+            
+            .copy-btn, nav {
+                display: none;
+            }
+            
+            .command-card, .card, .code-block {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            header .subtitle {
+                font-size: 1rem;
+            }
+            
+            nav ul {
+                gap: 1rem;
+                font-size: 0.9rem;
+            }
+            
+            section h2 {
+                font-size: 1.4rem;
+            }
+            
+            .command-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        section {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Scroll indicator */
+        .scroll-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+            transition: width 0.3s ease;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="scroll-indicator" id="scrollIndicator"></div>
+
+    <header>
+        <div class="container">
+            <h1>E2E Verifier — 自动化验证框架</h1>
+            <p class="subtitle">基于 Playwright 的多站点端到端验证解决方案</p>
+            <div class="badges">
+                <span class="badge success">✓ TypeScript</span>
+                <span class="badge success">✓ Playwright</span>
+                <span class="badge success">✓ E2E</span>
+                <span class="badge">v1.0.0</span>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#quick-start" class="active">快速开始</a></li>
+            <li><a href="#commands">CLI命令</a></li>
+            <li><a href="#agent-loop">Agent深度验证</a></li>
+            <li><a href="#orchestrated">快速+深度编排</a></li>
+            <li><a href="#configuration">配置文件</a></li>
+            <li><a href="#api">API使用</a></li>
+            <li><a href="#checks">检测类型</a></li>
+            <li><a href="#structure">项目结构</a></li>
+            <li><a href="#screenshots">截图预览</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        <!-- Quick Start Section -->
+        <section id="quick-start">
+            <div class="quick-start">
+                <h2>🚀 快速开始</h2>
+                <p class="subtitle">一键复制，立即开始验证您的站点</p>
+                
+                <div class="command-grid">
+                    <div class="command-card">
+                        <div class="command-label">单站点验证</div>
+                        <div class="command">
+                            npm run verify -- --config sites/sanfacheng.json
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                        </div>
+                    </div>
+                    
+                    <div class="command-card">
+                        <div class="command-label">批量验证所有站点</div>
+                        <div class="command">
+                            npm run verify:all
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                        </div>
+                    </div>
+                    
+                    <div class="command-card">
+                        <div class="command-label">快速截图工具</div>
+                        <div class="command">
+                            npm run screenshot -- --url https://example.com
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                        </div>
+                    </div>
+                    
+                    <div class="command-card">
+                        <div class="command-label">查看验证报告</div>
+                        <div class="command">
+                            npm run report
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="command-card">
+                        <div class="command-label">Agent深度验证</div>
+                        <div class="command">
+                            npm run verify:deep -- --url http://example.com --task "检查页面"
+                            <button class="copy-btn" onclick="copyCommand(this)">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CLI Commands Reference -->
+        <section id="commands">
+            <h2>📋 CLI 命令参考</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>命令</th>
+                            <th>描述</th>
+                            <th>示例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="code-inline">verify</span></td>
+                            <td>单站点验证（需指定config）</td>
+                            <td><span class="code-inline">npm run verify -- --config sites/sanfacheng.json</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="code-inline">verify:all</span></td>
+                            <td>批量验证sites/下所有站点</td>
+                            <td><span class="code-inline">npm run verify:all</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="code-inline">screenshot</span></td>
+                            <td>快速截图工具</td>
+                            <td><span class="code-inline">npm run screenshot -- --url https://example.com</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="code-inline">report</span></td>
+                            <td>查看/导出报告</td>
+                            <td><span class="code-inline">npm run report -- --input reports/latest.json</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="code-inline">build</span></td>
+                            <td>编译TypeScript</td>
+                            <td><span class="code-inline">npm run build</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Agent Deep Verification -->
+        <section id="agent-loop">
+            <h2>🤖 Agent 深度验证</h2>
+
+            <h3>什么是 Agent Loop？</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                一个受 Webwright 启发的自主验证模式，其中 LLM 代理编写并执行 Playwright 脚本来深度验证网站。代理会迭代地：
+            </p>
+
+            <div class="cards-grid" style="margin-bottom: 2rem;">
+                <div class="card">
+                    <div class="card-icon">✍️</div>
+                    <h3>1. 编写脚本</h3>
+                    <p>基于任务描述编写 Playwright 脚本</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">⚡</div>
+                    <h3>2. 执行脚本</h3>
+                    <p>执行脚本并捕获输出和截图</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🔧</div>
+                    <h3>3. 自动修复</h3>
+                    <p>检查结果并自动修复问题</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">✅</div>
+                    <h3>4. 验证完成</h3>
+                    <p>通过自我反思验证任务完成</p>
+                </div>
+            </div>
+
+            <h3>新增 CLI 命令</h3>
+            <div class="table-container" style="margin-bottom: 2rem;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>命令</th>
+                            <th>描述</th>
+                            <th>示例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="code-inline">verify:deep</span></td>
+                            <td>Agent深度验证</td>
+                            <td><span class="code-inline">npm run verify:deep -- --url http://example.com --task "检查页面"</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="code-inline">verify:craft</span></td>
+                            <td>生成可复用脚本</td>
+                            <td><span class="code-inline">npm run verify:craft -- --url http://example.com --task "验证导航"</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>verify:deep 选项</h3>
+            <div class="config-section">
+                <ul>
+                    <li>
+                        <span class="property-name">--config, -c</span>
+                        <span class="property-desc">— 站点配置文件</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--url, -u</span>
+                        <span class="property-desc">— 目标 URL</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--task, -t</span>
+                        <span class="property-desc">— 任务描述（必需）</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--model, -m</span>
+                        <span class="property-desc">— LLM 模型（默认：gpt-4）</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--max-steps, -s</span>
+                        <span class="property-desc">— 最大步数（默认：30）</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--api-key, -k</span>
+                        <span class="property-desc">— API 密钥</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--api-base, -b</span>
+                        <span class="property-desc">— API 基础 URL</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Orchestrated Verification -->
+        <section id="orchestrated">
+            <h2>⚡ 快速+深度验证编排</h2>
+
+            <h3>什么是编排验证？</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                编排层将快速验证（Verifier）和深度验证（Agent Loop）串联成一个自动化流水线，智能决策是否需要深度验证，节省 Token 成本。
+            </p>
+
+            <h3>工作流程</h3>
+            <div class="cards-grid" style="margin-bottom: 2rem;">
+                <div class="card">
+                    <div class="card-icon">1️⃣</div>
+                    <h3>快速检查</h3>
+                    <p>对每个站点运行快速检查（状态码、性能、可访问性、SEO、控制台）</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">2️⃣</div>
+                    <h3>结果分析</h3>
+                    <p>分析检查结果，判断是否需要深度验证</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">3️⃣</div>
+                    <h3>智能决策</h3>
+                    <p>所有检查通过 → 跳过深度验证，节省Token</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">4️⃣</div>
+                    <h3>自动诊断</h3>
+                    <p>有检查失败 → 自动生成诊断任务 → 触发Agent深度验证</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">5️⃣</div>
+                    <h3>深入诊断</h3>
+                    <p>Agent深入诊断并尝试自动修复问题</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">6️⃣</div>
+                    <h3>统一报告</h3>
+                    <p>输出统一报告：快速验证 + 深度验证结果汇总</p>
+                </div>
+            </div>
+
+            <h3>自动任务生成</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                编排器会从快速检查的失败信息自动生成深度验证任务描述（中文）：
+            </p>
+            <div class="code-block" style="margin-bottom: 2rem;">
+                <span class="language-label">任务映射规则</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><code><span class="comment">// HTTP 状态码失败</span>
+<span class="string">"验证页面HTTP状态码和导航是否正常"</span>
+
+<span class="comment">// 可访问性问题</span>
+<span class="string">"检查页面可访问性问题，特别是[具体错误]"</span>
+
+<span class="comment">// 性能指标异常</span>
+<span class="string">"分析页面性能指标，[具体指标]"</span>
+
+<span class="comment">// 控制台错误</span>
+<span class="string">"调查控制台错误和警告：[具体错误]"</span></code></pre>
+            </div>
+
+            <h3>CLI 命令</h3>
+            <div class="table-container" style="margin-bottom: 2rem;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Command</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="code-inline">verify:orchestrated</span></td>
+                            <td>快速+深度编排验证</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>使用示例</h3>
+            <div class="code-block">
+                <span class="language-label">Bash</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><code><span class="comment"># 基础编排验证</span>
+npm run verify:orchestrated -- --config sites/quick-check.json
+
+<span class="comment"># 严格模式：非关键失败也触发深度验证</span>
+npm run verify:orchestrated -- --config sites/quick-check.json --strict
+
+<span class="comment"># 指定深度验证模型</span>
+npm run verify:orchestrated -- --config sites/quick-check.json --deep-model glm-5.1
+
+<span class="comment"># 仅运行快速验证，跳过深度验证</span>
+npm run verify:orchestrated -- --config sites/quick-check.json --skip-deep</code></pre>
+            </div>
+
+            <h3>选项说明</h3>
+            <div class="config-section">
+                <ul>
+                    <li>
+                        <span class="property-name">--config, -c</span>
+                        <span class="property-desc">— 站点配置文件（必需）</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--strict, -s</span>
+                        <span class="property-desc">— 非关键失败也触发深度验证</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--deep-model, -m</span>
+                        <span class="property-desc">— LLM模型（默认: gpt-4o）</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--output, -o</span>
+                        <span class="property-desc">— 输出报告路径</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--json, -j</span>
+                        <span class="property-desc">— JSON格式输出</span>
+                    </li>
+                    <li>
+                        <span class="property-name">--skip-deep</span>
+                        <span class="property-desc">— 仅运行快速验证</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Configuration File Format -->
+        <section id="configuration">
+            <h2>⚙️ 配置文件格式</h2>
+            
+            <div class="config-section">
+                <h4>基础配置项</h4>
+                <ul>
+                    <li>
+                        <span class="property-name">name</span>
+                        <span class="property-desc">— 站点名称（用于报告标识）</span>
+                    </li>
+                    <li>
+                        <span class="property-name">url</span>
+                        <span class="property-desc">— 目标URL地址</span>
+                    </li>
+                    <li>
+                        <span class="property-name">expectedStatusCode</span>
+                        <span class="property-desc">— 期望的HTTP状态码（默认200）</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="config-section">
+                <h4>视口配置</h4>
+                <ul>
+                    <li>
+                        <span class="property-name">viewport</span>
+                        <span class="property-desc">— 单一视口尺寸 {width, height}</span>
+                    </li>
+                    <li>
+                        <span class="property-name">viewports</span>
+                        <span class="property-desc">— 多分辨率数组 [{name, width, height}, ...]</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="config-section">
+                <h4>检测配置</h4>
+                <ul>
+                    <li>
+                        <span class="property-name">screenshots</span>
+                        <span class="property-desc">— 截图类型数组: ["fullpage", "viewport"]</span>
+                    </li>
+                    <li>
+                        <span class="property-name">checks</span>
+                        <span class="property-desc">— 启用的检测: ["screenshot", "console", "performance", "accessibility", "seo"]</span>
+                    </li>
+                    <li>
+                        <span class="property-name">customChecks</span>
+                        <span class="property-desc">— 自定义检测逻辑（高级用法）</span>
+                    </li>
+                    <li>
+                        <span class="property-name">timeout</span>
+                        <span class="property-desc">— 页面加载超时时间（毫秒）</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="code-block">
+                <span class="language-label">JSON</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><code>{
+  <span class="property">"name"</span>: <span class="string">"我的网站"</span>,
+  <span class="property">"url"</span>: <span class="string">"https://example.com"</span>,
+  <span class="property">"expectedStatusCode"</span>: <span class="number">200</span>,
+  <span class="property">"viewport"</span>: {
+    <span class="property">"width"</span>: <span class="number">1920</span>,
+    <span class="property">"height"</span>: <span class="number">1080</span>
+  },
+  <span class="property">"viewports"</span>: [
+    { <span class="property">"name"</span>: <span class="string">"Desktop"</span>, <span class="property">"width"</span>: <span class="number">1920</span>, <span class="property">"height"</span>: <span class="number">1080</span> },
+    { <span class="property">"name"</span>: <span class="string">"Tablet"</span>, <span class="property">"width"</span>: <span class="number">768</span>, <span class="property">"height"</span>: <span class="number">1024</span> },
+    { <span class="property">"name"</span>: <span class="string">"Mobile"</span>, <span class="property">"width"</span>: <span class="number">375</span>, <span class="property">"height"</span>: <span class="number">667</span> }
+  ],
+  <span class="property">"screenshots"</span>: [<span class="string">"fullpage"</span>, <span class="string">"viewport"</span>],
+  <span class="property">"checks"</span>: [<span class="string">"screenshot"</span>, <span class="string">"console"</span>, <span class="string">"performance"</span>, <span class="string">"accessibility"</span>, <span class="string">"seo"</span>],
+  <span class="property">"timeout"</span>: <span class="number">30000</span>
+}</code></pre>
+            </div>
+        </section>
+
+        <!-- API / Programmatic Usage -->
+        <section id="api">
+            <h2>🔧 API / 编程式使用</h2>
+            
+            <div class="code-block">
+                <span class="language-label">TypeScript</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><code><span class="keyword">import</span> { Verifier } <span class="keyword">from</span> <span class="string">'e2e-verifier'</span>;
+
+<span class="keyword">const</span> config = {
+  <span class="property">name</span>: <span class="string">'My Site'</span>,
+  <span class="property">url</span>: <span class="string">'https://example.com'</span>,
+  <span class="property">expectedStatusCode</span>: <span class="number">200</span>,
+  <span class="property">checks</span>: [<span class="string">'screenshot'</span>, <span class="string">'console'</span>, <span class="string">'performance'</span>]
+};
+
+<span class="keyword">const</span> verifier = <span class="keyword">new</span> <span class="class">Verifier</span>(config);
+<span class="keyword">const</span> result = <span class="keyword">await</span> verifier.<span class="function">verify</span>();
+console.<span class="function">log</span>(result.<span class="property">passed</span> ? <span class="string">'✅ PASSED'</span> : <span class="string">'❌ FAILED'</span>);</code></pre>
+            </div>
+
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">⚡</div>
+                    <h3>PerformanceChecker</h3>
+                    <p>独立性能指标检测，无需完整验证流程即可获取 FCP、LCP、加载时间等数据。</p>
+                    <div class="code-block" style="margin-top: 1rem;">
+                        <pre><code><span class="keyword">import</span> { PerformanceChecker } <span class="keyword">from</span> <span class="string">'e2e-verifier'</span>;</code></pre>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">📸</div>
+                    <h3>ScreenshotUtil</h3>
+                    <p>独立截图工具，支持全页面和视口截图，自动处理滚动和等待。</p>
+                    <div class="code-block" style="margin-top: 1rem;">
+                        <pre><code><span class="keyword">import</span> { ScreenshotUtil } <span class="keyword">from</span> <span class="string">'e2e-verifier'</span>;</code></pre>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🔍</div>
+                    <h3>ConsoleChecker</h3>
+                    <p>控制台错误和警告检测，支持自定义过滤规则和严重性级别。</p>
+                    <div class="code-block" style="margin-top: 1rem;">
+                        <pre><code><span class="keyword">import</span> { ConsoleChecker } <span class="keyword">from</span> <span class="string">'e2e-verifier'</span>;</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Checks Reference -->
+        <section id="checks">
+            <h2>🎯 检测类型参考</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">📸</div>
+                    <h3>screenshot</h3>
+                    <p>全页面/视口截图，支持多分辨率自动生成，自动处理页面滚动和元素等待。</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">💻</div>
+                    <h3>console</h3>
+                    <p>控制台错误/警告检测，捕获 JavaScript 异常、API 失败和资源加载问题。</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">⚡</div>
+                    <h3>performance</h3>
+                    <p>核心性能指标：FCP、LCP、加载时间、页面重量、资源数量等。</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">♿</div>
+                    <h3>accessibility</h3>
+                    <p>ARIA 标签、对比度、语义化 HTML 检测，确保无障碍访问标准。</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🔍</div>
+                    <h3>seo</h3>
+                    <p>SEO 基础检测：title、meta 描述、h1 标签、Open Graph 标签、favicon 等。</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🛠️</div>
+                    <h3>customChecks</h3>
+                    <p>自定义检测逻辑，支持任意 JavaScript 验证规则和断言。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Structure -->
+        <section id="structure">
+            <h2>📁 项目结构</h2>
+            <div class="file-tree">
+                <div class="tree-line">
+                    <span class="tree-indent">├──</span>
+                    <span class="tree-icon">📦</span>
+                    <span class="tree-folder">e2e-verifier/</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  ├──</span>
+                    <span class="tree-icon">📂</span>
+                    <span class="tree-folder">src/</span>
+                    <span class="tree-comment"># 源代码目录</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  │  ├──</span>
+                    <span class="tree-icon">⚙️</span>
+                    <span class="tree-folder">cli/</span>
+                    <span class="tree-comment"># CLI入口 (verify, screenshot, report)</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  │  ├──</span>
+                    <span class="tree-icon">🔍</span>
+                    <span class="tree-folder">checks/</span>
+                    <span class="tree-comment"># 检测模块 (console, seo, performance, accessibility)</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  │  ├──</span>
+                    <span class="tree-icon">🤖</span>
+                    <span class="tree-folder">agent/</span>
+                    <span class="tree-comment"># Agent验证模块 (deep verification, script crafting)</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  │  ├──</span>
+                    <span class="tree-icon">🛠️</span>
+                    <span class="tree-folder">utils/</span>
+                    <span class="tree-comment"># 工具 (screenshot, report)</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  │  ├──</span>
+                    <span class="tree-icon">📄</span>
+                    <span class="tree-file">verifier.ts</span>
+                    <span class="tree-comment"># 核心验证类</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  │  ├──</span>
+                    <span class="tree-icon">📋</span>
+                    <span class="tree-folder">types/</span>
+                    <span class="tree-comment"># TypeScript类型定义</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  │  └──</span>
+                    <span class="tree-icon">📄</span>
+                    <span class="tree-file">index.ts</span>
+                    <span class="tree-comment"># 导出入口</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  ├──</span>
+                    <span class="tree-icon">⚙️</span>
+                    <span class="tree-folder">sites/</span>
+                    <span class="tree-comment"># 站点配置 (JSON)</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  ├──</span>
+                    <span class="tree-icon">📸</span>
+                    <span class="tree-folder">screenshots/</span>
+                    <span class="tree-comment"># 截图输出</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  ├──</span>
+                    <span class="tree-icon">📊</span>
+                    <span class="tree-folder">reports/</span>
+                    <span class="tree-comment"># 报告输出</span>
+                </div>
+                <div class="tree-line">
+                    <span class="tree-indent">│  └──</span>
+                    <span class="tree-icon">📚</span>
+                    <span class="tree-folder">docs/</span>
+                    <span class="tree-comment"># 文档</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Screenshots Preview Section -->
+        <section id="screenshots">
+            <h2>📸 截图预览</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+                E2E Verifier 自动生成多种类型的截图，帮助您全面了解站点在不同设备和条件下的表现。
+            </p>
+            
+            <div class="screenshot-grid">
+                <div class="screenshot-card">
+                    <div class="screenshot-placeholder">🖥️</div>
+                    <div class="screenshot-info">
+                        <h4>Desktop Fullpage</h4>
+                        <p>1920x1080 全页面截图，包含滚动内容</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <div class="screenshot-placeholder">📱</div>
+                    <div class="screenshot-info">
+                        <h4>Mobile Viewport</h4>
+                        <p>375x667 移动设备视口截图</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <div class="screenshot-placeholder">📱</div>
+                    <div class="screenshot-info">
+                        <h4>Tablet Responsive</h4>
+                        <p>768x1024 平板设备响应式截图</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <div class="screenshot-placeholder">🔍</div>
+                    <div class="screenshot-info">
+                        <h4>Element Screenshot</h4>
+                        <p>特定元素的精细截图</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <div class="screenshot-placeholder">⏱️</div>
+                    <div class="screenshot-info">
+                        <h4>Performance Timeline</h4>
+                        <p>性能指标可视化截图</p>
+                    </div>
+                </div>
+
+                <div class="screenshot-card">
+                    <div class="screenshot-placeholder">📊</div>
+                    <div class="screenshot-info">
+                        <h4>Console Errors</h4>
+                        <p>控制台错误和警告截图</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Built with <span style="color: var(--accent-green);">Playwright</span> · <span style="color: var(--accent-blue);">TypeScript</span> · MIT License</p>
+            <div class="links">
+                <a href="https://github.com">GitHub</a>
+                <a href="https://playwright.dev">Playwright</a>
+                <a href="https://www.typescriptlang.org">TypeScript</a>
+            </div>
+            <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem;">最后更新: 2026-05-27</p>
+        </div>
+    </footer>
+
+    <script>
+        // Copy to clipboard functionality
+        function copyCommand(button) {
+            const commandElement = button.parentElement;
+            const commandText = commandElement.textContent.replace('Copy', '').trim();
+            
+            navigator.clipboard.writeText(commandText).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        function copyCode(button) {
+            const codeBlock = button.parentElement;
+            const code = codeBlock.querySelector('code').textContent;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Smooth scroll and active section highlighting
+        document.querySelectorAll('nav a').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Active section highlighting on scroll
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('nav a');
+
+        function updateActiveSection() {
+            let currentSection = '';
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                
+                if (window.scrollY >= sectionTop - 200) {
+                    currentSection = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${currentSection}`) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        // Scroll progress indicator
+        function updateScrollIndicator() {
+            const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (window.scrollY / windowHeight) * 100;
+            document.getElementById('scrollIndicator').style.width = scrolled + '%';
+        }
+
+        window.addEventListener('scroll', () => {
+            updateActiveSection();
+            updateScrollIndicator();
+        });
+
+        // Initial call
+        updateActiveSection();
+        updateScrollIndicator();
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+    </script>
+</body>
+</html>

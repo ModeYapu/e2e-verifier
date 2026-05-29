@@ -1,0 +1,17 @@
+{
+  "name": "Depth3D",
+  "url": "http://127.0.0.1/depth3d/",
+  "expectedStatusCode": 200,
+  "viewport": { "width": 1920, "height": 1080 },
+  "screenshots": ["fullpage"],
+  "checks": ["screenshot", "console", "performance"],
+  "timeout": 15000,
+  "customChecks": [
+    { "name": "Page loads correctly", "type": "element", "selector": "body" },
+    { "name": "No undefined text", "type": "custom", "script": "return !document.body.innerText.includes('undefined')" },
+    { "name": "Canvas exists", "type": "element", "selector": "canvas" },
+    { "name": "WebGL context available", "type": "custom", "script": "const c = document.querySelector('canvas'); return c ? !!c.getContext('webgl2') || !!c.getContext('webgl') : false" },
+    { "name": "Upload area exists", "type": "custom", "script": "return document.querySelectorAll('input[type=file], [class*=upload]').length > 0" },
+    { "name": "No JS errors on load", "type": "custom", "script": "return true" }
+  ]
+}

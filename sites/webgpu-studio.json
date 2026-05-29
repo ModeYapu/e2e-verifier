@@ -1,0 +1,17 @@
+{
+  "name": "WebGPU Studio",
+  "url": "http://127.0.0.1/webgpu/",
+  "expectedStatusCode": 200,
+  "viewport": { "width": 1920, "height": 1080 },
+  "screenshots": ["fullpage"],
+  "checks": ["screenshot", "console", "performance"],
+  "timeout": 20000,
+  "customChecks": [
+    { "name": "Page loads correctly", "type": "element", "selector": "body" },
+    { "name": "No undefined text", "type": "custom", "script": "return !document.body.innerText.includes('undefined')" },
+    { "name": "App container rendered", "type": "custom", "script": "return document.querySelectorAll('#app, [class*=app], [class*=App]').length > 0" },
+    { "name": "No fatal errors", "type": "custom", "script": "const errs = document.querySelectorAll('.error, [class*=error]'); return errs.length === 0 || document.body.innerText.length > 100" },
+    { "name": "Has UI elements", "type": "custom", "script": "return document.querySelectorAll('button, input, select, canvas, [class*=toolbar], [class*=panel]').length > 0" },
+    { "name": "WebGPU available (may fail in headless)", "type": "custom", "script": "return typeof navigator !== 'undefined' && !!navigator.gpu" }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "name": "e2e-verifier",
+  "version": "1.0.0",
+  "description": "Complete E2E verification framework using Playwright",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "verify": "ts-node src/cli/verify.ts",
+    "verify:all": "ts-node src/cli/verify-all.ts",
+    "verify:deep": "ts-node src/cli/verify-deep.ts",
+    "verify:orchestrated": "ts-node src/cli/verify-orchestrated.ts",
+    "verify:craft": "ts-node src/cli/verify-craft.ts",
+    "verify:server": "ts-node src/cli/verify-server.ts",
+    "screenshot": "ts-node src/cli/screenshot.ts",
+    "report": "ts-node src/cli/report.ts",
+    "explore": "ts-node src/cli/explore.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "converge": "ts-node src/cli/converge.ts"
+  },
+  "keywords": [
+    "e2e",
+    "testing",
+    "playwright",
+    "verification",
+    "automation",
+    "ai",
+    "agent"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.9.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6"
+  }
+}

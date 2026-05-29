@@ -1,0 +1,123 @@
+{
+  "name": "LogMonitor",
+  "sites": [
+    {
+      "name": "Login Page",
+      "url": "http://127.0.0.1/logmon/login",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance"],
+      "timeout": 15000,
+      "customChecks": [
+        { "name": "Login form visible", "type": "element", "selector": ".el-form" },
+        { "name": "Username input", "type": "element", "selector": ".el-form input:not([type='password'])" },
+        { "name": "Password input", "type": "element", "selector": ".el-form input[type='password']" },
+        { "name": "Login button", "type": "javascript", "script": "!!document.querySelector('.el-form button') && /登录|login/i.test(document.querySelector('.el-form button').textContent)" }
+      ]
+    },
+    {
+      "name": "Overview Dashboard",
+      "url": "http://127.0.0.1/logmon/",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance", "accessibility"],
+      "timeout": 15000,
+      "auth": {
+        "loginUrl": "http://127.0.0.1/logmon/login",
+        "formSelector": ".el-form",
+        "usernameSelector": "input:not([type='password'])",
+        "passwordSelector": "input[type='password']",
+        "submitSelector": "button",
+        "username": "admin",
+        "password": "admin123",
+        "successUrlPattern": "/logmon/(?!login)",
+        "tokenKey": "logmon_token"
+      },
+      "customChecks": [
+        { "name": "Sidebar menu", "type": "element", "selector": ".el-menu" },
+        { "name": "Stat cards", "type": "element", "selector": ".stat-card, [class*='stat']" },
+        { "name": "App table", "type": "element", "selector": ".el-table" }
+      ]
+    },
+    {
+      "name": "Recordings List",
+      "url": "http://127.0.0.1/logmon/recordings",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance"],
+      "timeout": 15000,
+      "auth": {
+        "loginUrl": "http://127.0.0.1/logmon/login",
+        "formSelector": ".el-form",
+        "usernameSelector": "input:not([type='password'])",
+        "passwordSelector": "input[type='password']",
+        "submitSelector": "button",
+        "username": "admin",
+        "password": "admin123",
+        "successUrlPattern": "/logmon/(?!login)",
+        "tokenKey": "logmon_token"
+      },
+      "customChecks": [
+        { "name": "Recordings table", "type": "element", "selector": ".el-table" },
+        { "name": "Recording rows", "type": "javascript", "script": "document.querySelectorAll('.el-table__body-wrapper .el-table__row').length > 0" },
+        { "name": "No undefined text", "type": "javascript", "script": "!document.body.innerText.includes('undefined')" },
+        { "name": "No NaN text", "type": "javascript", "script": "!document.body.innerText.includes('NaN')" },
+        { "name": "Has date/time format", "type": "javascript", "script": "/\\d{4}[-/]\\d{2}[-/]\\d{2}/.test(document.body.innerText)" },
+        { "name": "Has session IDs", "type": "javascript", "script": "/[a-f0-9]{8}-[a-f0-9]{4}/.test(document.body.innerText)" },
+        { "name": "No raw timestamps", "type": "javascript", "script": "!/\\b\\d{13}\\b/.test(document.body.innerText.replace(/\\d{4}-\\d{2}-\\d{2}[^]*?\\d{2}:\\d{2}:\\d{2}/g, ''))" }
+      ]
+    },
+    {
+      "name": "Logs Page",
+      "url": "http://127.0.0.1/logmon/logs",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance"],
+      "timeout": 15000,
+      "auth": {
+        "loginUrl": "http://127.0.0.1/logmon/login",
+        "formSelector": ".el-form",
+        "usernameSelector": "input:not([type='password'])",
+        "passwordSelector": "input[type='password']",
+        "submitSelector": "button",
+        "username": "admin",
+        "password": "admin123",
+        "successUrlPattern": "/logmon/(?!login)",
+        "tokenKey": "logmon_token"
+      },
+      "customChecks": [
+        { "name": "Logs table", "type": "element", "selector": ".el-table" },
+        { "name": "Filter selects", "type": "javascript", "script": "document.querySelectorAll('.el-select').length >= 1" },
+        { "name": "Search button", "type": "javascript", "script": "!!document.querySelector('button') && /搜索|查询/.test(document.body.innerText)" }
+      ]
+    },
+    {
+      "name": "User Management",
+      "url": "http://127.0.0.1/logmon/users",
+      "expectedStatusCode": 200,
+      "viewport": { "width": 1920, "height": 1080 },
+      "screenshots": ["fullpage"],
+      "checks": ["screenshot", "console", "performance"],
+      "timeout": 15000,
+      "auth": {
+        "loginUrl": "http://127.0.0.1/logmon/login",
+        "formSelector": ".el-form",
+        "usernameSelector": "input:not([type='password'])",
+        "passwordSelector": "input[type='password']",
+        "submitSelector": "button",
+        "username": "admin",
+        "password": "admin123",
+        "successUrlPattern": "/logmon/(?!login)",
+        "tokenKey": "logmon_token"
+      },
+      "customChecks": [
+        { "name": "User table", "type": "element", "selector": ".el-table" },
+        { "name": "Admin user present", "type": "javascript", "script": "document.body.innerText.includes('admin')" }
+      ]
+    }
+  ]
+}

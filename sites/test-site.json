@@ -1,0 +1,32 @@
+{
+  "name": "test-site",
+  "url": "https://httpbin.org/html",
+  "expectedStatusCode": 200,
+  "screenshots": [
+    {
+      "name": "html-page",
+      "waitForTimeout": 1000
+    }
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 720
+    }
+  ],
+  "customChecks": [
+    {
+      "name": "H1 title",
+      "type": "element",
+      "selector": "h1"
+    },
+    {
+      "name": "Herman Melville text",
+      "type": "text",
+      "selector": "body",
+      "expected": "Herman Melville"
+    }
+  ],
+  "timeout": 15000
+}
