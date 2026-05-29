@@ -264,12 +264,13 @@ Rules:
   // Step ${i + 1}: Filter level "${step.level}" (API check)
   try {
     ${apiUrl ? `
-    const token = await page.evaluate(() => localStorage.getItem('token') || '');
-    const resp = await fetch('${apiUrl}/query/logs?appId=webgpu-3d-studio&level=${step.level}&limit=1', {
-      headers: { Authorization: 'Bearer ' + token }
-    });
-    const data = await resp.json();
-    results.push({ step: 'filter level ${step.level}', passed: data.total !== undefined, details: 'total=' + (data.total || 0) });` : `
+    const levelResp = await page.evaluate(async ([url, token]: [string, string]) => {
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const r = await fetch(url, { headers });
+      return r.json();
+    }, ['${apiUrl}/query/logs?appId=webgpu-3d-studio&level=${step.level}&limit=1', authToken] as [string, string]);
+    results.push({ step: 'filter level ${step.level}', passed: levelResp.total !== undefined, details: 'total=' + (levelResp.total || 0) });` : `
     results.push({ step: 'filter level ${step.level}', passed: false, details: 'No api_url configured' });`}
   } catch (e) { results.push({ step: 'filter level ${step.level}', passed: false, details: String(e) }); }`;
           break;
@@ -278,10 +279,11 @@ Rules:
           code = `
   // Step ${i + 1}: Verify list has rows
   try {
-    const rows = page.locator('.el-table__row, tr');
+    const listSel = ${step.target ? `'${step.target}'` : `'.el-table__row, tr'`};
+    const rows = page.locator(listSel);
     const count = await rows.count();
     const hasData = count > 0;
-    results.push({ step: 'verify list', passed: hasData, details: count + ' rows found' });
+    results.push({ step: 'verify list', passed: hasData, details: count + ' items found' });
   } catch (e) { results.push({ step: 'verify list', passed: false, details: String(e) }); }`;
           break;
 
@@ -305,10 +307,12 @@ Rules:
       // Try API approach instead
       const apiUrl = '${apiUrl}';
       if (apiUrl) {
-        const recordings = await page.evaluate(async (url) => {
-          const r = await fetch(url + '/query/recordings?limit=1');
+        const recordings = await page.evaluate(async ([url, token]: [string, string]) => {
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+          const r = await fetch(url + '/query/recordings?limit=1', { headers });
           return r.json();
-        }, apiUrl);
+        }, [apiUrl, authToken] as [string, string]);
         const hasRecording = recordings.data && recordings.data.length > 0;
         results.push({ step: 'click play', passed: hasRecording, details: hasRecording ? 'Recording exists (API verified)' : 'No recordings found' });
       } else {
@@ -336,38 +340,52 @@ Rules:
 
         case 'verify_forms_present':
           code = `
-  // Step ${i + 1}: Verify forms present
+  // Step ${i + 1}: Verify forms/inputs present
   try {
-    const forms = page.locator('form, .el-form, [class*="form"]');
+    const forms = page.locator('form, .el-form, [class*="form"], [class*="upload"], [class*="drop"], input[type="file"]');
     const count = await forms.count();
-    results.push({ step: 'forms present', passed: count > 0, details: count + ' forms' });
+    results.push({ step: 'forms present', passed: count > 0, details: count + ' form elements' });
   } catch (e) { results.push({ step: 'forms present', passed: false, details: String(e) }); }`;
           break;
 
         case 'verify_save_button':
           code = `
-  // Step ${i + 1}: Verify save button
+  // Step ${i + 1}: Verify action button
   try {
-    const saveBtn = page.locator('button').filter({ hasText: /保存|save|submit/i }).first();
-    const visible = await saveBtn.isVisible({ timeout: 2000 });
-    results.push({ step: 'save button', passed: visible, details: visible ? 'visible' : 'not found' });
-  } catch (e) { results.push({ step: 'save button', passed: false, details: String(e) }); }`;
+    const btnSel = ${step.target ? `'${step.target}'` : `''`};
+    const saveBtn = btnSel
+      ? page.locator(btnSel).first()
+      : page.locator('button').filter({ hasText: /保存|save|submit|生成|转换|convert/i }).first();
+    const visible = await saveBtn.isVisible({ timeout: 3000 });
+    results.push({ step: 'action button', passed: visible, details: visible ? 'visible' : 'not found' });
+  } catch (e) { results.push({ step: 'action button', passed: false, details: String(e) }); }`;
           break;
 
         case 'verify_events':
         case 'api_check':
           code = `
-  // Step ${i + 1}: API check
+  // Step ${i + 1}: API check (Node.js fetch, avoids CORS)
   try {
     const ep = '${step.endpoint || step.endpoint_pattern || ''}';
     const fetchUrl = apiUrl ? apiUrl + ep : baseUrl + ep;
-    const resp = await page.evaluate(async (url) => {
-      const r = await fetch(url);
-      const text = await r.text();
-      try { return { ok: r.ok, status: r.status, data: JSON.parse(text) }; } catch { return { ok: r.ok, status: r.status, text: text.slice(0, 200) }; }
-    }, fetchUrl);
-    const checkResult = resp.ok && (resp.data ? true : (resp.text || '').length > 0);
-    results.push({ step: 'api check ' + ep, passed: checkResult, details: 'status=' + resp.status + ' ' + JSON.stringify(resp.data || resp.text || '').slice(0, 100) });
+    const http = require('http');
+    const nodeResp = await new Promise<{ok: boolean, status: number, data: any}>((resolve) => {
+      const opts = new URL(fetchUrl);
+      const headers: Record<string, string> = {};
+      if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+      const req = http.get(opts, { headers }, (res: any) => {
+        let body = '';
+        res.on('data', (c: any) => body += c);
+        res.on('end', () => {
+          try { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: JSON.parse(body) }); }
+          catch { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: body.slice(0, 200) }); }
+        });
+      });
+      req.on('error', (e: any) => resolve({ ok: false, status: 0, data: e.message }));
+      req.setTimeout(5000, () => { req.destroy(); resolve({ ok: false, status: 0, data: 'timeout' }); });
+    });
+    const checkResult = nodeResp.ok;
+    results.push({ step: 'api check ' + ep, passed: checkResult, details: 'status=' + nodeResp.status + ' ' + JSON.stringify(nodeResp.data).slice(0, 100) });
   } catch (e) { results.push({ step: 'api check', passed: false, details: String(e) }); }`;
           break;
 
@@ -405,10 +423,17 @@ async function run(page: any, baseUrl: string): Promise<StepResult[]> {
   if (firstPage) {
     await page.goto(baseUrl + firstPage, { waitUntil: 'networkidle', timeout: 15000 });
     await page.waitForTimeout(2000);
-  } else {
-    // API-only scenario: navigate to baseUrl for page.evaluate context
-    await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
   }
+  // For API-only scenarios, we stay on whatever page performAuth left us on
+  // (already logged in, token in localStorage)
+
+  // Capture auth token from localStorage (set by performAuth)
+  const authToken = await page.evaluate(() => {
+    try {
+      return localStorage.getItem('token') || localStorage.getItem('logmon_token') || localStorage.getItem('auth_token') || localStorage.getItem('jwt') || '';
+    }
+    catch { return ''; }
+  });
 
 ${stepCode}
 
