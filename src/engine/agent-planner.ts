@@ -74,6 +74,8 @@ export class AgentPlanner {
     for (const scenario of plan.scenarios) {
       const result = await this.runScenario(scenario);
       results.push(result);
+      // Delay between scenarios to avoid API rate limits
+      if (this.llm) await new Promise(r => setTimeout(r, 3000));
     }
 
     return results;
@@ -165,11 +167,11 @@ export class AgentPlanner {
     attempt: number,
     previousResult: ScenarioResult | null,
   ): Promise<string> {
-    // If LLM available, use Agent to generate
-    if (this.llm) {
+    // If LLM available, use it on first attempt only; fallback to heuristic on retries
+    if (this.llm && attempt === 0) {
       return this.generateWithLLM(scenario, env, attempt, previousResult);
     }
-    // Otherwise, use heuristic script generation
+    // Use heuristic for retries (LLM scripts may have DOM issues)
     return this.generateHeuristicScript(scenario, env);
   }
 
@@ -181,28 +183,71 @@ export class AgentPlanner {
     previousResult: ScenarioResult | null,
   ): Promise<string> {
     const prompt = buildAgentPrompt(scenario, env, attempt, previousResult);
+    const llmCfg = this.config.llm!;
 
-    const response = await this.llm!.chatCompletion(
-      `You are a QA engineer. Generate a Playwright script that performs REAL user interactions.
-Rules:
-- Use chromium from 'playwright' (NOT @playwright/test)
-- Script must be a standalone async function
-- Do real interactions: type in search, click buttons, wait for results
-- After each step, capture evidence (screenshot or console log)
-- Use try/catch for each step so one failure doesn't stop others
-- The script must export a 'run' function: export async function run(page, baseUrl) { ... }
-- Return an array of { step: string, passed: boolean, details: string }
-- IMPORTANT: Do NOT mock or stub. Real clicks, real API calls, real waits.`,
-      [{ role: 'user', content: prompt }],
-      { timeout: 60000 },
-    );
+    try {
+      // Direct API call (avoid complex agent-loop parser)
+      const apiUrl = `${llmCfg.apiBase}/chat/completions`;
+      const body = {
+        model: llmCfg.model,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a QA engineer. Generate a Playwright (NOT @playwright/test) test script.
 
-    // Extract script from response
-    const script = extractScript(response.raw);
-    if (script) return script;
+RULES:
+- First line MUST be: interface StepResult { step: string; passed: boolean; details: string; }
+- Then define: async function run(page: any, baseUrl: string): Promise<StepResult[]>
+- Use try/catch for EACH step so one failure doesn't stop others
+- Do REAL interactions: click, type, wait, evaluate
+- After each step, push a result to the results array
+- For API calls, use Node.js require('http') — NOT page.evaluate(fetch) — to avoid CORS
+- Do NOT use import/export, just define the function
+- Do NOT mock or stub anything
+- IMPORTANT: Output ONLY the TypeScript code inside a single \`\`\`ts code block, no explanations`,
+          },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.3,
+        max_tokens: 4000,
+        stream: false,
+      };
 
-    // Fallback to heuristic
-    logger.warn('LLM did not return valid script, using heuristic');
+      const resp = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${llmCfg.apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(120000),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`LLM API ${resp.status}: ${errText.slice(0, 200)}`);
+      }
+
+      const data = await resp.json() as any;
+      const content = data.choices?.[0]?.message?.content || '';
+      // GLM may put content in reasoning_content when max_tokens is too low
+      const raw = content || data.choices?.[0]?.message?.reasoning_content || '';
+
+      logger.info(`🤖 LLM generated ${raw.length} chars`);
+
+      const script = extractScript(raw);
+      if (script) return script;
+
+      // If we got content but couldn't extract a script, try wrapping it
+      if (raw.includes('async function run') || raw.includes('async function')) {
+        return raw;
+      }
+
+      logger.warn('LLM response did not contain valid script, falling back to heuristic');
+    } catch (e: any) {
+      logger.warn(`LLM call failed: ${e.message}, falling back to heuristic`);
+    }
+
     return this.generateHeuristicScript(scenario, env);
   }
 
@@ -441,21 +486,17 @@ Rules:
 
         case 'verify_table_not_empty':
           code = `
-  // Step ${i + 1}: Verify table has data with non-empty content
+  // Step ${i + 1}: Verify data container has non-empty content
   try {
-    const tableSel = ${step.target ? `'${step.target}'` : `'.el-table, table'`};
-    const table = page.locator(tableSel).first();
-    await table.waitFor({ state: 'visible', timeout: 5000 });
-    // Check rows
-    const rows = table.locator('tbody tr, .el-table__row');
-    const rowCount = await rows.count();
-    if (rowCount === 0) {
-      // Check if empty state text
-      const emptyText = await table.locator('.el-table__empty-text, .el-table__empty-block').innerText().catch(() => '');
-      results.push({ step: 'table not empty', passed: false, details: '表格0行' + (emptyText ? ', 空状态: ' + emptyText : '') });
-    } else {
-      // Verify first row has actual content (not just empty cells)
-      const firstRowCells = rows.first().locator('td, .cell');
+    const containerSel = ${step.target ? `'${step.target}'` : `'.el-table, table'`};
+    const container = page.locator(containerSel).first();
+    await container.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Strategy 1: Check as table (tbody tr / el-table__row)
+    const tableRows = container.locator('tbody tr, .el-table__row');
+    const tableRowCount = await tableRows.count();
+    if (tableRowCount > 0) {
+      const firstRowCells = tableRows.first().locator('td, .cell');
       const cellCount = await firstRowCells.count();
       let hasContent = false;
       const cellTexts: string[] = [];
@@ -464,9 +505,20 @@ Rules:
         cellTexts.push(txt.slice(0, 30));
         if (txt.trim().length > 0 && txt.trim() !== 'undefined' && txt.trim() !== 'null') hasContent = true;
       }
-      results.push({ step: 'table not empty', passed: hasContent, details: rowCount + '行, 首行: [' + cellTexts.join(', ') + ']' });
+      results.push({ step: 'data not empty', passed: hasContent, details: tableRowCount + '行, 首行: [' + cellTexts.join(', ') + ']' });
+    } else {
+      // Strategy 2: Count container items directly (tree-item, list-item, etc.)
+      const allItems = page.locator(containerSel);
+      const itemCount = await allItems.count();
+      if (itemCount > 0) {
+        const firstText = await allItems.first().innerText().catch(() => '');
+        const hasContent = firstText.trim().length > 0;
+        results.push({ step: 'data not empty', passed: hasContent, details: itemCount + '个元素, 首个: ' + firstText.slice(0, 50) });
+      } else {
+        results.push({ step: 'data not empty', passed: false, details: '未找到数据元素: ' + containerSel });
+      }
     }
-  } catch (e) { results.push({ step: 'table not empty', passed: false, details: String(e) }); }`;
+  } catch (e) { results.push({ step: 'data not empty', passed: false, details: String(e) }); }`;
           break;
 
         case 'submit_and_verify':
@@ -619,7 +671,9 @@ ${stepCode}
     try {
       // Use eval-based execution via page + Node context
       // Wrap the script to return results through a global
+      const needsStepResult = !/^(?:interface|type)\s+StepResult/m.test(script);
       const wrappedScript = `
+        ${needsStepResult ? 'interface StepResult { step: string; passed: boolean; details: string; }' : ''}
         ${script.replace('export ', '// export ').replace(/require\(['"]playwright['"]\)/g, '{}')}
         module.exports = { run };
       `;

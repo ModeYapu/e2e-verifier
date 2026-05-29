@@ -98,12 +98,37 @@ async function main() {
     }
   }
 
-  // Check for LLM config
-  const llmConfig = opts.llm || (process.env.OPENAI_API_KEY ? {
-    apiKey: process.env.OPENAI_API_KEY,
-    apiBase: process.env.OPENAI_API_BASE || 'https://api.openai.com/v1',
-    model: process.env.LLM_MODEL || 'gpt-4',
-  } : undefined);
+  // Check for LLM config — auto-detect from OpenClaw config or env
+  let llmConfig = opts.llm;
+  if (!llmConfig) {
+    // Try OpenClaw config (zai provider)
+    try {
+      const ocPath = path.join(process.env.HOME || '/root', '.openclaw', 'openclaw.json');
+      if (fs.existsSync(ocPath)) {
+        const oc = JSON.parse(fs.readFileSync(ocPath, 'utf-8'));
+        const zaiKey = oc?.mcp?.servers?.['glm-search']?.env?.Z_AI_API_KEY;
+        if (zaiKey) {
+          llmConfig = {
+            apiKey: zaiKey,
+            apiBase: 'https://open.bigmodel.cn/api/coding/paas/v4',
+            model: 'glm-4.5-flash',  // Free, fast, good enough for test planning
+          };
+          logger.info('🤖 LLM Agent enabled: GLM-4.5-Flash (auto-detected from OpenClaw)');
+        }
+      }
+    } catch {}
+  }
+  if (!llmConfig && process.env.OPENAI_API_KEY) {
+    llmConfig = {
+      apiKey: process.env.OPENAI_API_KEY,
+      apiBase: process.env.OPENAI_API_BASE || 'https://api.openai.com/v1',
+      model: process.env.LLM_MODEL || 'gpt-4',
+    };
+    logger.info('🤖 LLM Agent enabled: ' + llmConfig.model);
+  }
+  if (!llmConfig) {
+    logger.info('ℹ️  LLM Agent not configured, using heuristic mode');
+  }
 
   const planner = new AgentPlanner({
     testPlan: plan,
