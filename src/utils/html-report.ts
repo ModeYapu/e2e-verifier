@@ -1,20 +1,15 @@
-import { ReportData, UnifiedResult, ExecutionStatus } from '../types';
+import { ReportData, UnifiedResult, ExecutionStatus, UnifiedReportData } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export interface UnifiedReportData {
-  timestamp: string;
-  summary: {
-    totalTasks: number;
-    totalResults: number;
-    passed: number;
-    failed: number;
-    flaky: number;
-    blocked: number;
-    skipped: number;
-    totalDuration: number;
-  };
-  results: UnifiedResult[];
+/** Escape HTML special characters to prevent XSS */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 export class HtmlReportGenerator {

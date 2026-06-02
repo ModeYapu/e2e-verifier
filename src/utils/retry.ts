@@ -55,7 +55,7 @@ export function classifyError(error: Error | { code?: string; status?: number; m
   if (
     errorMessage.includes('assertion') ||
     errorMessage.includes('expected') ||
-    errorMessage.includes('not found') === false && errorMessage.includes('element')
+    (errorMessage.includes('not found') === false && errorMessage.includes('element'))
   ) {
     return {
       isRetryable: false,

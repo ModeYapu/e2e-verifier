@@ -316,3 +316,22 @@ export interface ExecutionConfig {
   enableTrace: boolean;
   enableVideo: boolean;
 }
+
+// ============================================================
+// UNIFIED REPORT DATA (P0 - shared between report.ts and html-report.ts)
+// ============================================================
+
+export interface UnifiedReportData {
+  timestamp: string;
+  summary: {
+    totalTasks: number;
+    totalResults: number;
+    passed: number;
+    failed: number;
+    flaky: number;
+    blocked: number;
+    skipped: number;
+    totalDuration: number;
+  };
+  results: UnifiedResult[];
+}

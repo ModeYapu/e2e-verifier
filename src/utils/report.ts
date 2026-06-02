@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { ReportData, TestResult, UnifiedResult, ExecutionStatus, Artifact, Evidence } from '../types';
+import { ReportData, TestResult, UnifiedResult, ExecutionStatus, Artifact, Evidence, UnifiedReportData } from '../types';
 import { HtmlReportGenerator } from './html-report';
 
 export class ReportGenerator {
@@ -302,19 +302,4 @@ export class ReportGenerator {
     };
     return statusMap[status] || status.toUpperCase();
   }
-}
-
-export interface UnifiedReportData {
-  timestamp: string;
-  summary: {
-    totalTasks: number;
-    totalResults: number;
-    passed: number;
-    failed: number;
-    flaky: number;
-    blocked: number;
-    skipped: number;
-    totalDuration: number;
-  };
-  results: UnifiedResult[];
 }

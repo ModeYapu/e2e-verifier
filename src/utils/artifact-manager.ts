@@ -195,26 +195,28 @@ export class ArtifactManager {
   /**
    * Get all artifacts for a specific task
    */
-  getArtifactsForTask(taskId: string): Artifact[] {
+  async getArtifactsForTask(taskId: string): Promise<Artifact[]> {
     const artifacts: Artifact[] = [];
 
     for (const dir of Object.values(this.directories)) {
-      if (!fs.existsSync(dir)) continue;
+      try {
+        const files = await fs.promises.readdir(dir);
+        for (const file of files) {
+          if (file.startsWith(taskId.replace(/[^a-zA-Z0-9-_]/g, '_'))) {
+            const filepath = path.join(dir, file);
+            const stats = await fs.promises.stat(filepath);
+            const type = this.inferTypeFromDir(dir);
 
-      const files = fs.readdirSync(dir);
-      for (const file of files) {
-        if (file.startsWith(taskId.replace(/[^a-zA-Z0-9-_]/g, '_'))) {
-          const filepath = path.join(dir, file);
-          const stats = fs.statSync(filepath);
-          const type = this.inferTypeFromDir(dir);
-
-          artifacts.push({
-            type,
-            path: filepath,
-            timestamp: new Date(stats.mtime).toISOString(),
-            size: stats.size
-          });
+            artifacts.push({
+              type,
+              path: filepath,
+              timestamp: new Date(stats.mtime).toISOString(),
+              size: stats.size
+            });
+          }
         }
+      } catch {
+        // Directory may not exist
       }
     }
 
@@ -224,8 +226,8 @@ export class ArtifactManager {
   /**
    * Get all artifacts for a specific scenario
    */
-  getArtifactsForScenario(taskId: string, scenarioId: string): Artifact[] {
-    const taskArtifacts = this.getArtifactsForTask(taskId);
+  async getArtifactsForScenario(taskId: string, scenarioId: string): Promise<Artifact[]> {
+    const taskArtifacts = await this.getArtifactsForTask(taskId);
     const safeScenarioId = scenarioId.replace(/[^a-zA-Z0-9-_]/g, '_');
 
     return taskArtifacts.filter(a => path.basename(a.path).includes(safeScenarioId));
@@ -239,21 +241,23 @@ export class ArtifactManager {
     let deletedCount = 0;
 
     for (const dir of Object.values(this.directories)) {
-      if (!fs.existsSync(dir)) continue;
-
-      const files = fs.readdirSync(dir);
-      for (const file of files) {
-        const filepath = path.join(dir, file);
-        const stats = fs.statSync(filepath);
-
-        if (stats.mtimeMs < cutoff) {
+      try {
+        const files = await fs.promises.readdir(dir);
+        for (const file of files) {
+          const filepath = path.join(dir, file);
           try {
-            fs.unlinkSync(filepath);
-            deletedCount++;
-          } catch (error) {
-            console.warn(`Failed to delete old artifact: ${filepath}`, error);
+            const stats = await fs.promises.stat(filepath);
+
+            if (stats.mtimeMs < cutoff) {
+              await fs.promises.unlink(filepath);
+              deletedCount++;
+            }
+          } catch {
+            // File may have been deleted
           }
         }
+      } catch {
+        // Directory may not exist
       }
     }
 
@@ -263,21 +267,23 @@ export class ArtifactManager {
   /**
    * Get total size of all artifacts
    */
-  getTotalArtifactSize(): number {
+  async getTotalArtifactSize(): Promise<number> {
     let totalSize = 0;
 
     for (const dir of Object.values(this.directories)) {
-      if (!fs.existsSync(dir)) continue;
-
-      const files = fs.readdirSync(dir);
-      for (const file of files) {
-        const filepath = path.join(dir, file);
-        try {
-          const stats = fs.statSync(filepath);
-          totalSize += stats.size;
-        } catch {
-          // File may have been deleted
+      try {
+        const files = await fs.promises.readdir(dir);
+        for (const file of files) {
+          const filepath = path.join(dir, file);
+          try {
+            const stats = await fs.promises.stat(filepath);
+            totalSize += stats.size;
+          } catch {
+            // File may have been deleted
+          }
         }
+      } catch {
+        // Directory may not exist
       }
     }
 
