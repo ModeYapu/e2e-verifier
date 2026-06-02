@@ -15,6 +15,10 @@ A complete, production-ready end-to-end verification framework built with Playwr
 - **Config-Driven** - Define sites and tests in JSON configuration files
 - **Type-Safe** - Built with TypeScript for robust development
 
+## Roadmap
+
+- Product roadmap: `docs/ROADMAP.md`
+
 ## Installation
 
 ```bash

@@ -32,6 +32,7 @@ npx http-server docs -p 8080
 5. **Checks Reference** - All available check types explained
 6. **Project Structure** - Directory layout overview
 7. **Screenshots Preview** - Visual guide to generated screenshots
+8. **Roadmap** - See `ROADMAP.md` for capability and architecture direction
 
 ## 🛠️ Technical Details
 
