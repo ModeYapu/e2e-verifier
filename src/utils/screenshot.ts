@@ -63,26 +63,32 @@ export class ScreenshotUtil {
     viewports?: Array<{ width: number; height: number }>
   ): Promise<Array<{ name: string; path: string; viewport: string; timestamp: string }>> {
     const results: Array<{ name: string; path: string; viewport: string; timestamp: string }> = [];
+    const resolvedViewports = viewports && viewports.length > 0 ? viewports : [undefined];
 
-    // Set viewport if specified
-    if (viewports && viewports.length > 0) {
-      await this.page.setViewportSize(viewports[0]);
-    }
+    for (const viewport of resolvedViewports) {
+      if (viewport) {
+        await this.page.setViewportSize(viewport);
+        await this.page.waitForTimeout(250);
+      }
 
-    for (const config of screenshotConfigs) {
-      try {
-        const filepath = await this.takeScreenshot(config);
-        const viewportStr = (viewports && viewports.length > 0)
-          ? `${viewports[0].width}x${viewports[0].height}`
-          : 'default';
-        results.push({
-          name: config.name,
-          path: filepath,
-          viewport: viewportStr,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error(`Error taking screenshot "${config.name}":`, error);
+      for (const config of screenshotConfigs) {
+        try {
+          const viewportName = viewport
+            ? `${viewport.width}x${viewport.height}`
+            : 'default';
+          const filepath = await this.takeScreenshot({
+            ...config,
+            name: viewport ? `${config.name}-${viewportName}` : config.name
+          });
+          results.push({
+            name: config.name,
+            path: filepath,
+            viewport: viewportName,
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error(`Error taking screenshot "${config.name}":`, error);
+        }
       }
     }
 

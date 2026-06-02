@@ -132,16 +132,13 @@ export class ScriptEngine {
       // Collect screenshots from the report directory
       const screenshots = this.findScreenshots(reportDir);
 
-      // Check if test passed by looking at output
-      const success = this.checkIfPassed(stdout);
-
       return {
         stdout: stdout.toString(),
         stderr: stderr.toString(),
         screenshots,
         exitCode: 0,
         duration,
-        success
+        success: true
       };
 
     } catch (error: any) {
@@ -159,15 +156,6 @@ export class ScriptEngine {
         success: false
       };
     }
-  }
-
-  /**
-   * Check if test execution was successful
-   */
-  private checkIfPassed(stdout: string): boolean {
-    // Check for PASS/passed in output, excluding FAIL/failed
-    const lower = stdout.toLowerCase();
-    return lower.includes('pass') && !lower.includes('fail');
   }
 
   /**

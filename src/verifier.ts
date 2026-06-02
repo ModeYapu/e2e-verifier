@@ -38,17 +38,18 @@ export class Verifier {
         }
         this.context = await this.browser.newContext();
         this.page = await this.context.newPage();
+        const configuredViewports = this.getConfiguredViewports();
 
         // Apply custom viewport if specified
-        const viewport = this.config.viewport;
-        if (viewport && viewport.width && viewport.height) {
-          await this.page.setViewportSize({ width: viewport.width, height: viewport.height });
-        } else {
-          await this.page.setViewportSize({ width: 1920, height: 1080 });
-        }
+        await this.page.setViewportSize(configuredViewports[0]);
 
         // Setup console monitoring
         const consoleMonitor = new ConsoleMonitor(this.page);
+        const networkMonitor = new NetworkMonitor(
+          this.page,
+          3000,
+          this.config.ignoreUrlPatterns || []
+        );
 
         // Set timeout
         const timeout = this.config.timeout || 30000;
@@ -58,6 +59,7 @@ export class Verifier {
           await this.performLogin(consoleMonitor, timeout);
           // Clear console errors from login phase
           consoleMonitor.clearErrors();
+          networkMonitor.reset();
         }
 
         // Navigate to URL
@@ -129,12 +131,6 @@ export class Verifier {
         const checksConfig = this.config.checks || [];
         if (checksConfig.includes('network')) {
           try {
-            const networkMonitor = new NetworkMonitor(
-              this.page,
-              3000,
-              this.config.ignoreUrlPatterns || []
-            );
-            // Wait a bit for network activity
             await this.page.waitForTimeout(1000);
             const networkResult = networkMonitor.getResult();
 
@@ -160,6 +156,18 @@ export class Verifier {
               message: `Network check failed: ${networkError}`
             });
           }
+        }
+
+        if (configuredViewports.length > 1) {
+          checks.push({
+            name: 'Viewport Coverage',
+            type: 'responsive',
+            passed: true,
+            message: `Executed responsive pass across ${configuredViewports.length} viewports`,
+            details: {
+              viewports: configuredViewports.map(v => `${v.width}x${v.height}`)
+            }
+          });
         }
 
         // Visual regression checks (if enabled)
@@ -291,10 +299,9 @@ export class Verifier {
               typeof s === 'string' ? { name: s } : s
             );
 
-            const vp = this.config.viewport || { width: 1920, height: 1080 };
             const vpScreenshots = await screenshotUtil.takeMultipleScreenshots(
               normalizedConfigs,
-              [vp]
+              configuredViewports
             );
             screenshots.push(...vpScreenshots);
           } catch (screenshotError) {
@@ -367,6 +374,18 @@ export class Verifier {
 
     // Return the last result if all retries failed
     return lastResult || this.createResult(Date.now(), [], [], ['Verification failed: unknown error'], false);
+  }
+
+  private getConfiguredViewports(): Array<{ width: number; height: number }> {
+    if (this.config.viewports && this.config.viewports.length > 0) {
+      return this.config.viewports.map(v => ({ width: v.width, height: v.height }));
+    }
+
+    if (this.config.viewport?.width && this.config.viewport?.height) {
+      return [{ width: this.config.viewport.width, height: this.config.viewport.height }];
+    }
+
+    return [{ width: 1920, height: 1080 }];
   }
 
   private async performLogin(consoleMonitor: ConsoleMonitor, timeout: number): Promise<void> {

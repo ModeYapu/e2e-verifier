@@ -83,6 +83,7 @@ export class VerifyServer {
   private jobs: Map<string, VerificationJob> = new Map();
   private port: number;
   private host: string;
+  private apiToken: string | null;
   private headless: boolean;
   private serverStartTime: number;
   private stats: ServerStats = {
@@ -94,7 +95,8 @@ export class VerifyServer {
 
   constructor(port?: number, host?: string, headless?: boolean) {
     this.port = port ?? parseInt(process.env.E2E_VERIFIER_PORT ?? '3001', 10);
-    this.host = host ?? '0.0.0.0';
+    this.host = host ?? '127.0.0.1';
+    this.apiToken = process.env.E2E_VERIFIER_API_TOKEN || null;
     this.headless = headless ?? true;
     this.serverStartTime = Date.now();
 
@@ -116,6 +118,49 @@ export class VerifyServer {
       console.log(`[${timestamp}] ${req.method} ${req.path}`);
       next();
     });
+
+    this.app.use('/api', (req, res, next) => {
+      if (req.path === '/health') {
+        next();
+        return;
+      }
+
+      if (!this.shouldRequireApiAuth()) {
+        next();
+        return;
+      }
+
+      const token = this.extractBearerToken(req);
+      if (!token || token !== this.apiToken) {
+        res.status(401).json({
+          success: false,
+          error: 'Unauthorized'
+        });
+        return;
+      }
+
+      next();
+    });
+  }
+
+  private shouldRequireApiAuth(): boolean {
+    return !this.isLocalHost(this.host) || !!this.apiToken;
+  }
+
+  private isLocalHost(host: string): boolean {
+    return ['127.0.0.1', 'localhost', '::1'].includes(host);
+  }
+
+  private extractBearerToken(req: Request): string | null {
+    const authHeader = req.header('authorization');
+    if (!authHeader) return null;
+
+    const [scheme, token] = authHeader.split(' ');
+    if (scheme?.toLowerCase() !== 'bearer' || !token) {
+      return null;
+    }
+
+    return token;
   }
 
   private setupRoutes(): void {
@@ -577,6 +622,11 @@ export class VerifyServer {
       this.server = this.app.listen(this.port, this.host, () => {
         console.log(`[${new Date().toISOString()}] VerifyServer started`);
         console.log(`[${new Date().toISOString()}] Listening on http://${this.host}:${this.port}`);
+        if (this.shouldRequireApiAuth()) {
+          console.log(`[${new Date().toISOString()}] API auth: bearer token required`);
+        } else {
+          console.log(`[${new Date().toISOString()}] API auth: disabled for local-only access`);
+        }
         console.log(`[${new Date().toISOString()}] API endpoints:`);
         console.log(`  - POST   /api/verify              Fast verification (sync)`);
         console.log(`  - POST   /api/verify/deep         Deep verification (async)`);
@@ -639,7 +689,7 @@ export class VerifyServer {
 
 // Create and start server
 const PORT = parseInt(process.env.PORT || '3002', 10);
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || '127.0.0.1';
 const HEADLESS = process.env.HEADLESS !== 'false';
 
 const server = new VerifyServer(PORT, HOST, HEADLESS);
