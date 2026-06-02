@@ -1,6 +1,21 @@
-import { ReportData } from '../types';
+import { ReportData, UnifiedResult, ExecutionStatus } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
+
+export interface UnifiedReportData {
+  timestamp: string;
+  summary: {
+    totalTasks: number;
+    totalResults: number;
+    passed: number;
+    failed: number;
+    flaky: number;
+    blocked: number;
+    skipped: number;
+    totalDuration: number;
+  };
+  results: UnifiedResult[];
+}
 
 export class HtmlReportGenerator {
   generateHtmlReport(reportData: ReportData): string {
@@ -315,5 +330,423 @@ export class HtmlReportGenerator {
   saveHtmlReport(reportData: ReportData, outputPath: string): void {
     const html = this.generateHtmlReport(reportData);
     fs.writeFileSync(outputPath, html, 'utf-8');
+  }
+
+  // ============================================================
+  // UNIFIED REPORT SUPPORT (P0 - Task 2)
+  // ============================================================
+
+  generateUnifiedHtmlReport(reportData: UnifiedReportData): string {
+    const timestamp = new Date(reportData.timestamp).toLocaleString();
+    const passRate = reportData.summary.totalResults > 0
+      ? ((reportData.summary.passed / reportData.summary.totalResults) * 100).toFixed(1)
+      : '0.0';
+
+    let html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unified E2E Verification Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #58a6ff; margin-bottom: 10px; }
+    .timestamp { color: #8b949e; margin-bottom: 20px; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .summary-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+    .summary-card .value {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .summary-card .label { color: #8b949e; font-size: 14px; }
+    .summary-card.passed .value { color: #3fb950; }
+    .summary-card.failed .value { color: #f85149; }
+    .summary-card.flaky .value { color: #d29922; }
+    .summary-card.blocked .value { color: #a371f7; }
+    .summary-card.skipped .value { color: #8b949e; }
+    .summary-card.neutral .value { color: #58a6ff; }
+
+    .task-group {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .task-group.passed { border-left: 4px solid #3fb950; }
+    .task-group.failed { border-left: 4px solid #f85149; }
+    .task-group.flaky { border-left: 4px solid #d29922; }
+    .task-group.blocked { border-left: 4px solid #a371f7; }
+    .task-group.skipped { border-left: 4px solid #8b949e; }
+
+    .task-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .task-header:hover { background: #21262d; }
+    .task-info { flex: 1; }
+    .task-id { font-weight: 600; font-size: 16px; }
+    .task-meta { color: #8b949e; font-size: 14px; margin-top: 4px; }
+    .task-status {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-left: 10px;
+    }
+    .task-status.passed { background: #238636; color: #fff; }
+    .task-status.failed { background: #da3633; color: #fff; }
+    .task-status.flaky { background: #966600; color: #fff; }
+    .task-status.blocked { background: #8957e5; color: #fff; }
+    .task-status.infra_failed { background: #db6d28; color: #fff; }
+    .task-status.assertion_failed { background: #da3633; color: #fff; }
+    .task-status.skipped { background: #4a5a6a; color: #fff; }
+
+    .task-details {
+      padding: 20px;
+      display: none;
+    }
+    .task-details.open { display: block; }
+
+    .scenario-list { margin-top: 15px; }
+    .scenario-item {
+      background: #21262d;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .scenario-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .scenario-name { font-weight: 500; }
+    .scenario-summary { color: #8b949e; font-size: 13px; }
+
+    .step-list { margin-top: 10px; display: none; }
+    .step-list.open { display: block; }
+    .step-item {
+      padding: 8px 12px;
+      border-left: 3px solid #30363d;
+      margin-left: 8px;
+      margin-bottom: 5px;
+    }
+    .step-item.passed { border-left-color: #3fb950; }
+    .step-item.failed { border-left-color: #f85149; }
+    .step-name { font-size: 13px; }
+    .step-status {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+    .step-status.passed { background: #238636; color: #fff; }
+    .step-status.failed { background: #da3633; color: #fff; }
+
+    .evidence-section {
+      background: #1c1e24;
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+    .evidence-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8b949e;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .evidence-item {
+      font-size: 13px;
+      padding: 4px 0;
+      color: #f85149;
+    }
+    .artifact-link {
+      color: #58a6ff;
+      text-decoration: none;
+      font-size: 12px;
+      display: inline-block;
+      margin-right: 10px;
+    }
+    .artifact-link:hover { text-decoration: underline; }
+
+    .toggle-icon { transition: transform 0.2s; margin-left: 10px; }
+    .task-header.open .toggle-icon { transform: rotate(180deg); }
+
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 6px 12px;
+      border: 1px solid #30363d;
+      background: #161b22;
+      color: #c9d1d9;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .filter-btn:hover { background: #21262d; }
+    .filter-btn.active { background: #238636; border-color: #238636; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Unified E2E Verification Report</h1>
+    <div class="timestamp">Generated: ${timestamp}</div>
+
+    <div class="summary">
+      <div class="summary-card neutral">
+        <div class="value">${reportData.summary.totalTasks}</div>
+        <div class="label">Tasks</div>
+      </div>
+      <div class="summary-card passed">
+        <div class="value">${reportData.summary.passed}</div>
+        <div class="label">Passed</div>
+      </div>
+      <div class="summary-card failed">
+        <div class="value">${reportData.summary.failed}</div>
+        <div class="label">Failed</div>
+      </div>
+      <div class="summary-card flaky">
+        <div class="value">${reportData.summary.flaky}</div>
+        <div class="label">Flaky</div>
+      </div>
+      <div class="summary-card blocked">
+        <div class="value">${reportData.summary.blocked}</div>
+        <div class="label">Blocked</div>
+      </div>
+      <div class="summary-card neutral">
+        <div class="value">${passRate}%</div>
+        <div class="label">Pass Rate</div>
+      </div>
+    </div>
+
+    ${this.generateUnifiedResultsHtml(reportData)}
+  </div>
+
+  <script>
+    // Filter functionality
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const taskGroups = document.querySelectorAll('.task-group');
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.dataset.filter;
+        taskGroups.forEach(group => {
+          if (filter === 'all' || group.classList.contains(filter)) {
+            group.style.display = '';
+          } else {
+            group.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    // Toggle task details
+    document.querySelectorAll('.task-header').forEach(header => {
+      header.addEventListener('click', () => {
+        header.classList.toggle('open');
+        const details = header.nextElementSibling;
+        details.classList.toggle('open');
+      });
+    });
+
+    // Toggle scenario details
+    document.querySelectorAll('.scenario-header').forEach(header => {
+      header.addEventListener('click', (e) => {
+        e.stopPropagation();
+        header.classList.toggle('open');
+        const steps = header.nextElementSibling;
+        steps.classList.toggle('open');
+      });
+    });
+  </script>
+</body>
+</html>`;
+
+    return html;
+  }
+
+  private generateUnifiedResultsHtml(reportData: UnifiedReportData): string {
+    // Group results by task
+    const taskGroups = new Map<string, UnifiedResult[]>();
+    for (const result of reportData.results) {
+      if (!taskGroups.has(result.taskId)) {
+        taskGroups.set(result.taskId, []);
+      }
+      taskGroups.get(result.taskId)!.push(result);
+    }
+
+    // Determine task status based on results
+    const getTaskStatus = (results: UnifiedResult[]): string => {
+      if (results.every(r => r.status === 'passed')) return 'passed';
+      if (results.some(r => r.status === 'flaky')) return 'flaky';
+      if (results.some(r => r.status === 'blocked')) return 'blocked';
+      if (results.some(r => r.status === 'skipped')) return 'skipped';
+      return 'failed';
+    };
+
+    let html = '<div class="filter-bar">';
+    html += '<button class="filter-btn active" data-filter="all">All</button>';
+    html += '<button class="filter-btn" data-filter="passed">Passed</button>';
+    html += '<button class="filter-btn" data-filter="failed">Failed</button>';
+    html += '<button class="filter-btn" data-filter="flaky">Flaky</button>';
+    html += '</div>';
+
+    for (const [taskId, results] of taskGroups) {
+      const taskStatus = getTaskStatus(results);
+      const taskDuration = results.reduce((sum, r) => sum + r.duration, 0);
+
+      html += `
+        <div class="task-group ${taskStatus}">
+          <div class="task-header">
+            <div class="task-info">
+              <div class="task-id">Task: ${taskId} <span class="toggle-icon">▼</span></div>
+              <div class="task-meta">${results.length} scenarios | ${taskDuration}ms</div>
+            </div>
+            <div>
+              <span class="task-status ${taskStatus}">${taskStatus.toUpperCase()}</span>
+            </div>
+          </div>
+          <div class="task-details">
+            ${this.generateScenariosHtml(results)}
+          </div>
+        </div>
+      `;
+    }
+
+    return html;
+  }
+
+  private generateScenariosHtml(results: UnifiedResult[]): string {
+    // Group by scenario
+    const scenarios = new Map<string, UnifiedResult[]>();
+    for (const result of results) {
+      const key = result.scenarioId;
+      if (!scenarios.has(key)) {
+        scenarios.set(key, []);
+      }
+      scenarios.get(key)!.push(result);
+    }
+
+    let html = '<div class="scenario-list">';
+
+    for (const [scenarioId, scenarioResults] of scenarios) {
+      const status = this.getOverallStatus(scenarioResults);
+      const failedResult = scenarioResults.find(r =>
+        r.status === 'failed' ||
+        r.status === 'assertion_failed' ||
+        r.status === 'infra_failed'
+      );
+
+      html += `
+        <div class="scenario-item">
+          <div class="scenario-header">
+            <div>
+              <div class="scenario-name">Scenario: ${scenarioId}</div>
+              <div class="scenario-summary">${failedResult?.summary || 'All checks passed'}</div>
+            </div>
+            <span class="task-status ${status}">${status.toUpperCase()}</span>
+          </div>
+          <div class="step-list ${scenarioResults.length > 1 ? 'open' : ''}">
+            ${scenarioResults.map(r => this.generateStepHtml(r)).join('')}
+            ${failedResult ? this.generateEvidenceHtml(failedResult) : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  private getOverallStatus(results: UnifiedResult[]): string {
+    if (results.every(r => r.status === 'passed')) return 'passed';
+    if (results.some(r => r.status === 'infra_failed')) return 'infra_failed';
+    if (results.some(r => r.status === 'assertion_failed')) return 'assertion_failed';
+    if (results.some(r => r.status === 'flaky')) return 'flaky';
+    if (results.some(r => r.status === 'blocked')) return 'blocked';
+    if (results.some(r => r.status === 'skipped')) return 'skipped';
+    return 'failed';
+  }
+
+  private generateStepHtml(result: UnifiedResult): string {
+    const statusClass = result.status === 'passed' ? 'passed' : 'failed';
+    const stepId = result.stepId || 'summary';
+
+    return `
+      <div class="step-item ${statusClass}">
+        <div class="step-name">
+          ${stepId}
+          <span class="step-status ${statusClass}">${result.status}</span>
+        </div>
+        ${result.artifacts.length > 0 ? this.generateArtifactsHtml(result.artifacts) : ''}
+      </div>
+    `;
+  }
+
+  private generateArtifactsHtml(artifacts: any[]): string {
+    const links = artifacts.map(a =>
+      `<a class="artifact-link" href="${a.path}" target="_blank">${a.type}</a>`
+    ).join('');
+
+    return links ? `<div style="margin-top:4px;">${links}</div>` : '';
+  }
+
+  private generateEvidenceHtml(result: UnifiedResult): string {
+    if (!result.rootCause?.evidence) return '';
+
+    const evidence = result.rootCause.evidence;
+    let html = '<div class="evidence-section">';
+    html += '<div class="evidence-title">Evidence</div>';
+
+    if (evidence.screenshot) {
+      html += `<div class="evidence-item">📸 <a href="${evidence.screenshot}" target="_blank" style="color:#58a6ff">Screenshot</a></div>`;
+    }
+
+    if (evidence.console?.length) {
+      html += `<div class="evidence-item">⚠ Console Errors: ${evidence.console.length}</div>`;
+    }
+
+    if (evidence.network?.length) {
+      html += `<div class="evidence-item">🌐 Failed Requests: ${evidence.network.length}</div>`;
+    }
+
+    html += '</div>';
+    return html;
   }
 }

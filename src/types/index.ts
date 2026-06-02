@@ -163,3 +163,156 @@ export interface VisualRegressionResult {
   diffPath?: string;
   message: string;
 }
+
+// ============================================================
+// UNIFIED TASK MODEL (P0 - Task 1)
+// ============================================================
+
+export type TaskType = 'quick' | 'deep' | 'orchestrated';
+
+export interface Task {
+  id: string;
+  name: string;
+  type: TaskType;
+  scenarios: Scenario[];
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface Scenario {
+  id: string;
+  name: string;
+  url: string;
+  steps: Step[];
+  viewport?: { width: number; height: number };
+  auth?: AuthConfig;
+  timeout?: number;
+  retries?: number;
+}
+
+export type StepType = 'navigate' | 'check' | 'screenshot' | 'wait' | 'custom' | 'interact';
+
+export interface Step {
+  id: string;
+  name: string;
+  type: StepType;
+  action: string;
+  timeout?: number;
+  assertions?: Assertion[];
+  artifacts?: Artifact[];
+  metadata?: Record<string, unknown>;
+}
+
+export type AssertionType = 'element-exists' | 'text-contains' | 'attribute-equals' | 'url-matches' | 'javascript' | 'performance' | 'accessibility';
+
+export interface Assertion {
+  type: AssertionType;
+  expected: unknown;
+  actual?: unknown;
+  passed?: boolean;
+  message?: string;
+  selector?: string;
+  attribute?: string;
+}
+
+export type ArtifactType = 'screenshot' | 'trace' | 'console-log' | 'network-log' | 'dom-snapshot' | 'video' | 'performance-metrics';
+
+export interface Artifact {
+  type: ArtifactType;
+  path: string;
+  timestamp: string;
+  size?: number;
+  metadata?: Record<string, unknown>;
+}
+
+// ============================================================
+// UNIFIED RESULTS AND REPORTS (P0 - Task 2)
+// ============================================================
+
+export type ExecutionStatus =
+  | 'passed'
+  | 'failed'
+  | 'flaky'
+  | 'blocked'
+  | 'infra_failed'
+  | 'assertion_failed'
+  | 'skipped';
+
+export interface UnifiedResult {
+  taskId: string;
+  scenarioId: string;
+  stepId?: string;
+  status: ExecutionStatus;
+  summary: string;
+  checks: CheckResult[];
+  artifacts: Artifact[];
+  rootCause?: RootCause;
+  timestamp: string;
+  duration: number;
+}
+
+export interface RootCause {
+  category: FailureCategory;
+  message: string;
+  evidence?: Evidence;
+}
+
+export type FailureCategory = 'environment' | 'infrastructure' | 'business' | 'test' | 'unknown';
+
+export interface Evidence {
+  console?: ConsoleError[];
+  network?: FailedRequest[];
+  trace?: string;
+  screenshot?: string;
+  domSnapshot?: string;
+}
+
+export interface FailureClassification {
+  isRetryable: boolean;
+  category: FailureCategory;
+  reason: string;
+}
+
+// ============================================================
+// EXECUTION CONFIGURATION (P0 - Task 3)
+// ============================================================
+
+export interface RetryStrategy {
+  maxRetries: number;
+  baseDelay: number;
+  maxDelay: number;
+  backoffMultiplier: number;
+  retryableStatuses: ExecutionStatus[];
+}
+
+export interface TimeoutConfig {
+  navigation: number;
+  elementWait: number;
+  assertion: number;
+  screenshot: number;
+  custom: number;
+  pageLoad: number;
+}
+
+export interface ArtifactDirectoryStructure {
+  root: string;
+  screenshots: string;
+  traces: string;
+  console: string;
+  network: string;
+  dom: string;
+  videos: string;
+}
+
+export interface ExecutionConfig {
+  retryStrategy: RetryStrategy;
+  timeouts: TimeoutConfig;
+  artifactDirectories: ArtifactDirectoryStructure;
+  maxConcurrentTasks: number;
+  enableTrace: boolean;
+  enableVideo: boolean;
+}
