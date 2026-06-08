@@ -9,3 +9,4 @@ reports/*.txt
 reports/*.html
 !reports/.gitkeep
 !logs/.gitkeep
+.codegraph/

@@ -1,5 +1,5 @@
 import { chromium, Browser, Page, BrowserContext } from '@playwright/test';
-import { SiteConfig, TestResult, CheckResult, ScreenshotResult, CustomCheck } from './types';
+import { SiteConfig, TestResult, CheckResult, ScreenshotResult, CustomCheck, AuthConfig } from './types';
 import { PerformanceChecker } from './checks/performance';
 import { AccessibilityChecker } from './checks/accessibility';
 import { SEOChecker } from './checks/seo';
@@ -416,14 +416,95 @@ export class Verifier {
     await passwordInput.fill(auth.password);
     await submitBtn.click();
 
-    // Wait for redirect
-    if (auth.successUrlPattern) {
-      await this.page.waitForURL(new RegExp(auth.successUrlPattern), { timeout: 10000 });
+    // Wait for redirect/verification
+    const verifyTimeout = auth.verifyTimeout || 10000;
+    
+    if (auth.verifyUrl) {
+      // Exact URL match
+      await this.page.waitForURL(auth.verifyUrl, { timeout: verifyTimeout });
+    } else if (auth.successUrlPattern) {
+      // Regex pattern match
+      await this.page.waitForURL(new RegExp(auth.successUrlPattern), { timeout: verifyTimeout });
     } else {
+      // Default: wait a bit for redirect
       await this.page.waitForTimeout(3000);
     }
 
+    // Post-login verification
+    await this.verifyLoginSuccess(auth, verifyTimeout, logger);
+
     logger.info(`Login complete, current URL: ${this.page.url()}`);
+  }
+
+  /**
+   * Verify login success by checking page content
+   */
+  private async verifyLoginSuccess(auth: AuthConfig, timeout: number, logger: Logger): Promise<void> {
+    if (!this.page) throw new Error('Page not initialized');
+
+    // Check 1: Element existence
+    if (auth.verifySelector) {
+      try {
+        await this.page.waitForSelector(auth.verifySelector, { timeout });
+        logger.info(`Login verified: element found ${auth.verifySelector}`);
+      } catch (e) {
+        throw new Error(`Login verification failed: element not found ${auth.verifySelector}`);
+      }
+    }
+
+    // Check 2: Text content
+    if (auth.verifyText) {
+      try {
+        const pageText = await this.page.textContent('body');
+        if (!pageText?.includes(auth.verifyText)) {
+          throw new Error(`Login verification failed: expected text "${auth.verifyText}" not found`);
+        }
+        logger.info(`Login verified: text found "${auth.verifyText}"`);
+      } catch (e) {
+        if (e instanceof Error) throw e;
+        throw new Error(`Login verification failed: text check error ${e}`);
+      }
+    }
+
+    // Check 3: Attribute value
+    if (auth.verifyAttribute) {
+      try {
+        const element = this.page.locator(auth.verifyAttribute.selector).first();
+        await element.waitFor({ state: 'attached', timeout });
+        
+        const attrValue = await element.getAttribute(auth.verifyAttribute.attribute);
+        
+        if (attrValue === null) {
+          throw new Error(`Login verification failed: attribute "${auth.verifyAttribute.attribute}" not found on ${auth.verifyAttribute.selector}`);
+        }
+        
+        if (auth.verifyAttribute.value !== undefined && attrValue !== auth.verifyAttribute.value) {
+          throw new Error(`Login verification failed: expected attribute "${auth.verifyAttribute.attribute}" = "${auth.verifyAttribute.value}", got "${attrValue}"`);
+        }
+        
+        logger.info(`Login verified: attribute ${auth.verifyAttribute.attribute} found`);
+      } catch (e) {
+        if (e instanceof Error) throw e;
+        throw new Error(`Login verification failed: attribute check error ${e}`);
+      }
+    }
+
+    // Check 4: localStorage token
+    if (auth.tokenKey) {
+      try {
+        const token = await this.page.evaluate((key) => {
+          return localStorage.getItem(key);
+        }, auth.tokenKey);
+        
+        if (!token) {
+          throw new Error(`Login verification failed: token "${auth.tokenKey}" not found in localStorage`);
+        }
+        logger.info(`Login verified: token found in localStorage`);
+      } catch (e) {
+        if (e instanceof Error) throw e;
+        throw new Error(`Login verification failed: localStorage check error ${e}`);
+      }
+    }
   }
 
   private async runCustomCheck(check: CustomCheck): Promise<CheckResult> {

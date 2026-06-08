@@ -5,6 +5,10 @@ export { SEOChecker } from './checks/seo';
 export { ConsoleMonitor } from './checks/console';
 export { ScreenshotUtil } from './utils/screenshot';
 export { ReportGenerator } from './utils/report';
+export { HtmlReportGenerator } from './utils/html-report';
+export { ArtifactManager, getArtifactManager } from './utils/artifact-manager';
+export { retryWithBackoff, retryWithResult, classifyError, statusFromError, shouldRetry } from './utils/retry';
+export { DEFAULT_EXECUTION_CONFIG, getExecutionConfig, getTimeout } from './config/execution-config';
 
 // Agent Loop exports
 export { AgentLoop } from './agent/agent-loop';

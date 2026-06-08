@@ -336,6 +336,10 @@ export class HtmlReportGenerator {
     const passRate = reportData.summary.totalResults > 0
       ? ((reportData.summary.passed / reportData.summary.totalResults) * 100).toFixed(1)
       : '0.0';
+    const totalDurationSec = (reportData.summary.totalDuration / 1000).toFixed(1);
+    const isAllPassed = reportData.summary.failed === 0 && reportData.summary.flaky === 0 && reportData.summary.blocked === 0;
+    const ciStatus = isAllPassed ? 'PASSED' : 'FAILED';
+    const ciColor = isAllPassed ? '#3fb950' : '#f85149';
 
     let html = `<!DOCTYPE html>
 <html lang="en">
@@ -495,6 +499,67 @@ export class HtmlReportGenerator {
     .toggle-icon { transition: transform 0.2s; margin-left: 10px; }
     .task-header.open .toggle-icon { transform: rotate(180deg); }
 
+    .ci-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 16px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .ci-badge .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .screenshot-inline {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 4px;
+      border: 1px solid #30363d;
+      margin-top: 6px;
+      cursor: pointer;
+    }
+    .screenshot-inline:hover { opacity: 0.85; }
+
+    .perf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .perf-item {
+      background: #21262d;
+      border-radius: 4px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+    .perf-value { font-size: 18px; font-weight: bold; color: #58a6ff; }
+    .perf-label { font-size: 11px; color: #8b949e; margin-top: 2px; }
+    .perf-value.good { color: #3fb950; }
+    .perf-value.warning { color: #d29922; }
+    .perf-value.bad { color: #f85149; }
+
+    .duration-bar {
+      height: 4px;
+      background: #30363d;
+      border-radius: 2px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+    .duration-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+    .duration-fill.fast { background: #3fb950; }
+    .duration-fill.medium { background: #d29922; }
+    .duration-fill.slow { background: #f85149; }
+
     .filter-bar {
       display: flex;
       gap: 10px;
@@ -518,6 +583,14 @@ export class HtmlReportGenerator {
 <body>
   <div class="container">
     <h1>Unified E2E Verification Report</h1>
+    <div class="ci-badge">
+      <span class="dot" style="background:${ciColor}"></span>
+      <strong>${ciStatus}</strong>
+      <span style="color:#8b949e">|</span>
+      <span style="color:#8b949e">${passRate}% pass rate</span>
+      <span style="color:#8b949e">|</span>
+      <span style="color:#8b949e">${reportData.summary.totalTasks} tasks in ${totalDurationSec}s</span>
+    </div>
     <div class="timestamp">Generated: ${timestamp}</div>
 
     <div class="summary">
@@ -545,9 +618,18 @@ export class HtmlReportGenerator {
         <div class="value">${passRate}%</div>
         <div class="label">Pass Rate</div>
       </div>
+      <div class="summary-card neutral">
+        <div class="value">${totalDurationSec}s</div>
+        <div class="label">Duration</div>
+      </div>
     </div>
 
     ${this.generateUnifiedResultsHtml(reportData)}
+  </div>
+
+  <div class="modal" id="imageModal">
+    <span class="modal-close">&times;</span>
+    <img id="modalImage" src="" alt="">
   </div>
 
   <script>
@@ -589,6 +671,22 @@ export class HtmlReportGenerator {
         steps.classList.toggle('open');
       });
     });
+
+    // Screenshot modal for inline images
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    const closeBtn = document.querySelector('.modal-close');
+    document.querySelectorAll('.screenshot-inline').forEach(img => {
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (modal && modalImg) {
+          modal.classList.add('open');
+          modalImg.src = (img as HTMLImageElement).src;
+        }
+      });
+    });
+    if (closeBtn) closeBtn.addEventListener('click', () => modal?.classList.remove('open'));
+    modal?.addEventListener('click', () => modal?.classList.remove('open'));
   </script>
 </body>
 </html>`;
@@ -702,14 +800,28 @@ export class HtmlReportGenerator {
   private generateStepHtml(result: UnifiedResult): string {
     const statusClass = result.status === 'passed' ? 'passed' : 'failed';
     const stepId = result.stepId || 'summary';
+    const durationMs = result.duration || 0;
+    const maxDuration = 30000; // 30s reference
+    const durationPct = Math.min((durationMs / maxDuration) * 100, 100);
+    const durationClass = durationMs < 3000 ? 'fast' : durationMs < 10000 ? 'medium' : 'slow';
+
+    // Find screenshot artifacts for inline display
+    const screenshots = result.artifacts.filter(a => a.type === 'screenshot');
+    const screenshotHtml = screenshots.map(a =>
+      `<img class="screenshot-inline" src="${a.path}" alt="${a.type}" onerror="this.style.display='none'">`
+    ).join('');
 
     return `
       <div class="step-item ${statusClass}">
         <div class="step-name">
           ${stepId}
           <span class="step-status ${statusClass}">${result.status}</span>
+          ${durationMs > 0 ? `<span style="color:#8b949e;font-size:11px;margin-left:8px">${durationMs}ms</span>` : ''}
         </div>
+        ${durationMs > 0 ? `<div class="duration-bar"><div class="duration-fill ${durationClass}" style="width:${durationPct}%"></div></div>` : ''}
+        ${screenshotHtml}
         ${result.artifacts.length > 0 ? this.generateArtifactsHtml(result.artifacts) : ''}
+        ${result.rootCause ? `<div style="color:#f85149;font-size:12px;margin-top:4px">[${result.rootCause.category}] ${result.rootCause.message}</div>` : ''}
       </div>
     `;
   }
@@ -731,14 +843,25 @@ export class HtmlReportGenerator {
 
     if (evidence.screenshot) {
       html += `<div class="evidence-item">📸 <a href="${evidence.screenshot}" target="_blank" style="color:#58a6ff">Screenshot</a></div>`;
+      html += `<img class="screenshot-inline" src="${evidence.screenshot}" alt="Failure screenshot" onerror="this.style.display='none'">`;
     }
 
     if (evidence.console?.length) {
       html += `<div class="evidence-item">⚠ Console Errors: ${evidence.console.length}</div>`;
+      html += evidence.console.slice(0, 5).map(e =>
+        `<div style="color:#f85149;font-size:12px;padding:2px 0 2px 16px">${e.message}</div>`
+      ).join('');
     }
 
     if (evidence.network?.length) {
       html += `<div class="evidence-item">🌐 Failed Requests: ${evidence.network.length}</div>`;
+      html += evidence.network.slice(0, 5).map(r =>
+        `<div style="color:#d29922;font-size:12px;padding:2px 0 2px 16px">${r.url} (${r.status})</div>`
+      ).join('');
+    }
+
+    if (evidence.domSnapshot) {
+      html += `<div class="evidence-item">📄 <a href="#" style="color:#58a6ff" onclick="const w=window.open();w.document.write(this.dataset.snippet);return false;" data-snippet="">DOM Snapshot available</a></div>`;
     }
 
     html += '</div>';

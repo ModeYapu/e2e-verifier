@@ -8,6 +8,17 @@ export interface AuthConfig {
   successUrlPattern?: string; // Regex pattern for post-login URL
   formSelector?: string;      // CSS selector to scope the login form
   tokenKey?: string;          // localStorage key for auth token
+  
+  // Login verification (P0 - Task 1)
+  verifySelector?: string;    // CSS selector that should exist after successful login
+  verifyText?: string;        // Expected text on page after successful login
+  verifyAttribute?: {
+    selector: string;         // Element selector
+    attribute: string;        // Attribute name
+    value?: string;           // Expected value (optional, just check existence if omitted)
+  };
+  verifyUrl?: string;         // Exact URL to match after login (alternative to successUrlPattern)
+  verifyTimeout?: number;     // Timeout for verification (default 10000ms)
 }
 
 export interface SiteConfig {
