@@ -346,3 +346,50 @@ export interface UnifiedReportData {
   };
   results: UnifiedResult[];
 }
+
+// ============================================================
+// DEVICE MATRIX CONFIG (P1 - Slice 2)
+// ============================================================
+
+export type BrowserType = 'chromium' | 'webkit' | 'firefox';
+
+export interface DeviceMatrixConfig {
+  browsers?: BrowserType[];
+  viewports?: ViewportConfig[];
+  locales?: string[];
+  userAgent?: string;
+}
+
+export interface CombinationConfig {
+  browser: BrowserType;
+  viewport: ViewportConfig;
+  locale: string;
+}
+
+export interface CombinationResult {
+  combination: CombinationConfig;
+  result: TestResult;
+  passed: boolean;
+  duration: number;
+  errors: string[];
+}
+
+export interface MatrixResult {
+  timestamp: string;
+  siteName: string;
+  url: string;
+  combinations: CombinationResult[];
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    totalDuration: number;
+  };
+  byBrowser: {
+    [browser: string]: {
+      total: number;
+      passed: number;
+      failed: number;
+    };
+  };
+}

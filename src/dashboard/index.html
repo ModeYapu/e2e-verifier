@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E2E Verifier Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-dark: #1a1a2e;
+      --bg-card: #16213e;
+      --bg-card-hover: #1a2b4d;
+      --accent: #0f3460;
+      --accent-light: #1a4d7c;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0a0;
+      --success: #4ecca3;
+      --danger: #e74c3c;
+      --warning: #f39c12;
+      --info: #3498db;
+      --border: #2a3f5f;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background-color: var(--bg-card);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      position: fixed;
+      width: 250px;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .sidebar-header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--success);
+    }
+
+    .sidebar-header p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 5px;
+    }
+
+    .nav-menu {
+      list-style: none;
+    }
+
+    .nav-item {
+      margin-bottom: 5px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      background-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .nav-link i {
+      margin-right: 10px;
+      width: 20px;
+      text-align: center;
+    }
+
+    /* Main content */
+    .main-content {
+      margin-left: 250px;
+      padding: 30px;
+      flex: 1;
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .page-header {
+      margin-bottom: 30px;
+    }
+
+    .page-title {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .page-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    /* Stats cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    .stat-title {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .stat-change {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-change.positive {
+      color: var(--success);
+    }
+
+    .stat-change.negative {
+      color: var(--danger);
+    }
+
+    /* Table styles */
+    .table-container {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-bottom: 30px;
+    }
+
+    .table-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-light);
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background-color: #c0392b;
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 0.8rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 15px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background-color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      color: var(--text-secondary);
+    }
+
+    tr:hover td {
+      background-color: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+
+    /* Status badges */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-completed,
+    .status-passed {
+      background-color: rgba(78, 204, 163, 0.2);
+      color: var(--success);
+    }
+
+    .status-failed,
+    .status-failed {
+      background-color: rgba(231, 76, 60, 0.2);
+      color: var(--danger);
+    }
+
+    .status-running,
+    .status-pending {
+      background-color: rgba(52, 152, 219, 0.2);
+      color: var(--info);
+    }
+
+    .status-cancelled {
+      background-color: rgba(243, 156, 18, 0.2);
+      color: var(--warning);
+    }
+
+    /* Chart styles */
+    .chart-container {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      margin-bottom: 30px;
+    }
+
+    .chart-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .trend-chart {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      height: 200px;
+      gap: 10px;
+    }
+
+    .chart-bar {
+      flex: 1;
+      background: linear-gradient(to top, var(--accent), var(--accent-light));
+      border-radius: 4px 4px 0 0;
+      position: relative;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .chart-bar:hover {
+      opacity: 0.8;
+    }
+
+    .chart-bar-label {
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .chart-bar-value {
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Site cards */
+    .sites-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .site-card {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+    }
+
+    .site-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    .site-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .site-status {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: var(--success);
+    }
+
+    .site-status.failed {
+      background-color: var(--danger);
+    }
+
+    .site-url {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-bottom: 15px;
+      word-break: break-all;
+    }
+
+    .site-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .site-metric {
+      text-align: center;
+      padding: 10px;
+      background-color: var(--accent);
+      border-radius: 4px;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+    }
+
+    .metric-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    /* Report detail styles */
+    .report-detail {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .report-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .report-meta {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .checks-container {
+      margin-top: 20px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      background-color: var(--bg-dark);
+    }
+
+    .check-status {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+
+    .check-status.passed {
+      background-color: rgba(78, 204, 163, 0.2);
+      color: var(--success);
+    }
+
+    .check-status.failed {
+      background-color: rgba(231, 76, 60, 0.2);
+      color: var(--danger);
+    }
+
+    .check-content {
+      flex: 1;
+    }
+
+    .check-name {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .check-message {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .screenshot-viewer {
+      margin-top: 20px;
+    }
+
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .screenshot-item {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .screenshot-item:hover {
+      transform: scale(1.05);
+    }
+
+    .screenshot-image {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      background-color: var(--bg-dark);
+    }
+
+    .screenshot-name {
+      padding: 10px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-align: center;
+      background-color: var(--accent);
+    }
+
+    .performance-metrics {
+      margin-top: 20px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .metric-item {
+      background-color: var(--bg-dark);
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .metric-name {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+    }
+
+    .metric-number {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Loading state */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--success);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Error state */
+    .error-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--danger);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        padding: 15px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sites-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .table-container {
+        overflow-x: auto;
+      }
+
+      table {
+        min-width: 600px;
+      }
+    }
+
+    /* Refresh indicator */
+    .refresh-indicator {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: var(--success);
+      color: var(--bg-dark);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .refresh-indicator.show {
+      display: flex;
+    }
+
+    .refresh-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      border-top: 2px solid currentColor;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>E2E Verifier</h1>
+        <p>Test Dashboard</p>
+      </div>
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a href="#" class="nav-link active" data-page="overview">
+            <i>📊</i> Overview
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="sites">
+            <i>🌐</i> Sites
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="jobs">
+            <i>⚙️</i> Jobs
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+      <!-- Overview Page -->
+      <div id="overview-page" class="page active">
+        <div class="page-header">
+          <h2 class="page-title">Dashboard Overview</h2>
+          <p class="page-subtitle">Real-time test execution metrics and job status</p>
+        </div>
+
+        <div class="stats-grid" id="stats-grid">
+          <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading statistics...</p>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <h3 class="chart-title">Pass Rate Trend (Last 30 Days)</h3>
+          <div id="trend-chart" class="trend-chart">
+            <div class="loading">
+              <div class="spinner"></div>
+              <p>Loading trend data...</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <div class="table-header">
+            <h3 class="table-title">Recent Jobs</h3>
+            <button class="btn btn-primary btn-sm" onclick="loadOverview()">Refresh</button>
+          </div>
+          <div id="recent-jobs-table">
+            <div class="loading">
+              <div class="spinner"></div>
+              <p>Loading recent jobs...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sites Page -->
+      <div id="sites-page" class="page">
+        <div class="page-header">
+          <h2 class="page-title">Sites Health Status</h2>
+          <p class="page-subtitle">Monitor site availability and test results</p>
+        </div>
+
+        <div id="sites-grid" class="sites-grid">
+          <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading sites...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jobs Page -->
+      <div id="jobs-page" class="page">
+        <div class="page-header">
+          <h2 class="page-title">Job Queue</h2>
+          <p class="page-subtitle">View and manage all test jobs</p>
+        </div>
+
+        <div class="table-container">
+          <div class="table-header">
+            <h3 class="table-title">All Jobs</h3>
+            <div class="table-actions">
+              <button class="btn btn-primary btn-sm" onclick="loadJobs()">Refresh</button>
+            </div>
+          </div>
+          <div id="jobs-table">
+            <div class="loading">
+              <div class="spinner"></div>
+              <p>Loading jobs...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Report Detail Page -->
+      <div id="report-page" class="page">
+        <div class="page-header">
+          <h2 class="page-title">Job Report Detail</h2>
+          <p class="page-subtitle">Detailed test results and performance metrics</p>
+        </div>
+
+        <div id="report-detail">
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>Select a job to view detailed report</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="refresh-indicator" id="refresh-indicator">
+    <div class="refresh-spinner"></div>
+    <span>Refreshing...</span>
+  </div>
+
+  <script>
+    // API Configuration
+    const API_BASE = window.location.origin + '/api';
+    let refreshInterval = null;
+    let currentJobId = null;
+
+    // Navigation
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = link.dataset.page;
+
+        // Update active nav
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+
+        // Show page
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(page + '-page').classList.add('active');
+
+        // Load page data
+        switch(page) {
+          case 'overview':
+            loadOverview();
+            break;
+          case 'sites':
+            loadSites();
+            break;
+          case 'jobs':
+            loadJobs();
+            break;
+        }
+      });
+    });
+
+    // API Helper functions
+    async function fetchAPI(endpoint, options = {}) {
+      try {
+        const response = await fetch(API_BASE + endpoint, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error(`API Error (${endpoint}):`, error);
+        throw error;
+      }
+    }
+
+    // Load Overview Page
+    async function loadOverview() {
+      try {
+        showRefreshIndicator();
+
+        // Load overview data
+        const [overview, trends] = await Promise.all([
+          fetchAPI('/dashboard/overview'),
+          fetchAPI('/dashboard/trends')
+        ]);
+
+        renderStats(overview);
+        renderTrendChart(trends);
+        renderRecentJobs(overview.recentJobs || []);
+
+      } catch (error) {
+        console.error('Error loading overview:', error);
+        document.getElementById('stats-grid').innerHTML = `
+          <div class="error-state">
+            <p>Failed to load overview data</p>
+            <button class="btn btn-primary" onclick="loadOverview()">Retry</button>
+          </div>
+        `;
+      } finally {
+        hideRefreshIndicator();
+      }
+    }
+
+    // Render Statistics Cards
+    function renderStats(data) {
+      const statsGrid = document.getElementById('stats-grid');
+      const stats = [
+        {
+          title: 'Total Jobs',
+          value: data.totalJobs || 0,
+          icon: '📋',
+          color: 'var(--info)'
+        },
+        {
+          title: 'Completed',
+          value: data.completedJobs || 0,
+          icon: '✅',
+          color: 'var(--success)'
+        },
+        {
+          title: 'Failed',
+          value: data.failedJobs || 0,
+          icon: '❌',
+          color: 'var(--danger)'
+        },
+        {
+          title: 'Running',
+          value: data.runningJobs || 0,
+          icon: '⚙️',
+          color: 'var(--warning)'
+        },
+        {
+          title: 'Pass Rate',
+          value: (data.passRate || 0).toFixed(1) + '%',
+          icon: '📈',
+          color: 'var(--success)'
+        },
+        {
+          title: 'Success',
+          value: data.completedJobs > 0 ? ((data.completedJobs - data.failedJobs) / data.completedJobs * 100).toFixed(1) + '%' : '0%',
+          icon: '🎯',
+          color: 'var(--accent-light)'
+        }
+      ];
+
+      statsGrid.innerHTML = stats.map(stat => `
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">${stat.title}</span>
+            <div class="stat-icon" style="background-color: ${stat.color}">${stat.icon}</div>
+          </div>
+          <div class="stat-value">${stat.value}</div>
+        </div>
+      `).join('');
+    }
+
+    // Render Trend Chart
+    function renderTrendChart(data) {
+      const chartContainer = document.getElementById('trend-chart');
+
+      if (!data.trends || data.trends.length === 0) {
+        chartContainer.innerHTML = `
+          <div class="empty-state">
+            <p>No trend data available</p>
+          </div>
+        `;
+        return;
+      }
+
+      const maxRate = Math.max(...data.trends.map(t => t.passRate || 0));
+      const bars = data.trends.map(trend => {
+        const rate = trend.passRate || 0;
+        const height = maxRate > 0 ? (rate / maxRate) * 100 : 0;
+        const date = new Date(trend.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        return `
+          <div class="chart-bar" style="height: ${height}%">
+            <div class="chart-bar-value">${rate.toFixed(0)}%</div>
+            <div class="chart-bar-label">${date}</div>
+          </div>
+        `;
+      }).join('');
+
+      chartContainer.innerHTML = bars;
+    }
+
+    // Render Recent Jobs Table
+    function renderRecentJobs(jobs) {
+      const tableContainer = document.getElementById('recent-jobs-table');
+
+      if (!jobs || jobs.length === 0) {
+        tableContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No recent jobs found</p>
+          </div>
+        `;
+        return;
+      }
+
+      const tableHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${jobs.map(job => `
+              <tr onclick="viewJobReport('${job.id}')" style="cursor: pointer">
+                <td>${job.id.substring(0, 8)}</td>
+                <td>${job.type}</td>
+                <td><span class="status-badge status-${job.status}">${job.status}</span></td>
+                <td>${formatDate(job.createdAt)}</td>
+                <td>${formatDuration(job.createdAt, job.completedAt)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      tableContainer.innerHTML = tableHTML;
+    }
+
+    // Load Sites Page
+    async function loadSites() {
+      try {
+        showRefreshIndicator();
+
+        const sites = await fetchAPI('/dashboard/sites');
+        renderSites(sites);
+
+      } catch (error) {
+        console.error('Error loading sites:', error);
+        document.getElementById('sites-grid').innerHTML = `
+          <div class="error-state">
+            <p>Failed to load sites data</p>
+            <button class="btn btn-primary" onclick="loadSites()">Retry</button>
+          </div>
+        `;
+      } finally {
+        hideRefreshIndicator();
+      }
+    }
+
+    // Render Sites Cards
+    function renderSites(data) {
+      const sitesGrid = document.getElementById('sites-grid');
+
+      if (!data.sites || data.sites.length === 0) {
+        sitesGrid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🌐</div>
+            <p>No sites found</p>
+          </div>
+        `;
+        return;
+      }
+
+      const siteCards = data.sites.map(site => {
+        const lastResult = site.lastResult || {};
+        const status = lastResult.passed ? 'passed' : 'failed';
+        const passRate = ((site.totalTests || 0) > 0)
+          ? ((site.passedTests || 0) / (site.totalTests || 1) * 100).toFixed(0)
+          : '0';
+
+        return `
+          <div class="site-card" onclick="viewJobReport('${site.lastJobId || ''}')">
+            <div class="site-header">
+              <div class="site-name">${site.name}</div>
+              <div class="site-status ${status === 'failed' ? 'failed' : ''}"></div>
+            </div>
+            <div class="site-url">${site.url}</div>
+            <div class="site-metrics">
+              <div class="site-metric">
+                <div class="metric-label">Total</div>
+                <div class="metric-value">${site.totalTests || 0}</div>
+              </div>
+              <div class="site-metric">
+                <div class="metric-label">Passed</div>
+                <div class="metric-value">${site.passedTests || 0}</div>
+              </div>
+              <div class="site-metric">
+                <div class="metric-label">Pass Rate</div>
+                <div class="metric-value">${passRate}%</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      sitesGrid.innerHTML = siteCards;
+    }
+
+    // Load Jobs Page
+    async function loadJobs() {
+      try {
+        showRefreshIndicator();
+
+        const jobs = await fetchAPI('/jobs/list?page=1&pageSize=50');
+        renderJobsTable(jobs.jobs || []);
+
+      } catch (error) {
+        console.error('Error loading jobs:', error);
+        document.getElementById('jobs-table').innerHTML = `
+          <div class="error-state">
+            <p>Failed to load jobs data</p>
+            <button class="btn btn-primary" onclick="loadJobs()">Retry</button>
+          </div>
+        `;
+      } finally {
+        hideRefreshIndicator();
+      }
+    }
+
+    // Render Jobs Table
+    function renderJobsTable(jobs) {
+      const tableContainer = document.getElementById('jobs-table');
+
+      if (!jobs || jobs.length === 0) {
+        tableContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">⚙️</div>
+            <p>No jobs found</p>
+          </div>
+        `;
+        return;
+      }
+
+      const tableHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${jobs.map(job => `
+              <tr onclick="viewJobReport('${job.id}')" style="cursor: pointer">
+                <td>${job.id.substring(0, 8)}</td>
+                <td>${job.type}</td>
+                <td><span class="status-badge status-${job.status}">${job.status}</span></td>
+                <td>${job.priority}</td>
+                <td>${formatDate(job.createdAt)}</td>
+                <td>
+                  ${job.status === 'pending' || job.status === 'running' ?
+                    `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); cancelJob('${job.id}')">Cancel</button>` :
+                    `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); retryJob('${job.id}')">Retry</button>`}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      tableContainer.innerHTML = tableHTML;
+    }
+
+    // View Job Report
+    async function viewJobReport(jobId) {
+      if (!jobId) return;
+
+      currentJobId = jobId;
+
+      // Switch to report page
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('report-page').classList.add('active');
+
+      try {
+        showRefreshIndicator();
+
+        const report = await fetchAPI(`/reports/${jobId}`);
+        renderJobReport(report);
+
+      } catch (error) {
+        console.error('Error loading job report:', error);
+        document.getElementById('report-detail').innerHTML = `
+          <div class="error-state">
+            <p>Failed to load job report</p>
+            <button class="btn btn-primary" onclick="loadJobs()">Back to Jobs</button>
+          </div>
+        `;
+      } finally {
+        hideRefreshIndicator();
+      }
+    }
+
+    // Render Job Report Detail
+    function renderJobReport(report) {
+      const reportDetail = document.getElementById('report-detail');
+      const job = report.job || {};
+      const result = job.result || {};
+
+      const reportHTML = `
+        <div class="report-detail">
+          <div class="report-header">
+            <div>
+              <h3 class="report-title">${job.type} Test Report</h3>
+              <div class="report-meta">
+                <span>Job ID: ${job.id}</span> |
+                <span>Status: <span class="status-badge status-${job.status}">${job.status}</span></span> |
+                <span>Created: ${formatDate(job.createdAt)}</span>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="loadJobs()">Back to Jobs</button>
+          </div>
+
+          ${result.checks && result.checks.length > 0 ? `
+            <div class="checks-container">
+              <h4>Test Checks</h4>
+              ${result.checks.map(check => `
+                <div class="check-item">
+                  <div class="check-status ${check.passed ? 'passed' : 'failed'}">
+                    ${check.passed ? '✓' : '✗'}
+                  </div>
+                  <div class="check-content">
+                    <div class="check-name">${check.name}</div>
+                    <div class="check-message">${check.message || (check.passed ? 'Check passed' : 'Check failed')}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${result.screenshots && result.screenshots.length > 0 ? `
+            <div class="screenshot-viewer">
+              <h4>Screenshots</h4>
+              <div class="screenshot-grid">
+                ${result.screenshots.map(ss => `
+                  <div class="screenshot-item">
+                    <img src="${ss.path}" alt="${ss.name}" class="screenshot-image" onerror="this.style.display='none'">
+                    <div class="screenshot-name">${ss.name}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${result.performance ? `
+            <div class="performance-metrics">
+              <h4>Performance Metrics</h4>
+              <div class="metric-grid">
+                <div class="metric-item">
+                  <div class="metric-name">Load Time</div>
+                  <div class="metric-number">${result.performance.loadTime || 0}ms</div>
+                </div>
+                <div class="metric-item">
+                  <div class="metric-name">DOM Content Loaded</div>
+                  <div class="metric-number">${result.performance.domContentLoaded || 0}ms</div>
+                </div>
+                <div class="metric-item">
+                  <div class="metric-name">First Paint</div>
+                  <div class="metric-number">${result.performance.firstPaint || 0}ms</div>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          ${!result.checks && !result.screenshots && !result.performance ? `
+            <div class="empty-state">
+              <p>No detailed results available for this job</p>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      reportDetail.innerHTML = reportHTML;
+    }
+
+    // Cancel Job
+    async function cancelJob(jobId) {
+      try {
+        await fetchAPI(`/jobs/${jobId}/cancel`, { method: 'DELETE' });
+        loadJobs();
+      } catch (error) {
+        console.error('Error cancelling job:', error);
+        alert('Failed to cancel job');
+      }
+    }
+
+    // Retry Job
+    async function retryJob(jobId) {
+      try {
+        await fetchAPI(`/jobs/${jobId}/retry`, { method: 'POST' });
+        loadJobs();
+      } catch (error) {
+        console.error('Error retrying job:', error);
+        alert('Failed to retry job');
+      }
+    }
+
+    // Utility functions
+    function formatDate(dateString) {
+      if (!dateString) return 'N/A';
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function formatDuration(startDate, endDate) {
+      if (!startDate) return 'N/A';
+
+      const start = new Date(startDate);
+      const end = endDate ? new Date(endDate) : new Date();
+      const duration = end - start;
+
+      if (duration < 1000) return `${duration}ms`;
+      if (duration < 60000) return `${(duration / 1000).toFixed(1)}s`;
+      return `${Math.floor(duration / 60000)}m ${Math.floor((duration % 60000) / 1000)}s`;
+    }
+
+    function showRefreshIndicator() {
+      document.getElementById('refresh-indicator').classList.add('show');
+    }
+
+    function hideRefreshIndicator() {
+      document.getElementById('refresh-indicator').classList.remove('show');
+    }
+
+    // Initialize dashboard
+    function init() {
+      loadOverview();
+
+      // Set up auto-refresh every 30 seconds
+      refreshInterval = setInterval(() => {
+        const activePage = document.querySelector('.page.active').id;
+        switch(activePage) {
+          case 'overview-page':
+            loadOverview();
+            break;
+          case 'sites-page':
+            loadSites();
+            break;
+          case 'jobs-page':
+            loadJobs();
+            break;
+          case 'report-page':
+            if (currentJobId) {
+              viewJobReport(currentJobId);
+            }
+            break;
+        }
+      }, 30000);
+    }
+
+    // Start the dashboard
+    init();
+  </script>
+</body>
+</html>
