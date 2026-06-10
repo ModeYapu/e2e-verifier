@@ -7,6 +7,7 @@ import { LLMClient } from './llm-client';
 import { ScriptEngine } from './script-engine';
 import { SelfReflectionGate } from './self-reflection';
 import { ContextCompactor, DEFAULT_COMPACTOR_CONFIG } from './context-compactor';
+import { ContextManager } from '../intelligence/context-manager';
 import {
   AgentConfig,
   AgentStep,
@@ -106,6 +107,7 @@ export class AgentLoop {
   private scriptEngine: ScriptEngine;
   private reflectionGate: SelfReflectionGate;
   private contextCompactor: ContextCompactor;
+  private contextManager: ContextManager;
   private state: AgentLoopState;
   private startTime: number = 0;
 
@@ -115,7 +117,8 @@ export class AgentLoop {
     this.scriptEngine = new ScriptEngine();
     this.reflectionGate = new SelfReflectionGate(this.scriptEngine);
     this.contextCompactor = new ContextCompactor(DEFAULT_COMPACTOR_CONFIG);
-    
+    this.contextManager = new ContextManager();
+
     this.state = {
       currentStep: 0,
       totalTokens: 0,
@@ -463,11 +466,16 @@ export class AgentLoop {
    */
   private compactContext(steps: AgentStep[]): void {
     const compactedSteps = this.contextCompactor.compactSteps(steps);
-    
+
+    // Use ContextManager for more advanced compression
+    const compressed = this.contextManager.compressContext(this.state.history);
+
     // Create a summary message
     const summaryMessage = [
       `[CONTEXT COMPACTED - Step ${this.state.currentStep}]`,
       compactedSteps,
+      '',
+      `Compression ratio: ${compressed.compressionRatio}`,
       '',
       'Continuing from most recent state...'
     ].join('\n');
@@ -478,7 +486,7 @@ export class AgentLoop {
       { role: 'user', content: summaryMessage }
     ];
 
-    console.log('Context compacted successfully');
+    console.log('Context compacted successfully with ContextManager');
   }
 
   /**

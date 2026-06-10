@@ -29,6 +29,9 @@ import { ITestExecutor, ExecutorFactory } from './executor';
 import { ITestEvaluator, EvaluatorFactory } from './evaluator';
 import { RepairLoop, RepairLoopFactory } from './repair-loop';
 import { EventEmitter } from 'events';
+import { ExperienceStore, ExperienceStoreFactory } from './experience-store';
+import { ExperienceGuidedPlanner, ExperienceGuidedPlannerFactory } from './experience-planner';
+import { SelfEvalEngine, SelfEvalEngineFactory } from './self-eval';
 
 // =====================================================
 // ORCHESTRATOR CONFIGURATION
@@ -48,15 +51,41 @@ export interface IntelligentOrchestratorConfig {
   executor?: any;
   /** Evaluator configuration */
   evaluator?: {
+    evaluatorType?: 'llm' | 'rule' | 'multi-strategy';
     useLLM?: boolean;
     llmConfig?: any;
     ruleConfig?: any;
+    multiStrategyConfig?: any;
   };
   /** Repair loop configuration */
   repairLoop?: {
     enable?: boolean;
     maxRounds?: number;
     config?: any;
+  };
+  /** Experience store configuration */
+  experienceStore?: {
+    enable?: boolean;
+    storageDir?: string;
+    experienceFile?: string;
+    maxExperiences?: number;
+    similarityThreshold?: number;
+    persistEnabled?: boolean;
+  };
+  /** Experience-guided planning configuration */
+  experienceGuidedPlanning?: {
+    enable?: boolean;
+    minSimilarity?: number;
+    maxSimilarExperiences?: number;
+    enableAdaptation?: boolean;
+    strategy?: string;
+  };
+  /** Self-evaluation configuration */
+  selfEval?: {
+    enable?: boolean;
+    minSamplesForEvaluation?: number;
+    confidenceThreshold?: number;
+    enableWeightUpdates?: boolean;
   };
   /** Default options */
   defaultOptions?: IntelligenceOptions;
@@ -74,6 +103,9 @@ export class IntelligentOrchestrator extends EventEmitter {
   private executor: ITestExecutor;
   private evaluator: ITestEvaluator;
   private repairLoop?: RepairLoop;
+  private experienceStore?: ExperienceStore;
+  private experienceGuidedPlanner?: ExperienceGuidedPlanner;
+  private selfEvalEngine?: SelfEvalEngine;
   private config: IntelligentOrchestratorConfig;
 
   constructor(config: IntelligentOrchestratorConfig = {}) {
@@ -91,10 +123,14 @@ export class IntelligentOrchestrator extends EventEmitter {
     this.executor = ExecutorFactory.createPlaywright(config.executor);
 
     // Create evaluator
+    const evaluatorType = config.evaluator?.evaluatorType ||
+      (config.evaluator?.useLLM ? 'llm' : 'rule');
+
     this.evaluator = EvaluatorFactory.create(
-      config.evaluator?.useLLM || false,
+      evaluatorType,
       config.evaluator?.llmConfig,
-      config.evaluator?.ruleConfig
+      config.evaluator?.ruleConfig,
+      config.evaluator?.multiStrategyConfig
     );
 
     // Create repair loop if enabled
@@ -104,6 +140,44 @@ export class IntelligentOrchestrator extends EventEmitter {
         this.evaluator,
         config.repairLoop?.config
       );
+    }
+
+    // Create experience store if enabled
+    if (config.experienceStore?.enable !== false) {
+      this.experienceStore = ExperienceStoreFactory.create({
+        storageDir: config.experienceStore?.storageDir,
+        experienceFile: config.experienceStore?.experienceFile,
+        maxExperiences: config.experienceStore?.maxExperiences,
+        similarityThreshold: config.experienceStore?.similarityThreshold,
+        persistEnabled: config.experienceStore?.persistEnabled,
+      });
+
+      // Create experience-guided planner if enabled
+      if (config.experienceGuidedPlanning?.enable !== false) {
+        this.experienceGuidedPlanner = ExperienceGuidedPlannerFactory.create({
+          experienceStore: this.experienceStore,
+          basePlanner: this.planner,
+          minSimilarity: config.experienceGuidedPlanning?.minSimilarity,
+          maxSimilarExperiences: config.experienceGuidedPlanning?.maxSimilarExperiences,
+          enableAdaptation: config.experienceGuidedPlanning?.enableAdaptation,
+          strategy: config.experienceGuidedPlanning?.strategy,
+        });
+
+        // Use experience-guided planner as main planner
+        this.planner = this.experienceGuidedPlanner;
+      }
+
+      // Create self-evaluation engine if enabled
+      if (config.selfEval?.enable !== false) {
+        this.selfEvalEngine = SelfEvalEngineFactory.create({
+          experienceStore: this.experienceStore,
+          minSamplesForEvaluation: config.selfEval?.minSamplesForEvaluation,
+          confidenceThreshold: config.selfEval?.confidenceThreshold,
+          enableWeightUpdates: config.selfEval?.enableWeightUpdates,
+        });
+      }
+
+      console.log('✓ Experience store enabled with ' + this.experienceStore.getCount() + ' experiences');
     }
   }
 
@@ -152,6 +226,37 @@ export class IntelligentOrchestrator extends EventEmitter {
 
         this.emitEvent('evaluate_complete', { evaluation, result });
         console.log(`  Evaluation: ${evaluation.verdict} (confidence: ${evaluation.confidence.toFixed(2)})`);
+
+        // Record experience if experience store is enabled
+        if (this.experienceStore && this.experienceGuidedPlanner) {
+          try {
+            const repairAttempts = repairs.length > 0 ? repairs[0].attemptNumber : 0;
+            const reward = this.experienceStore.calculateReward(result, repairAttempts);
+
+            await this.experienceGuidedPlanner.recordExperience(
+              target,
+              plan,
+              result,
+              reward
+            );
+
+            // Run self-evaluation if enabled
+            if (this.selfEvalEngine) {
+              const signature = this.experienceStore.generateSignature(target);
+              const similarExperiences = this.experienceStore.querySimilar(signature, 1);
+
+              if (similarExperiences.length > 0) {
+                const strategyEval = await this.selfEvalEngine.evaluateStrategy(
+                  similarExperiences[0].experience,
+                  result
+                );
+                console.log(`  Strategy evaluation: ${strategyEval.effective ? '✓ Effective' : '✗ Ineffective'} (${strategyEval.confidence.toFixed(2)})`);
+              }
+            }
+          } catch (error) {
+            console.error('  Failed to record experience:', error);
+          }
+        }
 
         // Phase 3: Repair if needed
         if (mergedOptions.enableRepair && this.repairLoop && evaluation.needsRepair) {
@@ -368,6 +473,50 @@ export class IntelligentOrchestrator extends EventEmitter {
     }
     return [];
   }
+
+  /**
+   * Get experience statistics if experience store is enabled
+   */
+  getExperienceStatistics(siteName?: any): any | null {
+    if (this.experienceStore) {
+      return this.experienceStore.getStats(siteName);
+    }
+    return null;
+  }
+
+  /**
+   * Get experience store if enabled
+   */
+  getExperienceStore(): ExperienceStore | null {
+    return this.experienceStore || null;
+  }
+
+  /**
+   * Get self-evaluation engine if enabled
+   */
+  getSelfEvalEngine(): SelfEvalEngine | null {
+    return this.selfEvalEngine || null;
+  }
+
+  /**
+   * Query experiences from the experience store
+   */
+  queryExperiences(query?: any): any[] {
+    if (this.experienceStore) {
+      return this.experienceStore.query(query || {});
+    }
+    return [];
+  }
+
+  /**
+   * Get improvement suggestions from self-evaluation engine
+   */
+  async getImprovementSuggestions(siteName?: string): Promise<any | null> {
+    if (this.selfEvalEngine) {
+      return await this.selfEvalEngine.getSuggestions(siteName);
+    }
+    return null;
+  }
 }
 
 // =====================================================
@@ -409,6 +558,7 @@ export class OrchestratorFactory {
         maxRetries: parseInt(process.env.MAX_RETRIES || '3'),
       },
       evaluator: {
+        evaluatorType: (process.env.EVALUATOR_TYPE as 'llm' | 'rule' | 'multi-strategy') || 'rule',
         useLLM: process.env.USE_LLM_EVALUATOR === 'true',
         llmConfig: process.env.USE_LLM_EVALUATOR === 'true' ? {
           llm: {
@@ -416,6 +566,18 @@ export class OrchestratorFactory {
             apiBase: process.env.LLM_API_BASE || 'https://api.openai.com/v1',
             model: process.env.LLM_MODEL || 'gpt-4',
           },
+        } : undefined,
+        multiStrategyConfig: (process.env.EVALUATOR_TYPE as 'llm' | 'rule' | 'multi-strategy') === 'multi-strategy' ? {
+          enabledStrategies: process.env.ENABLED_STRATEGIES?.split(',') || [
+            'logic-check',
+            'visual-consistency',
+            'cross-reference',
+            'edge-case',
+            'evidence-scoring',
+          ],
+          confidenceThreshold: parseFloat(process.env.CONFIDENCE_THRESHOLD || '0.7'),
+          outputDir: process.env.ARTIFACTS_DIR || './output',
+          verbose: process.env.VERBOSE === 'true',
         } : undefined,
       },
       repairLoop: {
@@ -437,6 +599,27 @@ export class OrchestratorFactory {
         maxRepairRounds: parseInt(process.env.MAX_REPAIR_ROUNDS || '3'),
         outputDir: process.env.ARTIFACTS_DIR || './artifacts',
         verbose: process.env.VERBOSE === 'true',
+      },
+      experienceStore: {
+        enable: process.env.ENABLE_EXPERIENCE_STORE !== 'false',
+        storageDir: process.env.EXPERIENCE_STORAGE_DIR || './data',
+        experienceFile: process.env.EXPERIENCE_FILE || './data/experiences.json',
+        maxExperiences: parseInt(process.env.MAX_EXPERIENCES || '10000'),
+        similarityThreshold: parseFloat(process.env.SIMILARITY_THRESHOLD || '0.7'),
+        persistEnabled: process.env.EXPERIENCE_PERSIST !== 'false',
+      },
+      experienceGuidedPlanning: {
+        enable: process.env.ENABLE_EXPERIENCE_GUIDED_PLANNING !== 'false',
+        minSimilarity: parseFloat(process.env.MIN_SIMILARITY || '0.7'),
+        maxSimilarExperiences: parseInt(process.env.MAX_SIMILAR_EXPERIENCES || '5'),
+        enableAdaptation: process.env.ENABLE_ADAPTATION !== 'false',
+        strategy: process.env.EXPERIENCE_STRATEGY || 'experience-guided',
+      },
+      selfEval: {
+        enable: process.env.ENABLE_SELF_EVAL !== 'false',
+        minSamplesForEvaluation: parseInt(process.env.MIN_SAMPLES_FOR_EVAL || '5'),
+        confidenceThreshold: parseFloat(process.env.CONFIDENCE_THRESHOLD || '0.7'),
+        enableWeightUpdates: process.env.ENABLE_WEIGHT_UPDATES !== 'false',
       },
     });
   }

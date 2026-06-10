@@ -7,9 +7,10 @@
  * - Root cause analysis if failed
  * - Suggestions for fixing issues
  *
- * Two implementations:
+ * Three implementations:
  * - LLMEvaluator: Uses LLM with multi-modal analysis of screenshots + logs
  * - RuleEvaluator: Uses rules and heuristics (no LLM needed)
+ * - MultiStrategyEvaluator: Uses multiple verification strategies for comprehensive analysis
  */
 
 import {
@@ -23,6 +24,7 @@ import {
   AssertionResult
 } from './types';
 import { LLMClient } from '../agent/llm-client';
+import { MultiStrategyEvaluator, MultiStrategyEvaluatorConfig } from './multi-strategy-evaluator';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -763,22 +765,30 @@ export class RuleEvaluator implements ITestEvaluator {
 export class EvaluatorFactory {
   /**
    * Create an evaluator based on configuration
-   * @param useLLM - Whether to use LLM-based evaluator
-   * @param llmConfig - Configuration for LLM evaluator (if useLLM is true)
-   * @param ruleConfig - Configuration for rule evaluator (if useLLM is false)
+   * @param evaluatorType - 'llm', 'rule', or 'multi-strategy'
+   * @param llmConfig - Configuration for LLM evaluator (if evaluatorType is 'llm')
+   * @param ruleConfig - Configuration for rule evaluator (if evaluatorType is 'rule')
+   * @param multiStrategyConfig - Configuration for multi-strategy evaluator (if evaluatorType is 'multi-strategy')
    */
   static create(
-    useLLM: boolean,
+    evaluatorType: 'llm' | 'rule' | 'multi-strategy' = 'rule',
     llmConfig?: LLMEvaluatorConfig,
-    ruleConfig?: RuleEvaluatorConfig
+    ruleConfig?: RuleEvaluatorConfig,
+    multiStrategyConfig?: MultiStrategyEvaluatorConfig
   ): ITestEvaluator {
-    if (useLLM) {
-      if (!llmConfig) {
-        throw new Error('LLM config is required when useLLM is true');
-      }
-      return new LLMEvaluator(llmConfig);
-    } else {
-      return new RuleEvaluator(ruleConfig);
+    switch (evaluatorType) {
+      case 'llm':
+        if (!llmConfig) {
+          throw new Error('LLM config is required when evaluatorType is "llm"');
+        }
+        return new LLMEvaluator(llmConfig);
+
+      case 'multi-strategy':
+        return new MultiStrategyEvaluator(multiStrategyConfig);
+
+      case 'rule':
+      default:
+        return new RuleEvaluator(ruleConfig);
     }
   }
 
@@ -786,9 +796,9 @@ export class EvaluatorFactory {
    * Create an evaluator from environment variables
    */
   static fromEnv(): ITestEvaluator {
-    const useLLM = process.env.USE_LLM_EVALUATOR === 'true';
+    const evaluatorType = process.env.EVALUATOR_TYPE as 'llm' | 'rule' | 'multi-strategy' || 'rule';
 
-    if (useLLM) {
+    if (evaluatorType === 'llm') {
       const llmConfig: LLMEvaluatorConfig = {
         llm: {
           apiKey: process.env.LLM_API_KEY || '',
@@ -802,6 +812,19 @@ export class EvaluatorFactory {
         maxSuggestions: parseInt(process.env.MAX_SUGGESTIONS || '5'),
       };
       return new LLMEvaluator(llmConfig);
+    } else if (evaluatorType === 'multi-strategy') {
+      return new MultiStrategyEvaluator({
+        enabledStrategies: process.env.ENABLED_STRATEGIES?.split(',') || [
+          'logic-check',
+          'visual-consistency',
+          'cross-reference',
+          'edge-case',
+          'evidence-scoring',
+        ],
+        confidenceThreshold: parseFloat(process.env.CONFIDENCE_THRESHOLD || '0.7'),
+        outputDir: process.env.ARTIFACTS_DIR || './output',
+        verbose: process.env.VERBOSE === 'true',
+      });
     } else {
       return new RuleEvaluator({
         confidenceThreshold: parseFloat(process.env.CONFIDENCE_THRESHOLD || '0.7'),

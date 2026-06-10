@@ -34,6 +34,9 @@ import { QualityProfileCalculator } from '../storage/quality-profile';
 import { ProviderFactory, AIProvider } from '../ai/provider';
 import { getSelfHealingLocator } from '../ai/self-healing';
 import { getSmartTestGenerator } from '../ai/test-generator';
+import experienceRoutes from '../api/routes/experience-routes';
+import { MultiAgentOrchestrator, MultiAgentConfig, OrchestrationMode } from '../intelligence/multi-test-orchestrator';
+import { TestRoleType } from '../intelligence/test-roles';
 
 /**
  * Verification job for async operations
@@ -114,6 +117,7 @@ interface IntelligentVerifyRequest {
   options?: {
     useLLMPlanner?: boolean;
     useLLMEvaluator?: boolean;
+    evaluatorType?: 'llm' | 'rule' | 'multi-strategy';
     enableRepair?: boolean;
     maxRepairRounds?: number;
     outputDir?: string;
@@ -121,6 +125,8 @@ interface IntelligentVerifyRequest {
     model?: string;
     maxScenarios?: number;
     maxSteps?: number;
+    enabledStrategies?: string[];
+    confidenceThreshold?: number;
   };
   async?: boolean;
 }
@@ -141,6 +147,7 @@ export class VerifyServer {
   private resultStore: ResultStore;
   private trendAnalyzer: TrendAnalyzer;
   private qualityCalculator: QualityProfileCalculator;
+  private intelligentOrchestrator: IntelligentOrchestrator;
   private port: number;
   private host: string;
   private apiToken: string | null;
@@ -175,6 +182,12 @@ export class VerifyServer {
     this.resultStore = new ResultStore();
     this.trendAnalyzer = new TrendAnalyzer(this.resultStore);
     this.qualityCalculator = new QualityProfileCalculator(this.resultStore);
+
+    // Initialize intelligent orchestrator with experience store
+    this.intelligentOrchestrator = OrchestratorFactory.fromEnv();
+
+    // Make orchestrator available to routes
+    this.app.set('orchestrator', this.intelligentOrchestrator);
 
     this.setupMiddleware();
     // Initialize webhook integration
@@ -286,6 +299,7 @@ export class VerifyServer {
 
     // Intelligent verification
     this.router.post('/verify/intelligent', this.postIntelligentVerify.bind(this));
+    this.router.post('/verify/multi-agent', this.postMultiAgentVerify.bind(this));
 
     // Legacy job management (for backward compatibility)
     this.router.get('/jobs/:jobId', this.getLegacyJob.bind(this));
@@ -344,6 +358,9 @@ export class VerifyServer {
     this.router.get('/ai/providers', this.listAIProviders.bind(this));
     this.router.get('/ai/locator-stats', this.getLocatorStats.bind(this));
     this.router.delete('/ai/locator-cache', this.clearLocatorCache.bind(this));
+
+    // Experience store endpoints
+    this.app.use('/api', experienceRoutes);
 
     this.app.use('/api', this.router);
   }
@@ -797,6 +814,7 @@ export class VerifyServer {
           maxRetries: 3,
         },
         evaluator: {
+          evaluatorType: body.options?.evaluatorType || (body.options?.useLLMEvaluator ? 'llm' : 'rule'),
           useLLM: body.options?.useLLMEvaluator || false,
           llmConfig: body.options?.useLLMEvaluator ? {
             llm: {
@@ -806,6 +824,18 @@ export class VerifyServer {
               temperature: 0.3,
               maxTokens: 3000,
             },
+          } : undefined,
+          multiStrategyConfig: body.options?.evaluatorType === 'multi-strategy' ? {
+            enabledStrategies: body.options?.enabledStrategies || [
+              'logic-check',
+              'visual-consistency',
+              'cross-reference',
+              'edge-case',
+              'evidence-scoring',
+            ],
+            confidenceThreshold: body.options?.confidenceThreshold || 0.7,
+            outputDir: body.options?.outputDir || './output',
+            verbose: body.options?.verbose || false,
           } : undefined,
         },
         repairLoop: {
@@ -869,6 +899,94 @@ export class VerifyServer {
       });
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Intelligent verification error:`, error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * POST /api/verify/multi-agent - Multi-agent verification (synchronous)
+   */
+  private async postMultiAgentVerify(req: Request, res: Response): Promise<void> {
+    try {
+      const body = req.body;
+
+      if (!body.target || !body.target.url) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required field: target.url'
+        });
+        return;
+      }
+
+      if (!body.mode || !body.roles) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required fields: mode, roles'
+        });
+        return;
+      }
+
+      console.log(`[${new Date().toISOString()}] Starting multi-agent verification for: ${body.target.url}`);
+      console.log(`Mode: ${body.mode}, Roles: ${body.roles.join(', ')}`);
+
+      // Validate orchestration mode
+      const validModes: OrchestrationMode[] = ['sequential', 'parallel', 'hierarchical', 'debate'];
+      if (!validModes.includes(body.mode)) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid mode: ${body.mode}. Must be one of: ${validModes.join(', ')}`
+        });
+        return;
+      }
+
+      // Validate roles
+      const validRoles: TestRoleType[] = ['explorer', 'tester', 'reviewer', 'repairer'];
+      const invalidRoles = body.roles.filter((role: string) => !validRoles.includes(role as TestRoleType));
+      if (invalidRoles.length > 0) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid roles: ${invalidRoles.join(', ')}. Must be one of: ${validRoles.join(', ')}`
+        });
+        return;
+      }
+
+      // Create multi-agent configuration
+      const config: MultiAgentConfig = {
+        mode: body.mode,
+        roles: body.roles,
+        maxParallelAgents: body.maxParallelAgents || 3,
+        debateRounds: body.debateRounds || 2,
+        confidenceThreshold: body.confidenceThreshold || 0.7,
+        timeout: body.timeout || 120000,
+      };
+
+      // Create multi-agent orchestrator
+      const orchestrator = new MultiAgentOrchestrator(config);
+
+      // Create test target
+      const target = {
+        url: body.target.url,
+        name: body.target.name || 'Multi-Agent Test',
+        description: body.target.description || 'Multi-agent verification test',
+        tags: body.target.tags || [],
+        priority: body.target.priority || 'normal',
+      };
+
+      // Run multi-agent verification
+      const result = await orchestrator.run(target);
+
+      console.log(`[${new Date().toISOString()}] Multi-agent verification completed: ${result.finalVerdict}`);
+      console.log(`Confidence: ${result.confidence}, Duration: ${result.duration}ms`);
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      console.error(`[${new Date().toISOString()}] Multi-agent verification error:`, error);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)

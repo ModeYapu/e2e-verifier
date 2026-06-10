@@ -11,6 +11,7 @@
 
 import { TestTarget, TestPlan, PlannedScenario, PlannedStep, PlannedAssertion, StepAction, AssertionType } from './types';
 import { LLMClient } from '../agent/llm-client';
+import { ContextManager } from './context-manager';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -61,6 +62,7 @@ export interface LLMPlannerConfig {
 export class LLMPlanner implements ITestPlanner {
   private llm: LLMClient;
   private config: Required<LLMPlannerConfig>;
+  private contextManager: ContextManager;
 
   constructor(config: LLMPlannerConfig) {
     this.llm = new LLMClient({
@@ -77,18 +79,26 @@ export class LLMPlanner implements ITestPlanner {
       maxSteps: config.maxSteps || 10,
       comprehensiveAssertions: config.comprehensiveAssertions !== false,
     };
+    this.contextManager = new ContextManager();
   }
 
   async plan(target: TestTarget): Promise<TestPlan> {
     const prompt = this.buildPlanningPrompt(target);
 
     try {
+      // Use ContextManager to optimize prompt if it's too large
+      const optimizedPrompt = this.optimizePromptWithContext(prompt, target);
+
       const response = await this.llm.chatCompletion(
         this.getSystemPrompt(),
-        [{ role: 'user', content: prompt }]
+        [{ role: 'user', content: optimizedPrompt }]
       );
 
       const plan = this.parseLLMResponse(response.raw, target);
+
+      // Write successful plan to scratchpad for future reference
+      this.contextManager.writeBack(`plan-${target.name || 'unknown'}`, plan);
+
       return plan;
     } catch (error) {
       throw new Error(`LLM planning failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -260,6 +270,27 @@ export class LLMPlanner implements ITestPlanner {
   private estimateDuration(steps: PlannedStep[]): number {
     // Base estimation: 2s per step + navigation overhead
     return steps.length * 2000 + 5000;
+  }
+
+  /**
+   * Optimize prompt using ContextManager
+   */
+  private optimizePromptWithContext(prompt: string, target: TestTarget): string {
+    // Check if we have relevant context from scratchpad
+    const existingPlans = this.contextManager.readFromScratchpad(`plan-${target.name || 'similar'}`);
+
+    if (existingPlans.length > 0) {
+      // Use previous successful plans as reference
+      const mostRecent = existingPlans[existingPlans.length - 1];
+      return [
+        prompt,
+        '',
+        'REFERENCE: You may use this previous successful plan as inspiration (but adapt as needed):',
+        JSON.stringify(mostRecent.value, null, 2).substring(0, 1000),
+      ].join('\n');
+    }
+
+    return prompt;
   }
 }
 

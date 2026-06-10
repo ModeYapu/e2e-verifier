@@ -47,6 +47,11 @@ export interface TestPlan {
     plannerType: 'llm' | 'config';
     generatedAt: string;
     confidence?: number; // 0-1, how confident the planner is
+    experienceGuided?: boolean; // Whether experience-guided planning was used
+    signature?: string; // Problem signature for the plan
+    similarExperiences?: number; // Number of similar experiences found
+    originalExperienceId?: string; // ID of original experience if adapted
+    adaptations?: string[]; // List of adaptations made to the plan
   };
 }
 
