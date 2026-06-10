@@ -4,6 +4,7 @@
  */
 
 import { LLMClient } from '../agent/llm-client';
+import { LLMRegistry } from '../llm/llm-registry';
 import { AgentConfig } from '../agent/types';
 import {
   PageAnalysis,
@@ -74,7 +75,7 @@ export class TestGenerator {
   private logger: Logger;
 
   constructor(config: AgentConfig) {
-    this.llm = new LLMClient(config);
+    this.llm = LLMRegistry.getInstance().createClient(config);
     this.logger = new Logger({ prefix: 'TestGenerator' });
   }
 

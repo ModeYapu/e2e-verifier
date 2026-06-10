@@ -4,14 +4,7 @@
  */
 
 import { AgentConfig, LLMResponse } from './types';
-
-/**
- * Message format for chat completions
- */
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+import type { ChatMessage } from '../types/common';
 
 /**
  * OpenAI-compatible API response structure

@@ -24,6 +24,7 @@ import {
   AssertionResult
 } from './types';
 import { LLMClient } from '../agent/llm-client';
+import { LLMRegistry } from '../llm/llm-registry';
 import { MultiStrategyEvaluator, MultiStrategyEvaluatorConfig } from './multi-strategy-evaluator';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -77,7 +78,7 @@ export class LLMEvaluator implements ITestEvaluator {
   private config: Required<LLMEvaluatorConfig>;
 
   constructor(config: LLMEvaluatorConfig) {
-    this.llm = new LLMClient({
+    this.llm = LLMRegistry.getInstance().createClient({
       model: config.llm.model,
       apiKey: config.llm.apiKey,
       apiBase: config.llm.apiBase,
@@ -761,6 +762,7 @@ export class RuleEvaluator implements ITestEvaluator {
 
 /**
  * Factory for creating test evaluators
+ * @deprecated Use `new LLMEvaluator(config)`, `new RuleEvaluator(config)`, or `new MultiStrategyEvaluator(config)` directly.
  */
 export class EvaluatorFactory {
   /**
@@ -769,6 +771,7 @@ export class EvaluatorFactory {
    * @param llmConfig - Configuration for LLM evaluator (if evaluatorType is 'llm')
    * @param ruleConfig - Configuration for rule evaluator (if evaluatorType is 'rule')
    * @param multiStrategyConfig - Configuration for multi-strategy evaluator (if evaluatorType is 'multi-strategy')
+   * @deprecated Use `new LLMEvaluator(config)`, `new RuleEvaluator(config)`, or `new MultiStrategyEvaluator(config)` directly.
    */
   static create(
     evaluatorType: 'llm' | 'rule' | 'multi-strategy' = 'rule',
@@ -794,6 +797,7 @@ export class EvaluatorFactory {
 
   /**
    * Create an evaluator from environment variables
+   * @deprecated Use `parseIntelligenceConfigFromEnv()` and pass config to evaluator constructors directly.
    */
   static fromEnv(): ITestEvaluator {
     const evaluatorType = process.env.EVALUATOR_TYPE as 'llm' | 'rule' | 'multi-strategy' || 'rule';

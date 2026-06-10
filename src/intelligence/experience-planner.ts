@@ -383,11 +383,13 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
 
 /**
  * Factory for creating experience-guided planners
+ * @deprecated Use `new ExperienceGuidedPlanner(config)` directly.
  */
 export class ExperienceGuidedPlannerFactory {
   /**
    * Create an experience-guided planner
    * @param config - Planner configuration
+   * @deprecated Use `new ExperienceGuidedPlanner(config)` directly.
    */
   static create(config: ExperienceGuidedPlannerConfig): ExperienceGuidedPlanner {
     return new ExperienceGuidedPlanner(config);
@@ -395,6 +397,7 @@ export class ExperienceGuidedPlannerFactory {
 
   /**
    * Create from environment variables
+   * @deprecated Use `parseIntelligenceConfigFromEnv()` and pass config to `new ExperienceGuidedPlanner(config)` directly.
    */
   static fromEnv(basePlanner: ITestPlanner): ExperienceGuidedPlanner {
     const experienceStore = new ExperienceStore();

@@ -11,6 +11,7 @@
 
 import { TestTarget, TestPlan, PlannedScenario, PlannedStep, PlannedAssertion, StepAction, AssertionType } from './types';
 import { LLMClient } from '../agent/llm-client';
+import { LLMRegistry } from '../llm/llm-registry';
 import { ContextManager } from './context-manager';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -65,7 +66,7 @@ export class LLMPlanner implements ITestPlanner {
   private contextManager: ContextManager;
 
   constructor(config: LLMPlannerConfig) {
-    this.llm = new LLMClient({
+    this.llm = LLMRegistry.getInstance().createClient({
       model: config.llm.model,
       apiKey: config.llm.apiKey,
       apiBase: config.llm.apiBase,
@@ -668,6 +669,7 @@ export class ConfigPlanner implements ITestPlanner {
 
 /**
  * Factory for creating test planners
+ * @deprecated Use `new LLMPlanner(config)` or `new ConfigPlanner(config)` directly.
  */
 export class PlannerFactory {
   /**
@@ -675,6 +677,7 @@ export class PlannerFactory {
    * @param useLLM - Whether to use LLM-based planner
    * @param llmConfig - Configuration for LLM planner (if useLLM is true)
    * @param configConfig - Configuration for config planner (if useLLM is false)
+   * @deprecated Use `new LLMPlanner(config)` or `new ConfigPlanner(config)` directly.
    */
   static create(
     useLLM: boolean,
@@ -693,6 +696,7 @@ export class PlannerFactory {
 
   /**
    * Create a planner from environment variables
+   * @deprecated Use `parseIntelligenceConfigFromEnv()` and pass config to planner constructors directly.
    */
   static fromEnv(): ITestPlanner {
     const useLLM = process.env.USE_LLM_PLANNER === 'true';

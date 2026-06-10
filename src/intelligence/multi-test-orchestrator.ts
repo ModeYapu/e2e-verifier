@@ -13,6 +13,7 @@ import { AgentMessage, MessageBroker, MessageFactory, AgentWorkspace } from './a
 import { TestTarget, TestPlan, ScenarioResult, PlannedScenario } from './types';
 import { ITestExecutor, ExecutorFactory } from './executor';
 import { LLMClient } from '../agent/llm-client';
+import { LLMRegistry } from '../llm/llm-registry';
 import { LLMPlanner } from './planner';
 
 /**
@@ -78,7 +79,7 @@ export class MultiAgentOrchestrator {
     this.config = config;
     this.workspace = new AgentWorkspace();
     this.messageBroker = new MessageBroker(this.workspace);
-    this.llmClient = new LLMClient({
+    this.llmClient = LLMRegistry.getInstance().createClient({
       model: process.env.LLM_MODEL || 'gpt-4',
       apiKey: process.env.LLM_API_KEY || '',
       apiBase: process.env.LLM_API_BASE || 'https://api.openai.com/v1',

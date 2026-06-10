@@ -11,6 +11,7 @@
 
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { LLMClient } from '../agent/llm-client';
+import { LLMRegistry } from '../llm/llm-registry';
 import { Logger } from '../utils/logger';
 import { type TestPlan, type Scenario, type TestStep, type EnvironmentConfig } from './test-plan-parser';
 import * as fs from 'fs';
@@ -54,7 +55,7 @@ export class AgentPlanner {
   constructor(config: PlannerConfig) {
     this.config = config;
     if (config.llm) {
-      this.llm = new LLMClient({
+      this.llm = LLMRegistry.getInstance().createClient({
         apiKey: config.llm.apiKey,
         apiBase: config.llm.apiBase,
         model: config.llm.model,

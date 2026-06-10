@@ -59,7 +59,7 @@ export function classifyError(error: Error | { code?: string; status?: number; m
   ) {
     return {
       isRetryable: false,
-      category: 'business',
+      category: 'page_bug',
       reason: `Business logic failure: ${error.message}`
     };
   }
@@ -72,7 +72,7 @@ export function classifyError(error: Error | { code?: string; status?: number; m
   ) {
     return {
       isRetryable: false,
-      category: 'test',
+      category: 'script_issue',
       reason: `Test configuration error: ${error.message}`
     };
   }
@@ -168,9 +168,9 @@ export function statusFromError(error: Error): ExecutionStatus {
     case 'infrastructure':
     case 'environment':
       return 'infra_failed';
-    case 'business':
+    case 'page_bug':
       return 'assertion_failed';
-    case 'test':
+    case 'script_issue':
       return 'failed';
     default:
       return 'failed';

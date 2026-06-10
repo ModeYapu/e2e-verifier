@@ -1,3 +1,24 @@
+// =====================================================
+// RE-EXPORTS FROM COMMON.TS (Unified Types)
+// =====================================================
+import type {
+  FailureCategory,
+  Evidence,
+  Artifact,
+  ArtifactType,
+  AssertionType,
+  ChatMessage
+} from './common';
+
+export type {
+  FailureCategory,
+  Evidence,
+  Artifact,
+  ArtifactType,
+  AssertionType,
+  ChatMessage
+};
+
 export interface AuthConfig {
   loginUrl?: string;          // URL to navigate to for login (defaults to url)
   usernameSelector?: string;  // CSS selector for username input
@@ -223,8 +244,6 @@ export interface Step {
   metadata?: Record<string, unknown>;
 }
 
-export type AssertionType = 'element-exists' | 'text-contains' | 'attribute-equals' | 'url-matches' | 'javascript' | 'performance' | 'accessibility';
-
 export interface Assertion {
   type: AssertionType;
   expected: unknown;
@@ -233,16 +252,6 @@ export interface Assertion {
   message?: string;
   selector?: string;
   attribute?: string;
-}
-
-export type ArtifactType = 'screenshot' | 'trace' | 'console-log' | 'network-log' | 'dom-snapshot' | 'video' | 'performance-metrics';
-
-export interface Artifact {
-  type: ArtifactType;
-  path: string;
-  timestamp: string;
-  size?: number;
-  metadata?: Record<string, unknown>;
 }
 
 // =====================================================// UNIFIED RESULTS AND REPORTS (P0 - Task 2)
@@ -273,16 +282,6 @@ export interface RootCause {
   category: FailureCategory;
   message: string;
   evidence?: Evidence;
-}
-
-export type FailureCategory = 'environment' | 'infrastructure' | 'business' | 'test' | 'unknown';
-
-export interface Evidence {
-  console?: ConsoleError[];
-  network?: FailedRequest[];
-  trace?: string;
-  screenshot?: string;
-  domSnapshot?: string;
 }
 
 export interface FailureClassification {

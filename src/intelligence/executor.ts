@@ -625,11 +625,13 @@ export class PlaywrightExecutor implements ITestExecutor {
 
 /**
  * Factory for creating test executors
+ * @deprecated Use `new PlaywrightExecutor(config)` directly.
  */
 export class ExecutorFactory {
   /**
    * Create a Playwright executor
    * @param config - Executor configuration
+   * @deprecated Use `new PlaywrightExecutor(config)` directly.
    */
   static createPlaywright(config?: PlaywrightExecutorConfig): ITestExecutor {
     return new PlaywrightExecutor(config);
@@ -637,6 +639,7 @@ export class ExecutorFactory {
 
   /**
    * Create an executor from environment variables
+   * @deprecated Use `parseIntelligenceConfigFromEnv()` and pass config to `new PlaywrightExecutor(config)` directly.
    */
   static fromEnv(): ITestExecutor {
     return new PlaywrightExecutor({

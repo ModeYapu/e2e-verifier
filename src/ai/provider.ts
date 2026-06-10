@@ -2,10 +2,9 @@
  * AI Provider interface and implementations for pluggable AI capabilities
  */
 
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+// Import unified types from common
+import type { ChatMessage } from '../types/common';
+import { LLMRegistry } from '../llm/llm-registry';
 
 export interface AIProvider {
   /**
@@ -52,9 +51,7 @@ export class GLMProvider implements AIProvider {
   }
 
   async chat(messages: ChatMessage[], options: any = {}): Promise<string> {
-    const { LLMClient } = await import('../agent/llm-client');
-
-    const client = new LLMClient({
+    const client = LLMRegistry.getInstance().createClient({
       apiKey: this.apiKey,
       apiBase: this.apiBase,
       model: this.model,

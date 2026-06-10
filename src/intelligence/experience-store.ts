@@ -608,11 +608,13 @@ export class ExperienceStore {
 
 /**
  * Factory for creating experience stores
+ * @deprecated Use `new ExperienceStore(config)` directly.
  */
 export class ExperienceStoreFactory {
   /**
    * Create an experience store
    * @param config - Store configuration
+   * @deprecated Use `new ExperienceStore(config)` directly.
    */
   static create(config?: ExperienceStoreConfig): ExperienceStore {
     return new ExperienceStore(config);
@@ -620,6 +622,7 @@ export class ExperienceStoreFactory {
 
   /**
    * Create from environment variables
+   * @deprecated Use `parseIntelligenceConfigFromEnv()` and pass config to `new ExperienceStore(config)` directly.
    */
   static fromEnv(): ExperienceStore {
     return new ExperienceStore({

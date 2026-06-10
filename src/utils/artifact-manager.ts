@@ -66,7 +66,8 @@ export class ArtifactManager {
       'network-log': this.directories.network,
       'dom-snapshot': this.directories.dom,
       video: this.directories.videos,
-      'performance-metrics': this.directories.root
+      'performance-metrics': this.directories.root,
+      har: this.directories.network
     };
     return dirMap[type] || this.directories.root;
   }

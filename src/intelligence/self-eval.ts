@@ -658,11 +658,13 @@ export class SelfEvalEngine {
 
 /**
  * Factory for creating self-evaluation engines
+ * @deprecated Use `new SelfEvalEngine(config)` directly.
  */
 export class SelfEvalEngineFactory {
   /**
    * Create a self-evaluation engine
    * @param config - Engine configuration
+   * @deprecated Use `new SelfEvalEngine(config)` directly.
    */
   static create(config: SelfEvalEngineConfig): SelfEvalEngine {
     return new SelfEvalEngine(config);
@@ -670,6 +672,7 @@ export class SelfEvalEngineFactory {
 
   /**
    * Create from environment variables
+   * @deprecated Use `parseIntelligenceConfigFromEnv()` and pass config to `new SelfEvalEngine(config)` directly.
    */
   static fromEnv(experienceStore: ExperienceStore): SelfEvalEngine {
     return new SelfEvalEngine({

@@ -8,6 +8,24 @@
  * - Repair Loop: Fixes and retries failed tests
  */
 
+// Import unified types from common
+import type {
+  FailureCategory,
+  Evidence,
+  Artifact,
+  ArtifactType,
+  AssertionType
+} from '../types/common';
+
+// Re-export these types for backward compatibility
+export type {
+  FailureCategory,
+  Evidence,
+  Artifact,
+  ArtifactType,
+  AssertionType
+};
+
 // =====================================================
 // TEST TARGET - What to test
 // =====================================================
@@ -145,25 +163,6 @@ export interface PlannedAssertion {
   critical?: boolean;
 }
 
-/**
- * Assertion types
- */
-export type AssertionType =
-  | 'element-exists'        // Element exists in DOM
-  | 'element-visible'       // Element is visible
-  | 'element-count'         // Count of elements matches
-  | 'text-contains'         // Element text contains string
-  | 'text-equals'           // Element text equals string
-  | 'attribute-equals'      // Element attribute equals value
-  | 'attribute-contains'    // Element attribute contains value
-  | 'url-matches'           // Current URL matches pattern
-  | 'title-equals'          // Page title equals
-  | 'javascript'            // JavaScript expression evaluates to true
-  | 'performance'           // Performance metrics within threshold
-  | 'accessibility'         // No accessibility issues
-  | 'console'               // No console errors
-  | 'network';              // Network requests succeeded
-
 // =====================================================
 // EXECUTION RESULTS - What the executor produces
 // =====================================================
@@ -244,35 +243,6 @@ export interface ConsoleLog {
   url?: string;
 }
 
-/**
- * Artifact collected during execution
- */
-export interface Artifact {
-  /** Artifact type */
-  type: ArtifactType;
-  /** File path or URL */
-  path: string;
-  /** Timestamp */
-  timestamp: string;
-  /** Size in bytes (optional) */
-  size?: number;
-  /** Additional metadata */
-  metadata?: Record<string, any>;
-}
-
-/**
- * Artifact types
- */
-export type ArtifactType =
-  | 'screenshot'
-  | 'trace'
-  | 'console-log'
-  | 'network-log'
-  | 'dom-snapshot'
-  | 'video'
-  | 'performance-metrics'
-  | 'har';
-
 // =====================================================
 // EVALUATION RESULTS - What the evaluator produces
 // =====================================================
@@ -304,18 +274,6 @@ export interface EvaluationResult {
     modelUsed?: string;
   };
 }
-
-/**
- * Failure categorization
- */
-export type FailureCategory =
-  | 'environment'    // Environment issue (network, browser, etc.)
-  | 'page_bug'      // Bug in the page being tested
-  | 'script_issue'  // Issue with test script (selector, timing, etc.)
-  | 'data_issue'    // Test data issue
-  | 'flaky'         // Flaky test (intermittent)
-  | 'infrastructure' // Infrastructure issue (service down, etc.)
-  | 'unknown';      // Cannot determine
 
 /**
  * Issue found during evaluation
@@ -351,24 +309,6 @@ export interface Suggestion {
   fix?: any;
   /** Confidence in this suggestion (0-1) */
   confidence?: number;
-}
-
-/**
- * Evidence for issues
- */
-export interface Evidence {
-  /** Screenshot showing the issue */
-  screenshot?: string;
-  /** Console logs relevant to issue */
-  consoleLogs?: ConsoleLog[];
-  /** Network requests relevant to issue */
-  networkRequests?: any[];
-  /** DOM snapshot */
-  domSnapshot?: string;
-  /** Performance metrics */
-  performanceMetrics?: any;
-  /** Additional evidence */
-  additional?: Record<string, any>;
 }
 
 // =====================================================

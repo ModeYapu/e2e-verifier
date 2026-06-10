@@ -2,6 +2,12 @@
  * Agent-specific types for the Webwright-inspired Agent Loop module
  */
 
+// Import unified types from common
+import type { ChatMessage } from '../types/common';
+
+// Re-export for backward compatibility
+export type { ChatMessage };
+
 /**
  * Configuration for the LLM-powered agent
  */
@@ -171,14 +177,6 @@ export interface AgentLoopState {
   lastOutput?: string;
   /** Conversation history with LLM */
   history: ChatMessage[];
-}
-
-/**
- * Chat message format
- */
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
 }
 
 /**

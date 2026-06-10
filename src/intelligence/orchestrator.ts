@@ -99,68 +99,79 @@ export interface IntelligentOrchestratorConfig {
  * Main orchestrator for intelligent testing
  */
 export class IntelligentOrchestrator extends EventEmitter {
-  private planner: ITestPlanner;
-  private executor: ITestExecutor;
-  private evaluator: ITestEvaluator;
+  private planner!: ITestPlanner;
+  private executor!: ITestExecutor;
+  private evaluator!: ITestEvaluator;
   private repairLoop?: RepairLoop;
   private experienceStore?: ExperienceStore;
   private experienceGuidedPlanner?: ExperienceGuidedPlanner;
   private selfEvalEngine?: SelfEvalEngine;
   private config: IntelligentOrchestratorConfig;
+  private initialized: boolean = false;
 
   constructor(config: IntelligentOrchestratorConfig = {}) {
     super();
     this.config = config;
+  }
+
+  /**
+   * Initialize the orchestrator and create all components
+   * This method is called automatically on first run() if not called explicitly
+   */
+  async init(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
 
     // Create planner
     this.planner = PlannerFactory.create(
-      config.planner?.useLLM || false,
-      config.planner?.llmConfig,
-      config.planner?.configConfig
+      this.config.planner?.useLLM || false,
+      this.config.planner?.llmConfig,
+      this.config.planner?.configConfig
     );
 
     // Create executor
-    this.executor = ExecutorFactory.createPlaywright(config.executor);
+    this.executor = ExecutorFactory.createPlaywright(this.config.executor);
 
     // Create evaluator
-    const evaluatorType = config.evaluator?.evaluatorType ||
-      (config.evaluator?.useLLM ? 'llm' : 'rule');
+    const evaluatorType = this.config.evaluator?.evaluatorType ||
+      (this.config.evaluator?.useLLM ? 'llm' : 'rule');
 
     this.evaluator = EvaluatorFactory.create(
       evaluatorType,
-      config.evaluator?.llmConfig,
-      config.evaluator?.ruleConfig,
-      config.evaluator?.multiStrategyConfig
+      this.config.evaluator?.llmConfig,
+      this.config.evaluator?.ruleConfig,
+      this.config.evaluator?.multiStrategyConfig
     );
 
     // Create repair loop if enabled
-    if (config.repairLoop?.enable !== false) {
+    if (this.config.repairLoop?.enable !== false) {
       this.repairLoop = RepairLoopFactory.create(
         this.executor,
         this.evaluator,
-        config.repairLoop?.config
+        this.config.repairLoop?.config
       );
     }
 
     // Create experience store if enabled
-    if (config.experienceStore?.enable !== false) {
+    if (this.config.experienceStore?.enable !== false) {
       this.experienceStore = ExperienceStoreFactory.create({
-        storageDir: config.experienceStore?.storageDir,
-        experienceFile: config.experienceStore?.experienceFile,
-        maxExperiences: config.experienceStore?.maxExperiences,
-        similarityThreshold: config.experienceStore?.similarityThreshold,
-        persistEnabled: config.experienceStore?.persistEnabled,
+        storageDir: this.config.experienceStore?.storageDir,
+        experienceFile: this.config.experienceStore?.experienceFile,
+        maxExperiences: this.config.experienceStore?.maxExperiences,
+        similarityThreshold: this.config.experienceStore?.similarityThreshold,
+        persistEnabled: this.config.experienceStore?.persistEnabled,
       });
 
       // Create experience-guided planner if enabled
-      if (config.experienceGuidedPlanning?.enable !== false) {
+      if (this.config.experienceGuidedPlanning?.enable !== false) {
         this.experienceGuidedPlanner = ExperienceGuidedPlannerFactory.create({
           experienceStore: this.experienceStore,
           basePlanner: this.planner,
-          minSimilarity: config.experienceGuidedPlanning?.minSimilarity,
-          maxSimilarExperiences: config.experienceGuidedPlanning?.maxSimilarExperiences,
-          enableAdaptation: config.experienceGuidedPlanning?.enableAdaptation,
-          strategy: config.experienceGuidedPlanning?.strategy,
+          minSimilarity: this.config.experienceGuidedPlanning?.minSimilarity,
+          maxSimilarExperiences: this.config.experienceGuidedPlanning?.maxSimilarExperiences,
+          enableAdaptation: this.config.experienceGuidedPlanning?.enableAdaptation,
+          strategy: this.config.experienceGuidedPlanning?.strategy,
         });
 
         // Use experience-guided planner as main planner
@@ -168,17 +179,19 @@ export class IntelligentOrchestrator extends EventEmitter {
       }
 
       // Create self-evaluation engine if enabled
-      if (config.selfEval?.enable !== false) {
+      if (this.config.selfEval?.enable !== false) {
         this.selfEvalEngine = SelfEvalEngineFactory.create({
           experienceStore: this.experienceStore,
-          minSamplesForEvaluation: config.selfEval?.minSamplesForEvaluation,
-          confidenceThreshold: config.selfEval?.confidenceThreshold,
-          enableWeightUpdates: config.selfEval?.enableWeightUpdates,
+          minSamplesForEvaluation: this.config.selfEval?.minSamplesForEvaluation,
+          confidenceThreshold: this.config.selfEval?.confidenceThreshold,
+          enableWeightUpdates: this.config.selfEval?.enableWeightUpdates,
         });
       }
 
       console.log('✓ Experience store enabled with ' + this.experienceStore.getCount() + ' experiences');
     }
+
+    this.initialized = true;
   }
 
   /**
@@ -188,6 +201,11 @@ export class IntelligentOrchestrator extends EventEmitter {
    * @returns Promise<IntelligenceRunResult> - Complete run result
    */
   async run(target: TestTarget, options: IntelligenceOptions = {}): Promise<IntelligenceRunResult> {
+    // Auto-initialize if not already initialized
+    if (!this.initialized) {
+      await this.init();
+    }
+
     const startTime = Date.now();
     const mergedOptions = { ...this.config.defaultOptions, ...options };
 
@@ -525,11 +543,13 @@ export class IntelligentOrchestrator extends EventEmitter {
 
 /**
  * Factory for creating intelligent orchestrators
+ * @deprecated Use `new IntelligentOrchestrator(config)` directly.
  */
 export class OrchestratorFactory {
   /**
    * Create an intelligent orchestrator
    * @param config - Orchestrator configuration
+   * @deprecated Use `new IntelligentOrchestrator(config)` directly.
    */
   static create(config?: IntelligentOrchestratorConfig): IntelligentOrchestrator {
     return new IntelligentOrchestrator(config);
@@ -537,6 +557,7 @@ export class OrchestratorFactory {
 
   /**
    * Create an orchestrator from environment variables
+   * @deprecated Use `parseIntelligenceConfigFromEnv()` and `new IntelligentOrchestrator(config)` directly.
    */
   static fromEnv(): IntelligentOrchestrator {
     return new IntelligentOrchestrator({
@@ -626,6 +647,7 @@ export class OrchestratorFactory {
 
   /**
    * Create a simple orchestrator with default settings
+   * @deprecated Use `new IntelligentOrchestrator(config)` directly.
    */
   static createSimple(): IntelligentOrchestrator {
     return new IntelligentOrchestrator({

@@ -25,6 +25,7 @@ import {
 import { ITestExecutor } from './executor';
 import { ITestEvaluator } from './evaluator';
 import { LLMClient } from '../agent/llm-client';
+import { LLMRegistry } from '../llm/llm-registry';
 
 // =====================================================
 // REPAIR LOOP CONFIGURATION
@@ -83,7 +84,7 @@ export class RepairLoop {
 
     // Initialize LLM if needed
     if (this.config.useLLMRepair && this.config.llm) {
-      this.llm = new LLMClient({
+      this.llm = LLMRegistry.getInstance().createClient({
         model: this.config.llm.model,
         apiKey: this.config.llm.apiKey,
         apiBase: this.config.llm.apiBase,
@@ -523,6 +524,7 @@ export class RepairLoop {
 
 /**
  * Factory for creating repair loops
+ * @deprecated Use `new RepairLoop(executor, evaluator, config)` directly.
  */
 export class RepairLoopFactory {
   /**
@@ -530,6 +532,7 @@ export class RepairLoopFactory {
    * @param executor - Test executor to use for re-execution
    * @param evaluator - Test evaluator to use for re-evaluation
    * @param config - Repair loop configuration
+   * @deprecated Use `new RepairLoop(executor, evaluator, config)` directly.
    */
   static create(
     executor: ITestExecutor,
@@ -543,6 +546,7 @@ export class RepairLoopFactory {
    * Create a repair loop from environment variables
    * @param executor - Test executor to use for re-execution
    * @param evaluator - Test evaluator to use for re-evaluation
+   * @deprecated Use `parseIntelligenceConfigFromEnv()` and pass config to `new RepairLoop(executor, evaluator, config)` directly.
    */
   static fromEnv(executor: ITestExecutor, evaluator: ITestEvaluator): RepairLoop {
     return new RepairLoop(executor, evaluator, {
