@@ -22,7 +22,18 @@ import { MatrixRunner } from '../runner/matrix-runner';
 import { WebhookConfigManager } from '../config/webhook-config';
 import { WebhookDelivery } from '../integrations/webhook';
 import { apiKeyAuth, getAllKeys, createKey, deleteKey } from '../middleware/api-auth';
+import { projectAuth } from '../middleware/project-auth';
+import { ProjectStore } from '../projects/project-store';
+import { Project, CreateProjectRequest, UpdateProjectRequest } from '../projects/types';
 import { DeviceMatrixConfig, MatrixResult } from '../types';
+import { IntelligentOrchestrator, OrchestratorFactory } from '../intelligence/orchestrator';
+import { TestTarget, IntelligenceRunResult } from '../intelligence/types';
+import { ResultStore } from '../storage/result-store';
+import { TrendAnalyzer } from '../storage/trend-analyzer';
+import { QualityProfileCalculator } from '../storage/quality-profile';
+import { ProviderFactory, AIProvider } from '../ai/provider';
+import { getSelfHealingLocator } from '../ai/self-healing';
+import { getSmartTestGenerator } from '../ai/test-generator';
 
 /**
  * Verification job for async operations
@@ -92,6 +103,28 @@ interface MatrixVerifyRequest {
   };
 }
 
+interface IntelligentVerifyRequest {
+  target: {
+    url: string;
+    name?: string;
+    description?: string;
+    tags?: string[];
+    priority?: 'high' | 'normal' | 'low';
+  };
+  options?: {
+    useLLMPlanner?: boolean;
+    useLLMEvaluator?: boolean;
+    enableRepair?: boolean;
+    maxRepairRounds?: number;
+    outputDir?: string;
+    verbose?: boolean;
+    model?: string;
+    maxScenarios?: number;
+    maxSteps?: number;
+  };
+  async?: boolean;
+}
+
 /**
  * HTTP API Server class
  */
@@ -105,6 +138,9 @@ export class VerifyServer {
   private scheduler: Scheduler;
   private webhookConfig: WebhookConfigManager;
   private webhookDelivery: WebhookDelivery;
+  private resultStore: ResultStore;
+  private trendAnalyzer: TrendAnalyzer;
+  private qualityCalculator: QualityProfileCalculator;
   private port: number;
   private host: string;
   private apiToken: string | null;
@@ -134,6 +170,11 @@ export class VerifyServer {
       maxConcurrency: 2,
       headless: this.headless
     });
+
+    // Initialize result analysis components
+    this.resultStore = new ResultStore();
+    this.trendAnalyzer = new TrendAnalyzer(this.resultStore);
+    this.qualityCalculator = new QualityProfileCalculator(this.resultStore);
 
     this.setupMiddleware();
     // Initialize webhook integration
@@ -180,10 +221,16 @@ export class VerifyServer {
       }
 
       if (!this.shouldRequireApiAuth()) {
-        next();
+        // Apply project auth even for local host when API keys are configured
+        if (ProjectStore.getAll().length > 0) {
+          projectAuth(req, res, next);
+        } else {
+          next();
+        }
         return;
       }
 
+      // For remote access or when API token is set, require both token and project auth
       const token = this.extractBearerToken(req);
       if (!token || token !== this.apiToken) {
         res.status(401).json({
@@ -193,7 +240,8 @@ export class VerifyServer {
         return;
       }
 
-      next();
+      // Apply project authentication
+      projectAuth(req, res, next);
     });
   }
 
@@ -236,6 +284,9 @@ export class VerifyServer {
     // Matrix verification
     this.router.post('/verify/matrix', this.postMatrixVerify.bind(this));
 
+    // Intelligent verification
+    this.router.post('/verify/intelligent', this.postIntelligentVerify.bind(this));
+
     // Legacy job management (for backward compatibility)
     this.router.get('/jobs/:jobId', this.getLegacyJob.bind(this));
     this.router.delete('/jobs/:jobId', this.deleteLegacyJob.bind(this));
@@ -261,11 +312,38 @@ export class VerifyServer {
     this.router.post('/admin/keys', this.createApiKey.bind(this));
     this.router.delete('/admin/keys/:id', this.deleteApiKey.bind(this));
 
+    // Project management endpoints
+    this.router.post('/admin/projects', this.createProject.bind(this));
+    this.router.get('/admin/projects', this.listProjects.bind(this));
+    this.router.get('/admin/projects/:id', this.getProject.bind(this));
+    this.router.put('/admin/projects/:id', this.updateProject.bind(this));
+    this.router.delete('/admin/projects/:id', this.deleteProject.bind(this));
+    this.router.post('/admin/projects/:id/sites', this.addSiteToProject.bind(this));
+    this.router.delete('/admin/projects/:id/sites/:siteName', this.removeSiteFromProject.bind(this));
+    this.router.post('/admin/projects/:id/members', this.addMemberToProject.bind(this));
+    this.router.delete('/admin/projects/:id/members/:userId', this.removeMemberFromProject.bind(this));
+    this.router.patch('/admin/projects/:id/members/:userId', this.updateMemberRole.bind(this));
+
     // Dashboard API endpoints
     this.router.get('/dashboard/overview', this.getDashboardOverview.bind(this));
     this.router.get('/dashboard/sites', this.getDashboardSites.bind(this));
     this.router.get('/dashboard/trends', this.getDashboardTrends.bind(this));
     this.router.get('/reports/:id', this.getReportDetail.bind(this));
+
+    // Trend analysis endpoints
+    this.router.get('/trends/:site', this.getSiteTrends.bind(this));
+    this.router.get('/trends/:site/regressions', this.getSiteRegressions.bind(this));
+
+    // Quality profile endpoints
+    this.router.get('/profiles', this.getAllProfiles.bind(this));
+    this.router.get('/profiles/:site', this.getSiteProfile.bind(this));
+
+    // AI endpoints
+    this.router.post('/ai/generate-tests', this.generateTests.bind(this));
+    this.router.get('/ai/suggest-fixes/:jobId', this.suggestFixes.bind(this));
+    this.router.get('/ai/providers', this.listAIProviders.bind(this));
+    this.router.get('/ai/locator-stats', this.getLocatorStats.bind(this));
+    this.router.delete('/ai/locator-cache', this.clearLocatorCache.bind(this));
 
     this.app.use('/api', this.router);
   }
@@ -330,6 +408,13 @@ export class VerifyServer {
 
       const verifier = new Verifier(config);
       const result = await verifier.verify();
+
+      // Save result automatically
+      try {
+        this.resultStore.save(result);
+      } catch (saveError) {
+        console.error(`[${new Date().toISOString()}] Error saving result:`, saveError);
+      }
 
       this.stats.totalVerifications++;
 
@@ -536,6 +621,19 @@ export class VerifyServer {
 
       const result = await orchestrator.verifyAll(tempConfigPath);
 
+      // Save individual test results from orchestrated verification
+      try {
+        if (result.sites && Array.isArray(result.sites)) {
+          for (const siteResult of result.sites) {
+            if (siteResult.fastResult) {
+              this.resultStore.save(siteResult.fastResult);
+            }
+          }
+        }
+      } catch (saveError) {
+        console.error(`[${new Date().toISOString()}] Error saving orchestrated results:`, saveError);
+      }
+
       // Clean up temp file
       try {
         require('fs').unlinkSync(tempConfigPath);
@@ -605,6 +703,15 @@ export class VerifyServer {
       const runner = new MatrixRunner();
       const result = await runner.run(body.site, matrixConfig);
 
+      // Save individual test results from matrix
+      try {
+        for (const combo of result.combinations) {
+          this.resultStore.save(combo.result);
+        }
+      } catch (saveError) {
+        console.error(`[${new Date().toISOString()}] Error saving matrix results:`, saveError);
+      }
+
       console.log(`[${new Date().toISOString()}] Matrix verification completed: ${result.summary.passed}/${result.summary.total} passed`);
 
       res.json({
@@ -613,6 +720,155 @@ export class VerifyServer {
       });
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Matrix verification error:`, error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * POST /api/verify/intelligent - Intelligent verification (synchronous or asynchronous)
+   */
+  private async postIntelligentVerify(req: Request, res: Response): Promise<void> {
+    try {
+      const body = req.body as IntelligentVerifyRequest;
+
+      if (!body.target || !body.target.url) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required field: target.url'
+        });
+        return;
+      }
+
+      console.log(`[${new Date().toISOString()}] Starting intelligent verification for: ${body.target.name || body.target.url}`);
+
+      // If async mode requested, create a job
+      if (body.async) {
+        const jobConfig: JobConfig = {
+          intelligentVerify: {
+            target: body.target,
+            options: body.options
+          }
+        };
+
+        const job = this.jobQueue.createJob('intelligent', jobConfig, 'normal');
+        this.jobQueue.enqueue(job);
+        console.log(`[${new Date().toISOString()}] Intelligent verification job created: ${job.id}`);
+
+        res.json({
+          success: true,
+          jobId: job.id,
+          status: job.status,
+          message: 'Intelligent verification job queued'
+        });
+        return;
+      }
+
+      // Synchronous execution
+      const target: TestTarget = {
+        url: body.target.url,
+        name: body.target.name,
+        description: body.target.description,
+        tags: body.target.tags,
+        priority: body.target.priority || 'normal',
+      };
+
+      // Create intelligent orchestrator
+      const orchestrator = OrchestratorFactory.create({
+        planner: {
+          useLLM: body.options?.useLLMPlanner || false,
+          llmConfig: body.options?.useLLMPlanner ? {
+            llm: {
+              apiKey: process.env.LLM_API_KEY || '',
+              apiBase: process.env.LLM_API_BASE || 'https://api.openai.com/v1',
+              model: body.options?.model || process.env.LLM_MODEL || 'deepseek-v4-flash',
+              temperature: 0.7,
+              maxTokens: 4000,
+            },
+          } : undefined,
+        },
+        executor: {
+          outputDir: body.options?.outputDir || './artifacts',
+          enableScreenshots: true,
+          enableConsoleLogs: true,
+          defaultTimeout: 30000,
+          maxRetries: 3,
+        },
+        evaluator: {
+          useLLM: body.options?.useLLMEvaluator || false,
+          llmConfig: body.options?.useLLMEvaluator ? {
+            llm: {
+              apiKey: process.env.LLM_API_KEY || '',
+              apiBase: process.env.LLM_API_BASE || 'https://api.openai.com/v1',
+              model: body.options?.model || process.env.LLM_MODEL || 'deepseek-v4-flash',
+              temperature: 0.3,
+              maxTokens: 3000,
+            },
+          } : undefined,
+        },
+        repairLoop: {
+          enable: body.options?.enableRepair !== false,
+          maxRounds: body.options?.maxRepairRounds || 3,
+        },
+      });
+
+      // Run intelligent verification
+      const result: IntelligenceRunResult = await orchestrator.run(target, {
+        useLLMPlanner: body.options?.useLLMPlanner || false,
+        useLLMEvaluator: body.options?.useLLMEvaluator || false,
+        enableRepair: body.options?.enableRepair !== false,
+        maxRepairRounds: body.options?.maxRepairRounds || 3,
+        outputDir: body.options?.outputDir || './artifacts',
+        verbose: body.options?.verbose || false,
+      });
+
+      // Save scenario results from intelligent verification
+      try {
+        if (result.scenarioResults && Array.isArray(result.scenarioResults)) {
+          for (const scenarioResult of result.scenarioResults) {
+            // Create a TestResult from ScenarioResult for storage
+            const testResult: TestResult = {
+              siteName: body.target.name || body.target.url,
+              url: scenarioResult.url,
+              timestamp: scenarioResult.timestamp,
+              passed: scenarioResult.passed,
+              duration: scenarioResult.duration,
+              checks: [
+                {
+                  name: 'Intelligent Verification',
+                  type: 'intelligent',
+                  passed: scenarioResult.passed,
+                  message: scenarioResult.passed ? 'Scenario passed' : `Scenario failed: ${scenarioResult.error || 'Unknown error'}`,
+                  details: {
+                    scenarioName: scenarioResult.scenarioName,
+                    stepResults: scenarioResult.stepResults,
+                    assertionResults: scenarioResult.assertionResults
+                  }
+                }
+              ],
+              screenshots: [],
+              errors: scenarioResult.error ? [scenarioResult.error] : []
+            };
+            this.resultStore.save(testResult);
+          }
+        }
+      } catch (saveError) {
+        console.error(`[${new Date().toISOString()}] Error saving intelligent verification results:`, saveError);
+      }
+
+      // Clean up orchestrator
+      await orchestrator.close();
+
+      console.log(`[${new Date().toISOString()}] Intelligent verification completed: ${result.summary.passedScenarios}/${result.summary.totalScenarios} passed`);
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      console.error(`[${new Date().toISOString()}] Intelligent verification error:`, error);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -1145,7 +1401,16 @@ export class VerifyServer {
    */
   private async getDashboardOverview(req: Request, res: Response): Promise<void> {
     try {
-      const allJobs = this.jobStore.list({});
+      let allJobs = this.jobStore.list({});
+
+      // Filter by project sites if project context exists
+      if (req.project && req.project.sites.length > 0) {
+        allJobs = allJobs.filter(job => {
+          const siteName = job.config?.name || '';
+          return req.project!.sites.includes(siteName);
+        });
+      }
+
       const recentJobs = allJobs.slice(0, 10);
 
       const totalJobs = allJobs.length;
@@ -1188,7 +1453,15 @@ export class VerifyServer {
    */
   private async getDashboardSites(req: Request, res: Response): Promise<void> {
     try {
-      const allJobs = this.jobStore.list({});
+      let allJobs = this.jobStore.list({});
+
+      // Filter by project sites if project context exists
+      if (req.project && req.project.sites.length > 0) {
+        allJobs = allJobs.filter(job => {
+          const siteName = job.config?.name || '';
+          return req.project!.sites.includes(siteName);
+        });
+      }
 
       // Group jobs by site and collect statistics
       const siteMap = new Map<string, any>();
@@ -1433,9 +1706,628 @@ export class VerifyServer {
       res.status(500).json({ error: e.message });
     }
   }
+
+  // ─── Project Management Handlers ─────────────────────────────────
+
+  /**
+   * POST /api/admin/projects - Create a new project
+   */
+  private async createProject(req: Request, res: Response): Promise<void> {
+    try {
+      const body = req.body as CreateProjectRequest;
+
+      if (!body.name) {
+        res.status(400).json({ error: 'name is required' });
+        return;
+      }
+
+      const project = ProjectStore.create(body);
+
+      res.status(201).json({
+        success: true,
+        data: project
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || 'Internal server error' });
+    }
+  }
+
+  /**
+   * GET /api/admin/projects - List all projects
+   */
+  private async listProjects(req: Request, res: Response): Promise<void> {
+    try {
+      const projects = ProjectStore.getAll();
+
+      res.json({
+        success: true,
+        data: projects,
+        count: projects.length
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * Extract string parameter from request params
+   */
+  private extractParam(params: any, key: string): string {
+    const value = params[key];
+    return Array.isArray(value) ? value[0] : value;
+  }
+
+  /**
+   * GET /api/admin/projects/:id - Get project by ID
+   */
+  private async getProject(req: Request, res: Response): Promise<void> {
+    try {
+      const id = this.extractParam(req.params, 'id');
+
+      const project = ProjectStore.getById(id);
+
+      if (!project) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: project
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * PUT /api/admin/projects/:id - Update project
+   */
+  private async updateProject(req: Request, res: Response): Promise<void> {
+    try {
+      const id = this.extractParam(req.params, 'id');
+      const body = req.body as UpdateProjectRequest;
+
+      const project = ProjectStore.update(id, body);
+
+      if (!project) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: project
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * DELETE /api/admin/projects/:id - Delete project
+   */
+  private async deleteProject(req: Request, res: Response): Promise<void> {
+    try {
+      const id = this.extractParam(req.params, 'id');
+
+      const deleted = ProjectStore.delete(id);
+
+      if (!deleted) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: 'Project deleted successfully'
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * POST /api/admin/projects/:id/sites - Add site to project
+   */
+  private async addSiteToProject(req: Request, res: Response): Promise<void> {
+    try {
+      const id = this.extractParam(req.params, 'id');
+      const { siteName } = req.body;
+
+      if (!siteName) {
+        res.status(400).json({ error: 'siteName is required' });
+        return;
+      }
+
+      const project = ProjectStore.addSite(id, siteName);
+
+      if (!project) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: project
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * DELETE /api/admin/projects/:id/sites/:siteName - Remove site from project
+   */
+  private async removeSiteFromProject(req: Request, res: Response): Promise<void> {
+    try {
+      const id = this.extractParam(req.params, 'id');
+      const siteName = this.extractParam(req.params, 'siteName');
+
+      const project = ProjectStore.removeSite(id, siteName);
+
+      if (!project) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: project
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * POST /api/admin/projects/:id/members - Add member to project
+   */
+  private async addMemberToProject(req: Request, res: Response): Promise<void> {
+    try {
+      const id = this.extractParam(req.params, 'id');
+      const { userId, role } = req.body;
+
+      if (!userId || !role) {
+        res.status(400).json({ error: 'userId and role are required' });
+        return;
+      }
+
+      if (!['owner', 'developer', 'viewer'].includes(role)) {
+        res.status(400).json({ error: 'role must be owner, developer, or viewer' });
+        return;
+      }
+
+      const project = ProjectStore.addMember(id, userId, role);
+
+      if (!project) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: project
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * DELETE /api/admin/projects/:id/members/:userId - Remove member from project
+   */
+  private async removeMemberFromProject(req: Request, res: Response): Promise<void> {
+    try {
+      const id = this.extractParam(req.params, 'id');
+      const userId = this.extractParam(req.params, 'userId');
+
+      const project = ProjectStore.removeMember(id, userId);
+
+      if (!project) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: project
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * PATCH /api/admin/projects/:id/members/:userId - Update member role
+   */
+  private async updateMemberRole(req: Request, res: Response): Promise<void> {
+    try {
+      const id = this.extractParam(req.params, 'id');
+      const userId = this.extractParam(req.params, 'userId');
+      const { role } = req.body;
+
+      if (!role) {
+        res.status(400).json({ error: 'role is required' });
+        return;
+      }
+
+      if (!['owner', 'developer', 'viewer'].includes(role)) {
+        res.status(400).json({ error: 'role must be owner, developer, or viewer' });
+        return;
+      }
+
+      const project = ProjectStore.updateMemberRole(id, userId, role);
+
+      if (!project) {
+        res.status(404).json({ error: 'Project or member not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: project
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ─── AI Endpoint Handlers ─────────────────────────────────────────
+
+  /**
+   * POST /api/ai/generate-tests - Generate tests from URL using AI
+   */
+  private async generateTests(req: Request, res: Response): Promise<void> {
+    try {
+      const { url, options } = req.body;
+
+      if (!url) {
+        res.status(400).json({ error: 'url is required' });
+        return;
+      }
+
+      const generator = getSmartTestGenerator();
+      const generatedConfig = await generator.generateFromUrl(url, options);
+
+      // Optionally save to file
+      if (options?.saveToFile) {
+        const filePath = generator.saveToFile(generatedConfig);
+        generatedConfig.metadata['savedToFile'] = filePath;
+      }
+
+      res.json({
+        success: true,
+        data: generatedConfig
+      });
+    } catch (e: any) {
+      console.error('Error generating tests:', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * GET /api/ai/suggest-fixes/:jobId - Get AI suggestions for failed job
+   */
+  private async suggestFixes(req: Request, res: Response): Promise<void> {
+    try {
+      const jobId = this.extractParam(req.params, 'jobId');
+
+      const job = this.jobStore.get(jobId);
+      if (!job) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+
+      if (job.status !== 'failed') {
+        res.status(400).json({ error: 'Job must be failed to get fix suggestions' });
+        return;
+      }
+
+      const error = job.error || 'Unknown error';
+      const siteName = job.config?.name || 'unknown';
+      const siteUrl = job.config?.url || 'unknown';
+
+      // Use AI to analyze the failure and suggest fixes
+      const provider = ProviderFactory.createFromEnv();
+      const prompt = `
+I need help fixing a failed test. Here are the details:
+
+Site Name: ${siteName}
+Site URL: ${siteUrl}
+Job ID: ${jobId}
+Error: ${error}
+Job Type: ${job.type}
+Configuration: ${JSON.stringify(job.config, null, 2)}
+
+Please analyze this failure and suggest:
+1. What might have caused this failure
+2. How to fix it
+3. Specific steps to implement the fix
+4. How to prevent this in the future
+
+Respond in JSON format:
+{
+  "rootCause": "analysis of what went wrong",
+  "fixSuggestions": ["step 1", "step 2", "step 3"],
+  "preventionMeasures": ["measure 1", "measure 2"],
+  "confidence": 85
+}
+`;
+
+      const response = await provider.chat([
+        { role: 'user', content: prompt }
+      ]);
+
+      const suggestions = JSON.parse(response);
+
+      res.json({
+        success: true,
+        data: {
+          jobId,
+          error,
+          suggestions,
+          generatedAt: new Date().toISOString()
+        }
+      });
+    } catch (e: any) {
+      console.error('Error suggesting fixes:', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * GET /api/ai/providers - List configured AI providers
+   */
+  private async listAIProviders(req: Request, res: Response): Promise<void> {
+    try {
+      const providers: Array<{
+        name: string;
+        type: string;
+        available: boolean;
+        model?: string;
+      }> = [];
+
+      // Check OpenAI
+      if (process.env.OPENAI_API_KEY) {
+        providers.push({
+          name: 'OpenAI',
+          type: 'openai',
+          available: true,
+          model: process.env.OPENAI_MODEL || 'gpt-4'
+        });
+      }
+
+      // Check Anthropic
+      if (process.env.ANTHROPIC_API_KEY) {
+        providers.push({
+          name: 'Anthropic',
+          type: 'anthropic',
+          available: true,
+          model: process.env.ANTHROPIC_MODEL || 'claude-3-sonnet-20240229'
+        });
+      }
+
+      // Check GLM
+      if (process.env.GLM_API_KEY) {
+        providers.push({
+          name: 'GLM',
+          type: 'glm',
+          available: true,
+          model: process.env.GLM_MODEL || 'glm-4'
+        });
+      }
+
+      // Check LLM generic
+      if (process.env.LLM_API_KEY) {
+        providers.push({
+          name: 'Generic LLM',
+          type: 'generic',
+          available: true,
+          model: process.env.LLM_MODEL || 'unknown'
+        });
+      }
+
+      res.json({
+        success: true,
+        providers,
+        count: providers.length
+      });
+    } catch (e: any) {
+      console.error('Error listing AI providers:', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * GET /api/ai/locator-stats - Get self-healing locator statistics
+   */
+  private async getLocatorStats(req: Request, res: Response): Promise<void> {
+    try {
+      const locator = getSelfHealingLocator();
+      const stats = locator.getCacheStats();
+
+      res.json({
+        success: true,
+        data: stats
+      });
+    } catch (e: any) {
+      console.error('Error getting locator stats:', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * DELETE /api/ai/locator-cache - Clear self-healing locator cache
+   */
+  private async clearLocatorCache(req: Request, res: Response): Promise<void> {
+    try {
+      const locator = getSelfHealingLocator();
+      locator.clearCache();
+
+      res.json({
+        success: true,
+        message: 'Locator cache cleared successfully'
+      });
+    } catch (e: any) {
+      console.error('Error clearing locator cache:', e);
+      res.status(500).json({ error: e.message });
+    }
+  }
+
+  /**
+   * GET /api/trends/:site - Get historical trend data for a site
+   */
+  private async getSiteTrends(req: Request, res: Response): Promise<void> {
+    try {
+      const siteName = this.extractParam(req.params, 'site');
+      const days = parseInt(req.query.days as string) || 30;
+
+      // Check if user has access to this site when project context exists
+      if (req.project && req.project.sites.length > 0) {
+        if (!req.project.sites.includes(siteName)) {
+          res.status(403).json({
+            success: false,
+            error: 'You do not have access to this site'
+          });
+          return;
+        }
+      }
+
+      const trend = this.trendAnalyzer.calculatePassRate(siteName, days);
+
+      res.json({
+        success: true,
+        data: trend
+      });
+    } catch (error) {
+      console.error('Error getting site trends:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * GET /api/trends/:site/regressions - Get regression detection for a site
+   */
+  private async getSiteRegressions(req: Request, res: Response): Promise<void> {
+    try {
+      const siteName = req.params.site as string;
+      const recentDays = parseInt(req.query.recentDays as string) || 7;
+      const historicalDays = parseInt(req.query.historicalDays as string) || 30;
+      const threshold = parseInt(req.query.threshold as string) || 10;
+
+      // Check if user has access to this site when project context exists
+      if (req.project && req.project.sites.length > 0) {
+        if (!req.project.sites.includes(siteName)) {
+          res.status(403).json({
+            success: false,
+            error: 'You do not have access to this site'
+          });
+          return;
+        }
+      }
+
+      const regression = this.trendAnalyzer.detectRegressions(
+        siteName,
+        recentDays,
+        historicalDays,
+        threshold
+      );
+
+      res.json({
+        success: true,
+        data: regression
+      });
+    } catch (error) {
+      console.error('Error detecting regressions:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * GET /api/profiles - Get all site quality profiles
+   */
+  private async getAllProfiles(req: Request, res: Response): Promise<void> {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+
+      // Filter by project sites if project context exists
+      let allSiteNames = this.resultStore.getAllSiteNames();
+
+      if (req.project && req.project.sites.length > 0) {
+        allSiteNames = allSiteNames.filter(site => req.project!.sites.includes(site));
+      }
+
+      const profiles = allSiteNames.map(siteName =>
+        this.qualityCalculator.calculateProfile(siteName, days)
+      );
+
+      res.json({
+        success: true,
+        data: profiles
+      });
+    } catch (error) {
+      console.error('Error getting all profiles:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * GET /api/profiles/:site - Get quality profile for a specific site
+   */
+  private async getSiteProfile(req: Request, res: Response): Promise<void> {
+    try {
+      const siteName = req.params.site as string;
+      const days = parseInt(req.query.days as string) || 30;
+
+      // Check if user has access to this site when project context exists
+      if (req.project && req.project.sites.length > 0) {
+        if (!req.project.sites.includes(siteName)) {
+          res.status(403).json({
+            success: false,
+            error: 'You do not have access to this site'
+          });
+          return;
+        }
+      }
+
+      const profile = this.qualityCalculator.calculateProfile(siteName, days);
+
+      res.json({
+        success: true,
+        data: profile
+      });
+    } catch (error) {
+      console.error('Error getting site profile:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  /**
+   * Check if result is a TestResult
+   */
+  private isTestResult(result: any): result is TestResult {
+    return result &&
+      typeof result === 'object' &&
+      typeof result.siteName === 'string' &&
+      typeof result.url === 'string' &&
+      typeof result.passed === 'boolean' &&
+      typeof result.timestamp === 'string';
+  }
 }
 
-// ────────────────────────────────────────────────────────────────────
 // Startup
 // ────────────────────────────────────────────────────────────────────
 

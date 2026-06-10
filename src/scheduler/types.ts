@@ -5,7 +5,7 @@
 /**
  * Job types supported by the scheduler
  */
-export type JobType = 'fast' | 'deep' | 'orchestrated' | 'matrix';
+export type JobType = 'fast' | 'deep' | 'orchestrated' | 'matrix' | 'intelligent';
 
 /**
  * Job status throughout lifecycle
@@ -85,6 +85,28 @@ export interface JobConfig {
     browsers?: string[];
     viewports?: Array<{ name?: string; width: number; height: number }>;
     locales?: string[];
+  };
+
+  // Intelligent verify config (P2)
+  intelligentVerify?: {
+    target: {
+      url: string;
+      name?: string;
+      description?: string;
+      tags?: string[];
+      priority?: 'high' | 'normal' | 'low';
+    };
+    options?: {
+      useLLMPlanner?: boolean;
+      useLLMEvaluator?: boolean;
+      enableRepair?: boolean;
+      maxRepairRounds?: number;
+      outputDir?: string;
+      verbose?: boolean;
+      model?: string;
+      maxScenarios?: number;
+      maxSteps?: number;
+    };
   };
 }
 

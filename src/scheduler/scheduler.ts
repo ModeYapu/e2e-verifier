@@ -14,6 +14,10 @@ import { SiteConfig } from '../types';
 import { AgentConfig } from '../agent/types';
 import { MatrixRunner } from '../runner/matrix-runner';
 import { DeviceMatrixConfig } from '../types';
+import { IntelligentOrchestrator, OrchestratorFactory } from '../intelligence/orchestrator';
+import { TestTarget } from '../intelligence/types';
+import { ResultStore } from '../storage/result-store';
+import { TestResult } from '../types';
 
 /**
  * Scheduler configuration
@@ -39,6 +43,7 @@ interface WorkerState {
 export class Scheduler extends EventEmitter {
   private jobQueue: JobQueue;
   private jobStore: JobStore;
+  private resultStore: ResultStore;
   private config: SchedulerConfig;
   private workers: WorkerState[] = new Array();
   private isRunning: boolean = false;
@@ -49,6 +54,7 @@ export class Scheduler extends EventEmitter {
     super();
     this.jobQueue = jobQueue;
     this.jobStore = jobStore;
+    this.resultStore = new ResultStore();
     this.config = {
       maxConcurrency: config?.maxConcurrency ?? 2,
       headless: config?.headless ?? true
@@ -244,6 +250,8 @@ export class Scheduler extends EventEmitter {
         return await this.executeOrchestratedVerify(job);
       case 'matrix':
         return await this.executeMatrixVerify(job);
+      case 'intelligent':
+        return await this.executeIntelligentVerify(job);
       default:
         throw new Error(`Unknown job type: ${job.type}`);
     }
@@ -400,10 +408,152 @@ export class Scheduler extends EventEmitter {
   }
 
   /**
+   * Execute intelligent verification job
+   */
+  private async executeIntelligentVerify(job: Job): Promise<any> {
+    if (!job.config.intelligentVerify) {
+      throw new Error('Intelligent verify config missing');
+    }
+
+    const config = job.config.intelligentVerify;
+
+    // Update progress
+    this.jobStore.update(job.id, {
+      progress: 'Running intelligent verification...'
+    });
+
+    // Create test target from config
+    const target: TestTarget = {
+      url: config.target.url,
+      name: config.target.name,
+      description: config.target.description,
+      tags: config.target.tags,
+      priority: config.target.priority || 'normal',
+    };
+
+    // Create intelligent orchestrator
+    const orchestrator = OrchestratorFactory.create({
+      planner: {
+        useLLM: config.options?.useLLMPlanner || false,
+        llmConfig: config.options?.useLLMPlanner ? {
+          llm: {
+            apiKey: this.getApiKey(),
+            apiBase: this.getApiBase(config.options?.model || process.env.LLM_MODEL || 'deepseek-v4-flash'),
+            model: config.options?.model || process.env.LLM_MODEL || 'deepseek-v4-flash',
+            temperature: 0.7,
+            maxTokens: 4000,
+          },
+        } : undefined,
+      },
+      executor: {
+        outputDir: config.options?.outputDir || './artifacts',
+        enableScreenshots: true,
+        enableConsoleLogs: true,
+        defaultTimeout: 30000,
+        maxRetries: 3,
+      },
+      evaluator: {
+        useLLM: config.options?.useLLMEvaluator || false,
+        llmConfig: config.options?.useLLMEvaluator ? {
+          llm: {
+            apiKey: this.getApiKey(),
+            apiBase: this.getApiBase(config.options?.model || process.env.LLM_MODEL || 'deepseek-v4-flash'),
+            model: config.options?.model || process.env.LLM_MODEL || 'deepseek-v4-flash',
+            temperature: 0.3,
+            maxTokens: 3000,
+          },
+        } : undefined,
+      },
+      repairLoop: {
+        enable: config.options?.enableRepair !== false,
+        maxRounds: config.options?.maxRepairRounds || 3,
+      },
+    });
+
+    // Run intelligent verification
+    const result = await orchestrator.run(target, {
+      useLLMPlanner: config.options?.useLLMPlanner || false,
+      useLLMEvaluator: config.options?.useLLMEvaluator || false,
+      enableRepair: config.options?.enableRepair !== false,
+      maxRepairRounds: config.options?.maxRepairRounds || 3,
+      outputDir: config.options?.outputDir || './artifacts',
+      verbose: config.options?.verbose || false,
+    });
+
+    // Clean up orchestrator
+    await orchestrator.close();
+
+    return result;
+  }
+
+  /**
    * Handle job completed event from queue
    */
   private handleJobCompleted(job: Job): void {
     console.log(`[Scheduler] Job ${job.id} completed successfully`);
+
+    // Save result if it's a TestResult
+    if (job.result) {
+      try {
+        // Handle different result types
+        if (this.isTestResult(job.result)) {
+          this.resultStore.save(job.result);
+        } else if (this.isOrchestratedResult(job.result)) {
+          // Save individual test results from orchestrated results
+          if (job.result.sites && Array.isArray(job.result.sites)) {
+            for (const siteResult of job.result.sites) {
+              if (siteResult.fastResult && this.isTestResult(siteResult.fastResult)) {
+                this.resultStore.save(siteResult.fastResult);
+              }
+            }
+          }
+        } else if (this.isMatrixResult(job.result)) {
+          // Save individual test results from matrix results
+          if (job.result.combinations && Array.isArray(job.result.combinations)) {
+            for (const combo of job.result.combinations) {
+              if (this.isTestResult(combo.result)) {
+                this.resultStore.save(combo.result);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`[Scheduler] Error saving result for job ${job.id}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Check if result is a TestResult
+   */
+  private isTestResult(result: any): result is TestResult {
+    return result &&
+      typeof result === 'object' &&
+      typeof result.siteName === 'string' &&
+      typeof result.url === 'string' &&
+      typeof result.passed === 'boolean' &&
+      typeof result.timestamp === 'string';
+  }
+
+  /**
+   * Check if result is an OrchestratedResult
+   */
+  private isOrchestratedResult(result: any): boolean {
+    return result &&
+      typeof result === 'object' &&
+      typeof result.timestamp === 'string' &&
+      Array.isArray(result.results);
+  }
+
+  /**
+   * Check if result is a MatrixResult
+   */
+  private isMatrixResult(result: any): boolean {
+    return result &&
+      typeof result === 'object' &&
+      typeof result.timestamp === 'string' &&
+      typeof result.siteName === 'string' &&
+      Array.isArray(result.combinations);
   }
 
   /**
