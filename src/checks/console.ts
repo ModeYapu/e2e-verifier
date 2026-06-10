@@ -11,6 +11,8 @@ function truncateError(message: string): string {
 
 export class ConsoleMonitor {
   private errors: ConsoleError[] = [];
+  private paused = false;
+  private ignorePatterns: RegExp[] = [];
 
   constructor(private page: Page) {
     this.setupListeners();
@@ -18,8 +20,13 @@ export class ConsoleMonitor {
 
   private setupListeners(): void {
     this.page.on('console', (message: ConsoleMessage) => {
+      if (this.paused) return;
       if (message.type() === 'error') {
-        const truncatedMessage = truncateError(message.text());
+        const text = message.text();
+        // Skip errors matching ignore patterns
+        if (this.ignorePatterns.some(pattern => pattern.test(text))) return;
+        
+        const truncatedMessage = truncateError(text);
         this.errors.push({
           message: truncatedMessage,
           type: message.type(),
@@ -53,5 +60,41 @@ export class ConsoleMonitor {
     const displayed = uniqueMessages.slice(0, 5);
     const suffix = uniqueMessages.length > 5 ? '...' : '';
     return `${this.errors.length} error(s): ${displayed.join('; ')}${suffix}`;
+  }
+
+  /**
+   * Pause console error collection.
+   * Used during api checks that intentionally trigger non-2xx responses.
+   */
+  pause(): void {
+    this.paused = true;
+  }
+
+  /**
+   * Resume console error collection.
+   */
+  resume(): void {
+    this.paused = false;
+  }
+
+  /**
+   * Run a callback with console monitoring paused.
+   * Any errors during the callback are suppressed.
+   */
+  async whilePaused<T>(fn: () => Promise<T>): Promise<T> {
+    this.paused = true;
+    try {
+      return await fn();
+    } finally {
+      this.paused = false;
+    }
+  }
+
+  /**
+   * Add patterns to ignore. Matching console errors are silently dropped.
+   * Useful for known harmless errors from third-party scripts.
+   */
+  addIgnorePatterns(patterns: RegExp[]): void {
+    this.ignorePatterns.push(...patterns);
   }
 }

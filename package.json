@@ -15,7 +15,7 @@
     "report": "ts-node src/cli/report.ts",
     "explore": "ts-node src/cli/explore.ts",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --verbose",
     "converge": "ts-node src/cli/converge.ts"
   },
   "keywords": [
@@ -40,7 +40,10 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
-    "js-yaml": "^4.1.1"
+    "jest": "^30.4.2",
+    "js-yaml": "^4.1.1",
+    "ts-jest": "^29.4.11"
   }
 }

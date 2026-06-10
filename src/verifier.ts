@@ -13,6 +13,7 @@ export class Verifier {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
+  private consoleMonitor: ConsoleMonitor | null = null;
   private ownsBrowser: boolean;
 
   constructor(private config: SiteConfig, sharedBrowser?: Browser) {
@@ -44,7 +45,7 @@ export class Verifier {
         await this.page.setViewportSize(configuredViewports[0]);
 
         // Setup console monitoring
-        const consoleMonitor = new ConsoleMonitor(this.page);
+        this.consoleMonitor = new ConsoleMonitor(this.page);
         const networkMonitor = new NetworkMonitor(
           this.page,
           3000,
@@ -56,9 +57,9 @@ export class Verifier {
 
         // Handle authentication if configured
         if (this.config.auth) {
-          await this.performLogin(consoleMonitor, timeout);
+          await this.performLogin(this.consoleMonitor, timeout);
           // Clear console errors from login phase
-          consoleMonitor.clearErrors();
+          this.consoleMonitor!.clearErrors();
           networkMonitor.reset();
         }
 
@@ -310,13 +311,13 @@ export class Verifier {
         }
 
         // Console errors
-        if (consoleMonitor.hasErrors()) {
-          const consoleErrors = consoleMonitor.getErrors();
+        if (this.consoleMonitor!.hasErrors()) {
+          const consoleErrors = this.consoleMonitor!.getErrors();
           checks.push({
             name: 'Console Errors',
             type: 'console',
             passed: false,
-            message: consoleMonitor.formatErrors(),
+            message: this.consoleMonitor!.formatErrors(),
             details: { errors: consoleErrors }
           });
 
@@ -556,6 +557,76 @@ export class Verifier {
             message: `Script result: ${jsResult}`,
             details: { result: jsResult }
           };
+
+        case 'custom': {
+          let script = check.script!;
+          // Auto-wrap bare return in IIFE
+          if (script.trim().startsWith('return ')) {
+            script = `(() => { ${script} })()`;
+          }
+          const customResult = await this.page.evaluate(script);
+          return {
+            name: check.name,
+            type: check.type,
+            passed: !!customResult,
+            message: `Custom check result: ${customResult}`,
+            details: { result: customResult }
+          };
+        }
+
+        case 'api': {
+          const apiUrl = check.url || '';
+          const method = (check.method || 'GET').toUpperCase();
+          const expectedStatus = check.expectedStatus || 200;
+          const fullUrl = apiUrl.startsWith('http') ? apiUrl : new URL(apiUrl, this.page!.url()).href;
+
+          // Pause console monitoring during api check to avoid false positives
+          const result = await this.consoleMonitor!.whilePaused(async () => {
+            return await this.page!.evaluate(async ({ url, method, body, headers, expectedStatus }: {
+              url: string; method: string; body?: Record<string, unknown>;
+              headers?: Record<string, string>; expectedStatus: number;
+            }) => {
+              try {
+                const opts: RequestInit = { method };
+                const reqHeaders: Record<string, string> = { ...headers };
+                if (body) {
+                  reqHeaders['Content-Type'] = 'application/json';
+                  opts.body = JSON.stringify(body);
+                }
+                opts.headers = reqHeaders;
+                const resp = await fetch(url, opts);
+                const respBody = await resp.text();
+                let parsedBody: any = null;
+                try { parsedBody = JSON.parse(respBody); } catch {}
+                return {
+                  status: resp.status,
+                  statusMatches: resp.status === expectedStatus,
+                  body: parsedBody || respBody,
+                  ok: resp.ok
+                };
+              } catch (err: any) {
+                return { status: 0, statusMatches: false, error: err.message, ok: false };
+              }
+            }, { url: fullUrl, method, body: check.body, headers: check.headers, expectedStatus });
+          });
+
+          // Validate body fields if specified
+          let bodyMatches = true;
+          if (check.expectedBody && result.body && typeof result.body === 'object') {
+            for (const [key, value] of Object.entries(check.expectedBody)) {
+              if (result.body[key] !== value) { bodyMatches = false; break; }
+            }
+          }
+
+          const passed = result.statusMatches && bodyMatches;
+          return {
+            name: check.name,
+            type: check.type,
+            passed,
+            message: `${method} ${fullUrl} → ${result.status} (expected ${expectedStatus})${bodyMatches ? '' : ' [body mismatch]'}`,
+            details: { status: result.status, body: result.body }
+          };
+        }
 
         default:
           return {

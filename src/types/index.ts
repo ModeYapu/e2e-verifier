@@ -66,10 +66,17 @@ export interface ViewportConfig {
 
 export interface CustomCheck {
   name: string;
-  type: 'element' | 'text' | 'attribute' | 'javascript';
+  type: 'element' | 'text' | 'attribute' | 'javascript' | 'custom' | 'api';
   selector?: string;
   expected?: string | boolean | number;
   script?: string;
+  // api check fields
+  url?: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  body?: Record<string, unknown>;
+  expectedStatus?: number;
+  expectedBody?: Record<string, unknown>;
+  headers?: Record<string, string>;
 }
 
 export interface TestResult {
@@ -175,10 +182,8 @@ export interface VisualRegressionResult {
   message: string;
 }
 
-// ============================================================
-// UNIFIED TASK MODEL (P0 - Task 1)
-// ============================================================
-
+// =====================================================// UNIFIED TASK MODEL (P0 - Task 1)
+// =====================================================
 export type TaskType = 'quick' | 'deep' | 'orchestrated';
 
 export interface Task {
@@ -240,10 +245,8 @@ export interface Artifact {
   metadata?: Record<string, unknown>;
 }
 
-// ============================================================
-// UNIFIED RESULTS AND REPORTS (P0 - Task 2)
-// ============================================================
-
+// =====================================================// UNIFIED RESULTS AND REPORTS (P0 - Task 2)
+// =====================================================
 export type ExecutionStatus =
   | 'passed'
   | 'failed'
@@ -288,10 +291,8 @@ export interface FailureClassification {
   reason: string;
 }
 
-// ============================================================
-// EXECUTION CONFIGURATION (P0 - Task 3)
-// ============================================================
-
+// =====================================================// EXECUTION CONFIGURATION (P0 - Task 3)
+// =====================================================
 export interface RetryStrategy {
   maxRetries: number;
   baseDelay: number;
@@ -328,10 +329,8 @@ export interface ExecutionConfig {
   enableVideo: boolean;
 }
 
-// ============================================================
-// UNIFIED REPORT DATA (P0 - shared between report.ts and html-report.ts)
-// ============================================================
-
+// =====================================================// UNIFIED REPORT DATA (P0 - shared between report.ts and html-report.ts)
+// =====================================================
 export interface UnifiedReportData {
   timestamp: string;
   summary: {
@@ -347,10 +346,8 @@ export interface UnifiedReportData {
   results: UnifiedResult[];
 }
 
-// ============================================================
-// DEVICE MATRIX CONFIG (P1 - Slice 2)
-// ============================================================
-
+// =====================================================// DEVICE MATRIX CONFIG (P1 - Slice 2)
+// =====================================================
 export type BrowserType = 'chromium' | 'webkit' | 'firefox';
 
 export interface DeviceMatrixConfig {
