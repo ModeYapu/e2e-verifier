@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { PerformanceMetrics, PerformanceThresholds } from '../types';
+import { logger } from '../utils/logger';
 
 // Types for Performance API entries that may not be fully covered by lib
 interface PerformanceEntryWithStart extends PerformanceEntry {
@@ -56,7 +57,7 @@ export class PerformanceChecker {
       metrics.pageWeight = pageWeight;
 
     } catch (error) {
-      console.error('Error collecting performance metrics:', error);
+      logger.error(`Error collecting performance metrics: ${error}`);
     }
 
     return metrics;
@@ -78,7 +79,7 @@ export class PerformanceChecker {
         });
       });
     } catch (error) {
-      console.error('Error getting LCP:', error);
+      logger.error(`Error getting LCP: ${error}`);
       return undefined;
     }
   }

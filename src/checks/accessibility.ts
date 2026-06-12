@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { AccessibilityResult, AccessibilityIssue } from '../types';
+import { logger } from '../utils/logger';
 
 export class AccessibilityChecker {
   constructor(private page: Page) {}
@@ -95,7 +96,7 @@ export class AccessibilityChecker {
       issues.push(...ariaIssues.map(issue => ({ ...issue, severity: issue.severity as 'error' | 'warning' | 'info' })));
 
     } catch (error) {
-      console.error('Error running accessibility checks:', error);
+      logger.error(`Error running accessibility checks: ${error}`);
     }
 
     const passed = issues.filter(i => i.severity === 'error').length === 0;

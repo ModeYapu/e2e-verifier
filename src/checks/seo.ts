@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { SEOResult } from '../types';
+import { logger } from '../utils/logger';
 
 export class SEOChecker {
   constructor(private page: Page) {}
@@ -48,7 +49,7 @@ export class SEOChecker {
       checks.openGraphTags = !!(ogTitle || ogDescription || ogImage);
 
     } catch (error) {
-      console.error('Error running SEO checks:', error);
+      logger.error(`Error running SEO checks: ${error}`);
     }
 
     const passed = Object.values(checks).every(check => check === true);

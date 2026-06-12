@@ -2,6 +2,7 @@ import { Page } from '@playwright/test';
 import { VisualRegressionResult } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 export class VisualRegressionChecker {
   private baselineDir: string;
@@ -89,7 +90,7 @@ export class VisualRegressionChecker {
       return Math.min(sizeDiff / avgSize, 1);
 
     } catch (error) {
-      console.error('Error calculating pixel diff:', error);
+      logger.error(`Error calculating pixel diff: ${error}`);
       return 1; // Return max diff on error
     }
   }
@@ -101,7 +102,7 @@ export class VisualRegressionChecker {
       // Copy current as diff for now
       fs.copyFileSync(currentPath, diffPath);
     } catch (error) {
-      console.error('Error generating diff image:', error);
+      logger.error(`Error generating diff image: ${error}`);
     }
   }
 
