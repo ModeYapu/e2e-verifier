@@ -28,9 +28,9 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         success: true,
         data: generatedConfig
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error generating tests:', e);
-      res.status(500).json({ error: e.message });
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -53,9 +53,9 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         success: true,
         data: suggestions
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error suggesting fixes:', e);
-      res.status(500).json({ error: e.message });
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -71,9 +71,9 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         providers,
         count: providers.length
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error listing AI providers:', e);
-      res.status(500).json({ error: e.message });
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -88,9 +88,9 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         success: true,
         data: stats
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error getting locator stats:', e);
-      res.status(500).json({ error: e.message });
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -105,9 +105,9 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         success: true,
         message: 'Locator cache cleared successfully'
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error clearing locator cache:', e);
-      res.status(500).json({ error: e.message });
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 

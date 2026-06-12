@@ -48,12 +48,117 @@ export interface LLMPlannerConfig {
     temperature?: number;
     maxTokens?: number;
   };
+  /** Additional LLM options */
+  options?: {
+    maxRetries?: number;
+    requestTimeout?: number;
+  };
   /** Maximum number of scenarios to generate */
   maxScenarios?: number;
   /** Maximum steps per scenario */
   maxSteps?: number;
   /** Whether to generate comprehensive assertions */
   comprehensiveAssertions?: boolean;
+}
+
+/**
+ * LLM response structure
+ */
+interface LLMPlannerResponse {
+  scenarios: Array<{
+    name: string;
+    description: string;
+    url: string;
+    steps: Array<{
+      action: string;
+      selector?: string;
+      value?: string;
+      description: string;
+      expected?: string;
+      waitAfter?: number;
+      critical?: boolean;
+      screenshot?: boolean;
+    }>;
+    assertions: Array<{
+      type: string;
+      expected: string | boolean;
+      selector?: string;
+      attribute?: string;
+      description: string;
+      critical?: boolean;
+    }>;
+  }>;
+}
+
+/**
+ * Scenario data structure
+ */
+interface ScenarioData {
+  name: string;
+  description: string;
+  url: string;
+  steps: StepData[];
+  assertions: AssertionData[];
+  timeout?: number;
+  viewport?: { width: number; height: number };
+  auth?: {
+    loginUrl: string;
+    username: string;
+    password: string;
+    verifySelector?: string;
+  };
+}
+
+/**
+ * Step data structure
+ */
+interface StepData {
+  action: string;
+  selector?: string;
+  value?: string;
+  description: string;
+  expected?: string;
+  waitAfter?: number;
+  critical?: boolean;
+  screenshot?: boolean;
+}
+
+/**
+ * Assertion data structure
+ */
+interface AssertionData {
+  type: string;
+  expected: string | boolean;
+  selector?: string;
+  attribute?: string;
+  description: string;
+  critical?: boolean;
+}
+
+/**
+ * Site config data structure
+ */
+interface SiteConfigData {
+  name: string;
+  url: string;
+  expectedStatusCode?: number;
+  viewport?: { width: number; height: number };
+  timeout?: number;
+  checks?: string[];
+  auth?: {
+    loginUrl: string;
+    username: string;
+    password: string;
+    verifySelector?: string;
+  };
+  customChecks?: Array<{
+    name: string;
+    type: string;
+    selector?: string;
+    expected?: string | boolean;
+    script?: string;
+    critical?: boolean;
+  }>;
 }
 
 /**
@@ -76,6 +181,10 @@ export class LLMPlanner implements ITestPlanner {
     });
     this.config = {
       llm: config.llm,
+      options: {
+        maxRetries: 3,
+        requestTimeout: 300000,
+      },
       maxScenarios: config.maxScenarios || 5,
       maxSteps: config.maxSteps || 10,
       comprehensiveAssertions: config.comprehensiveAssertions !== false,
@@ -182,7 +291,7 @@ export class LLMPlanner implements ITestPlanner {
         throw new Error('Invalid response structure: missing scenarios array');
       }
 
-      const scenarios: PlannedScenario[] = parsed.scenarios.map((s: any, index: number) =>
+      const scenarios: PlannedScenario[] = parsed.scenarios.map((s: ScenarioData, index: number) =>
         this.parseScenario(s, index)
       );
 
@@ -200,16 +309,16 @@ export class LLMPlanner implements ITestPlanner {
     }
   }
 
-  private parseScenario(data: any, index: number): PlannedScenario {
+  private parseScenario(data: ScenarioData, index: number): PlannedScenario {
     if (!data.name || !data.steps || !Array.isArray(data.steps)) {
       throw new Error('Invalid scenario: missing name or steps');
     }
 
-    const steps: PlannedStep[] = data.steps.map((step: any, stepIndex: number) =>
+    const steps: PlannedStep[] = data.steps.map((step: StepData, stepIndex: number) =>
       this.parseStep(step, stepIndex)
     );
 
-    const assertions: PlannedAssertion[] = (data.assertions || []).map((assertion: any) =>
+    const assertions: PlannedAssertion[] = (data.assertions || []).map((assertion: AssertionData) =>
       this.parseAssertion(assertion)
     );
 
@@ -227,16 +336,16 @@ export class LLMPlanner implements ITestPlanner {
     };
   }
 
-  private parseStep(data: any, index: number): PlannedStep {
+  private parseStep(data: StepData, index: number): PlannedStep {
     const validActions: StepAction[] = ['navigate', 'click', 'type', 'wait', 'scroll', 'hover', 'select', 'submit', 'screenshot', 'assert', 'javascript', 'goto'];
 
-    if (!data.action || !validActions.includes(data.action)) {
+    if (!data.action || !validActions.includes(data.action as StepAction)) {
       throw new Error(`Invalid step action: ${data.action}`);
     }
 
     return {
       id: `step-${index}`,
-      action: data.action,
+      action: data.action as StepAction,
       selector: data.selector,
       value: data.value,
       description: data.description || `${data.action} step`,
@@ -247,19 +356,19 @@ export class LLMPlanner implements ITestPlanner {
     };
   }
 
-  private parseAssertion(data: any): PlannedAssertion {
+  private parseAssertion(data: AssertionData): PlannedAssertion {
     const validTypes: AssertionType[] = [
       'element-exists', 'element-visible', 'element-count', 'text-contains',
       'text-equals', 'attribute-equals', 'attribute-contains', 'url-matches',
       'title-equals', 'javascript', 'performance', 'accessibility', 'console', 'network'
     ];
 
-    if (!data.type || !validTypes.includes(data.type)) {
+    if (!data.type || !validTypes.includes(data.type as AssertionType)) {
       throw new Error(`Invalid assertion type: ${data.type}`);
     }
 
     return {
-      type: data.type,
+      type: data.type as AssertionType,
       expected: data.expected,
       selector: data.selector,
       attribute: data.attribute,
@@ -283,12 +392,14 @@ export class LLMPlanner implements ITestPlanner {
     if (existingPlans.length > 0) {
       // Use previous successful plans as reference
       const mostRecent = existingPlans[existingPlans.length - 1];
-      return [
-        prompt,
-        '',
-        'REFERENCE: You may use this previous successful plan as inspiration (but adapt as needed):',
-        JSON.stringify(mostRecent.value, null, 2).substring(0, 1000),
-      ].join('\n');
+      if (mostRecent && typeof mostRecent === 'object' && 'value' in mostRecent) {
+        return [
+          prompt,
+          '',
+          'REFERENCE: You may use this previous successful plan as inspiration (but adapt as needed):',
+          JSON.stringify(mostRecent.value, null, 2).substring(0, 1000),
+        ].join('\n');
+      }
     }
 
     return prompt;
@@ -326,7 +437,7 @@ export class ConfigPlanner implements ITestPlanner {
   async plan(target: TestTarget): Promise<TestPlan> {
     // If target has siteConfig, use it directly
     if (target.siteConfig) {
-      return this.generateFromSiteConfig(target, target.siteConfig);
+      return this.generateFromSiteConfig(target, target.siteConfig as unknown as SiteConfigData[]);
     }
 
     // Try to load from file
@@ -371,7 +482,7 @@ export class ConfigPlanner implements ITestPlanner {
     return null;
   }
 
-  private loadSiteConfig(configPath: string): any {
+  private loadSiteConfig(configPath: string): SiteConfigData[] {
     try {
       const content = fs.readFileSync(configPath, 'utf-8');
       return JSON.parse(content);
@@ -380,19 +491,22 @@ export class ConfigPlanner implements ITestPlanner {
     }
   }
 
-  private generateFromSiteConfig(target: TestTarget, siteConfig: any): TestPlan {
+  private generateFromSiteConfig(target: TestTarget, siteConfigs: SiteConfigData[]): TestPlan {
     const scenarios: PlannedScenario[] = [];
 
-    // Generate main scenario from site config
-    const mainScenario = this.generateMainScenario(target, siteConfig);
-    scenarios.push(mainScenario);
+    // Process each site config
+    for (const siteConfig of siteConfigs) {
+      // Generate main scenario from site config
+      const mainScenario = this.generateMainScenario(target, siteConfig);
+      scenarios.push(mainScenario);
 
-    // Generate additional scenarios for custom checks
-    if (siteConfig.customChecks && Array.isArray(siteConfig.customChecks)) {
-      for (const customCheck of siteConfig.customChecks) {
-        if (this.config.comprehensive) {
-          const scenario = this.generateCustomCheckScenario(target, customCheck);
-          scenarios.push(scenario);
+      // Generate additional scenarios for custom checks
+      if (siteConfig.customChecks && Array.isArray(siteConfig.customChecks)) {
+        for (const customCheck of siteConfig.customChecks) {
+          if (this.config.comprehensive) {
+            const scenario = this.generateCustomCheckScenario(target, customCheck);
+            scenarios.push(scenario);
+          }
         }
       }
     }
@@ -408,7 +522,7 @@ export class ConfigPlanner implements ITestPlanner {
     };
   }
 
-  private generateMainScenario(target: TestTarget, siteConfig: any): PlannedScenario {
+  private generateMainScenario(target: TestTarget, siteConfig: SiteConfigData): PlannedScenario {
     const steps: PlannedStep[] = [];
     const assertions: PlannedAssertion[] = [];
 
@@ -433,7 +547,7 @@ export class ConfigPlanner implements ITestPlanner {
 
     // Generate steps from custom checks
     if (siteConfig.customChecks && Array.isArray(siteConfig.customChecks)) {
-      siteConfig.customChecks.forEach((check: any, index: number) => {
+      siteConfig.customChecks.forEach((check: { name: string; type: string; selector?: string; expected?: string | boolean; script?: string }, index: number) => {
         const step = this.generateStepFromCustomCheck(check, index + 2);
         if (step) {
           steps.push(step);
@@ -488,7 +602,7 @@ export class ConfigPlanner implements ITestPlanner {
     };
   }
 
-  private generateCustomCheckScenario(target: TestTarget, customCheck: any): PlannedScenario {
+  private generateCustomCheckScenario(target: TestTarget, customCheck: { name: string; type: string; selector?: string; expected?: string | boolean; script?: string }): PlannedScenario {
     const steps: PlannedStep[] = [];
     const assertions: PlannedAssertion[] = [];
 
@@ -525,7 +639,7 @@ export class ConfigPlanner implements ITestPlanner {
     };
   }
 
-  private generateStepFromCustomCheck(check: any, index: number): PlannedStep | null {
+  private generateStepFromCustomCheck(check: { name: string; type: string; selector?: string; expected?: string | boolean; script?: string; critical?: boolean }, index: number): PlannedStep | null {
     if (check.selector && check.type === 'element') {
       return {
         id: `step-${index}`,
@@ -551,7 +665,7 @@ export class ConfigPlanner implements ITestPlanner {
     return null;
   }
 
-  private generateAssertionFromCustomCheck(check: any, index: number): PlannedAssertion | null {
+  private generateAssertionFromCustomCheck(check: { name: string; type: string; selector?: string; expected?: string | boolean; script?: string; critical?: boolean }, index: number): PlannedAssertion | null {
     if (check.selector) {
       return {
         type: 'element-exists',

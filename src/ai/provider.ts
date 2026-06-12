@@ -6,16 +6,27 @@
 import type { ChatMessage } from '../types/common';
 import { LLMRegistry } from '../llm/llm-registry';
 
+/**
+ * Options for AI provider operations
+ */
+export interface AIProviderOptions {
+  temperature?: number;
+  maxTokens?: number;
+  timeout?: number;
+  model?: string;
+  [key: string]: unknown; // Allow additional provider-specific options
+}
+
 export interface AIProvider {
   /**
    * Chat completion interface
    */
-  chat(messages: ChatMessage[], options?: any): Promise<string>;
+  chat(messages: ChatMessage[], options?: AIProviderOptions): Promise<string>;
 
   /**
    * Image analysis interface
    */
-  analyzeImage(imageUrl: string, prompt: string, options?: any): Promise<string>;
+  analyzeImage(imageUrl: string, prompt: string, options?: AIProviderOptions): Promise<string>;
 
   /**
    * Get provider name
@@ -50,7 +61,7 @@ export class GLMProvider implements AIProvider {
     return !!this.apiKey;
   }
 
-  async chat(messages: ChatMessage[], options: any = {}): Promise<string> {
+  async chat(messages: ChatMessage[], options: AIProviderOptions = {}): Promise<string> {
     const client = LLMRegistry.getInstance().createClient({
       apiKey: this.apiKey,
       apiBase: this.apiBase,
@@ -69,7 +80,7 @@ export class GLMProvider implements AIProvider {
     return response.raw || response.thought || '';
   }
 
-  async analyzeImage(imageUrl: string, prompt: string, options: any = {}): Promise<string> {
+  async analyzeImage(imageUrl: string, prompt: string, options: AIProviderOptions = {}): Promise<string> {
     // For GLM, we need to use a different approach for image analysis
     // This is a placeholder implementation
     const messages: ChatMessage[] = [
@@ -105,7 +116,7 @@ export class OpenAIProvider implements AIProvider {
     return !!this.apiKey;
   }
 
-  async chat(messages: ChatMessage[], options: any = {}): Promise<string> {
+  async chat(messages: ChatMessage[], options: AIProviderOptions = {}): Promise<string> {
     // Use native fetch (Node.js 18+) or https module
     const response = await fetch(`${this.apiBase}/chat/completions`, {
       method: 'POST',
@@ -129,7 +140,7 @@ export class OpenAIProvider implements AIProvider {
     return data.choices[0].message.content || '';
   }
 
-  async analyzeImage(imageUrl: string, prompt: string, options: any = {}): Promise<string> {
+  async analyzeImage(imageUrl: string, prompt: string, options: AIProviderOptions = {}): Promise<string> {
     // Use native fetch (Node.js 18+) or https module
     // Use GPT-4 Vision for image analysis
     const messages = [
@@ -194,7 +205,7 @@ export class AnthropicProvider implements AIProvider {
     return !!this.apiKey;
   }
 
-  async chat(messages: ChatMessage[], options: any = {}): Promise<string> {
+  async chat(messages: ChatMessage[], options: AIProviderOptions = {}): Promise<string> {
     // Use native fetch (Node.js 18+)
     const response = await fetch(`${this.apiBase}/messages`, {
       method: 'POST',
@@ -219,7 +230,7 @@ export class AnthropicProvider implements AIProvider {
     return data.content[0].text || '';
   }
 
-  async analyzeImage(imageUrl: string, prompt: string, options: any = {}): Promise<string> {
+  async analyzeImage(imageUrl: string, prompt: string, options: AIProviderOptions = {}): Promise<string> {
     // Use native fetch (Node.js 18+)
     const messages = [
       {

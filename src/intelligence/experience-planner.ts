@@ -12,12 +12,16 @@ import {
   TestTarget,
   TestPlan,
   PlannedScenario,
+  PlannedStep,
+  PlannedAssertion,
 } from './types';
 import {
   TestExperience,
   SimilarExperience,
   PlanAdaptation,
   RewardSignal,
+  StrategyEffectiveness,
+  RepairAttempt,
 } from './experience-types';
 import { ExperienceStore } from './experience-store';
 import { ITestPlanner } from './planner';
@@ -129,7 +133,7 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
    * @returns Adapted plan
    */
   private adaptPlan(target: TestTarget, similarExp: SimilarExperience): TestPlan {
-    const originalPlan = similarExp.experience.testPlan;
+    const originalPlan = similarExp.experience.testPlan as unknown as TestPlan;
     const adaptations: string[] = [];
 
     // Create new plan based on original
@@ -179,7 +183,7 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
    * @param adaptations - Adaptations list (mutated)
    * @returns Adapted step
    */
-  private adaptStep(step: any, adaptations: string[]): any {
+  private adaptStep(step: PlannedStep, adaptations: string[]): PlannedStep {
     const adapted = { ...step };
 
     // Update selectors if they contain URLs or dynamic parts
@@ -203,17 +207,17 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
    * @param adaptations - Adaptations list (mutated)
    * @returns Adapted assertion
    */
-  private adaptAssertion(assertion: any, adaptations: string[]): any {
+  private adaptAssertion(assertion: PlannedAssertion, adaptations: string[]): PlannedAssertion {
     const adapted = { ...assertion };
 
     // Update expected values
-    if (adapted.expected && this.needsSelectorAdaptation(adapted.expected)) {
+    if (adapted.expected && typeof adapted.expected === 'string' && this.needsSelectorAdaptation(adapted.expected)) {
       adapted.expected = this.adaptSelector(adapted.expected);
       adaptations.push('assertion-adjustment');
     }
 
     // Update selectors
-    if (adapted.selector && this.needsSelectorAdaptation(adapted.selector)) {
+    if (adapted.selector && typeof adapted.selector === 'string' && this.needsSelectorAdaptation(adapted.selector)) {
       adapted.selector = this.adaptSelector(adapted.selector);
       adaptations.push('assertion-selector-adjustment');
     }
@@ -294,7 +298,7 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
       strategy: this.config.strategy,
       outcome,
       reward: reward.reward,
-      testPlan: plan,
+      testPlan: plan as unknown as Record<string, unknown>,
       repairHistory: this.extractRepairHistory(result),
       timestamp: Date.now(),
       meta: {
@@ -315,12 +319,12 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
    * @param result - Test result
    * @returns Repair attempts
    */
-  private extractRepairHistory(result: any): any[] {
+  private extractRepairHistory(result: { repairAttempts?: Array<Partial<RepairAttempt>> }): RepairAttempt[] {
     if (!result.repairAttempts) {
       return [];
     }
 
-    return result.repairAttempts.map((attempt: any) => ({
+    return result.repairAttempts.map((attempt: Partial<RepairAttempt>): RepairAttempt => ({
       type: attempt.type || 'general',
       target: attempt.target || 'unknown',
       description: attempt.description || 'Repair attempt',
@@ -336,12 +340,12 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
    * @param result - Test result
    * @returns True if partial pass
    */
-  private isPartialPass(result: any): boolean {
+  private isPartialPass(result: { passed: boolean; assertionResults?: Array<{ passed: boolean }> }): boolean {
     if (!result.assertionResults) {
       return false;
     }
 
-    const passedAssertions = result.assertionResults.filter((ar: any) => ar.passed).length;
+    const passedAssertions = result.assertionResults.filter((ar: { passed: boolean }) => ar.passed).length;
     const totalAssertions = result.assertionResults.length;
 
     return totalAssertions > 0 && passedAssertions > 0 && passedAssertions < totalAssertions;
@@ -364,7 +368,7 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
    * @param strategy - Strategy name
    * @returns Strategy effectiveness
    */
-  getStrategyEffectiveness(strategy: string): any {
+  getStrategyEffectiveness(strategy: string): StrategyEffectiveness {
     return this.experienceStore.getStrategyStats(strategy);
   }
 

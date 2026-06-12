@@ -10,6 +10,7 @@
  */
 
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { BrowserPool } from '../browser/browser-pool';
 import { LLMClient } from '../agent/llm-client';
 import { LLMRegistry } from '../llm/llm-registry';
 import { Logger } from '../utils/logger';
@@ -51,9 +52,14 @@ export interface StepResult {
 export class AgentPlanner {
   private config: PlannerConfig;
   private llm: LLMClient | null = null;
+  private browserPool: BrowserPool;
 
   constructor(config: PlannerConfig) {
     this.config = config;
+    this.browserPool = BrowserPool.getInstance({
+      maxInstances: 2,
+      headless: true,
+    });
     if (config.llm) {
       this.llm = LLMRegistry.getInstance().createClient({
         apiKey: config.llm.apiKey,
@@ -96,12 +102,8 @@ export class AgentPlanner {
       logger.info(`📋 Scenario: "${scenario.name}" (attempt ${attempt + 1}/${maxRetries + 1})`);
       logger.info(`${'='.repeat(50)}`);
 
-      const browser = await chromium.launch({ headless: true });
-      const context = await browser.newContext({
-        viewport: { width: 1920, height: 1080 },
-        userAgent: 'Mozilla/5.0 (X11; Linux x86x) AppleWebKit/537.36',
-      });
-      const page = await context.newPage();
+      // Use BrowserPool to get a page
+      const page = await this.browserPool.acquirePage();
 
       // Capture console and network for debugging
       const consoleMessages: string[] = [];
@@ -142,8 +144,9 @@ export class AgentPlanner {
           logger.info(`⚠️ Scenario "${scenario.name}" had failures, retrying with context...`);
         }
 
-      } catch (e: any) {
-        logger.error(`❌ Scenario "${scenario.name}" error: ${e.message}`);
+      } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : String(e);
+        logger.error(`❌ Scenario "${scenario.name}" error: ${error}`);
         lastResult = {
           scenario: scenario.name,
           passed: false,
@@ -151,10 +154,11 @@ export class AgentPlanner {
           scriptGenerated: '',
           retries: attempt,
           durationMs: Date.now() - startTime,
-          error: e.message,
+          error: error,
         };
       } finally {
-        await browser.close();
+        // Release page back to the pool
+        this.browserPool.releasePage(page);
       }
     }
 
@@ -198,7 +202,7 @@ export class AgentPlanner {
 
 RULES:
 - First line MUST be: interface StepResult { step: string; passed: boolean; details: string; }
-- Then define: async function run(page: any, baseUrl: string): Promise<StepResult[]>
+- Then define: async function run(page: Page, baseUrl: string): Promise<StepResult[]>
 - Use try/catch for EACH step so one failure doesn't stop others
 - Do REAL interactions: click, type, wait, evaluate
 - After each step, push a result to the results array
@@ -245,8 +249,9 @@ RULES:
       }
 
       logger.warn('LLM response did not contain valid script, falling back to heuristic');
-    } catch (e: any) {
-      logger.warn(`LLM call failed: ${e.message}, falling back to heuristic`);
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e.message : String(e);
+      logger.warn(`LLM call failed: ${error}, falling back to heuristic`);
     }
 
     return this.generateHeuristicScript(scenario, env);
@@ -415,19 +420,19 @@ RULES:
     const ep = '${step.endpoint || step.endpoint_pattern || ''}';
     const fetchUrl = apiUrl ? apiUrl + ep : baseUrl + ep;
     const http = require('http');
-    const nodeResp = await new Promise<{ok: boolean, status: number, data: any}>((resolve) => {
+    const nodeResp = await new Promise<{ok: boolean, status: number, data: unknown}>((resolve) => {
       const opts = new URL(fetchUrl);
       const headers: Record<string, string> = {};
       if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
-      const req = http.get(opts, { headers }, (res: any) => {
+      const req = http.get(opts, { headers }, (res: import('http').IncomingMessage) => {
         let body = '';
-        res.on('data', (c: any) => body += c);
+        res.on('data', (c: Buffer) => body += c);
         res.on('end', () => {
           try { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: JSON.parse(body) }); }
           catch { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: body.slice(0, 200) }); }
         });
       });
-      req.on('error', (e: any) => resolve({ ok: false, status: 0, data: e.message }));
+      req.on('error', (e: Error) => resolve({ ok: false, status: 0, data: e.message }));
       req.setTimeout(5000, () => { req.destroy(); resolve({ ok: false, status: 0, data: 'timeout' }); });
     });
     const checkResult = nodeResp.ok;
@@ -468,11 +473,11 @@ RULES:
       await firstOpt.click();
       await page.waitForTimeout(500);
       // Verify the select actually has a value now
-      const selectedValue = await sel.evaluate((el: any) => {
+      const selectedValue = await sel.evaluate((el: Element) => {
         // Element Plus v2: check all .el-select__selected-item elements
         const items = el.querySelectorAll('.el-select__selected-item');
         const texts: string[] = [];
-        items.forEach((item: any) => { const t = item.textContent?.trim(); if (t) texts.push(t); });
+        items.forEach((item: Element) => { const t = item.textContent?.trim(); if (t) texts.push(t); });
         if (texts.length > 0) return texts.join(', ');
         // Fallback: check input
         const input = el.querySelector('.el-input__inner, input');
@@ -539,7 +544,7 @@ RULES:
     const resp = await responsePromise;
     if (resp) {
       const status = resp.status();
-      let body: any = null;
+      let body: string = '';
       try { body = await resp.json(); } catch {}
       const isOk = status >= 200 && status < 400;
       // Check if response data is meaningful
@@ -560,19 +565,19 @@ RULES:
     const expectedField = '${step.expect_field || step.expect || ''}';
     const expectedValue = '${step.expect_value || ''}';
     const http = require('http');
-    const nodeResp = await new Promise<{ok: boolean, status: number, data: any}>((resolve) => {
+    const nodeResp = await new Promise<{ok: boolean, status: number, data: unknown}>((resolve) => {
       const opts = new URL(fetchUrl);
       const headers: Record<string, string> = {};
       if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
-      const req = http.get(opts, { headers }, (res: any) => {
+      const req = http.get(opts, { headers }, (res: import('http').IncomingMessage) => {
         let body = '';
-        res.on('data', (c: any) => body += c);
+        res.on('data', (c: Buffer) => body += c);
         res.on('end', () => {
           try { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: JSON.parse(body) }); }
           catch { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: body.slice(0, 200) }); }
         });
       });
-      req.on('error', (e: any) => resolve({ ok: false, status: 0, data: e.message }));
+      req.on('error', (e: Error) => resolve({ ok: false, status: 0, data: e.message }));
       req.setTimeout(5000, () => { req.destroy(); resolve({ ok: false, status: 0, data: 'timeout' }); });
     });
     if (!nodeResp.ok) {
@@ -630,7 +635,7 @@ RULES:
 
 interface StepResult { step: string; passed: boolean; details: string; }
 
-async function run(page: any, baseUrl: string): Promise<StepResult[]> {
+async function run(page: Page, baseUrl: string): Promise<StepResult[]> {
   const results: StepResult[] = [];
   const apiUrl = '${apiUrl}';
 
@@ -687,9 +692,10 @@ ${stepCode}
         return await module.run(page, env.base_url);
       }
       throw new Error('Script has no run() function');
-    } catch (e: any) {
-      logger.error(`Script execution failed: ${e.message}`);
-      return [{ step: 'script_execution', passed: false, details: e.message }];
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e.message : String(e);
+      logger.error(`Script execution failed: ${error}`);
+      return [{ step: 'script_execution', passed: false, details: error }];
     }
   }
 

@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { ProjectService } from '../services/project-service';
+import { validateBody, validationSchemas } from '../../middleware/validate';
 
 export function createProjectRoutes(projectService: ProjectService): Router {
   const router = Router();
@@ -12,7 +13,7 @@ export function createProjectRoutes(projectService: ProjectService): Router {
   /**
    * Extract string parameter from request params
    */
-  function extractParam(params: any, key: string): string {
+  function extractParam(params: Record<string, string | string[]>, key: string): string {
     const value = params[key];
     return Array.isArray(value) ? value[0] : value;
   }
@@ -20,7 +21,7 @@ export function createProjectRoutes(projectService: ProjectService): Router {
   /**
    * POST /api/admin/projects - Create a new project
    */
-  router.post('/admin/projects', async (req: Request, res: Response): Promise<void> => {
+  router.post('/admin/projects', validateBody(validationSchemas.project), async (req: Request, res: Response): Promise<void> => {
     try {
       const body = req.body;
 
@@ -35,8 +36,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         data: project
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message || 'Internal server error' });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message || 'Internal server error' });
     }
   });
 
@@ -52,8 +53,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         data: projects,
         count: projects.length
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -75,8 +76,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         data: project
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -99,8 +100,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         data: project
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -122,8 +123,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         message: 'Project deleted successfully'
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -151,8 +152,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         data: project
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -175,8 +176,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         data: project
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -209,8 +210,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         data: project
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -233,8 +234,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         data: project
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -268,8 +269,8 @@ export function createProjectRoutes(projectService: ProjectService): Router {
         success: true,
         data: project
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 

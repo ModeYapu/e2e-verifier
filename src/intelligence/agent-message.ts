@@ -40,7 +40,7 @@ export interface AgentMessage {
   fromRole: string;
   toRole?: string; // If undefined, broadcast to all
   timestamp: string;
-  payload: any;
+  payload: unknown;
   correlationId?: string; // For message threading
   replyTo?: string; // For message threading
 }
@@ -52,7 +52,7 @@ export interface WorkspaceEntry {
   id: string;
   type: 'discovery' | 'result' | 'issue' | 'repair' | 'status';
   agentRole: string;
-  data: any;
+  data: unknown;
   timestamp: string;
   expiresAt?: string;
 }
@@ -374,7 +374,7 @@ export class MessageFactory {
   /**
    * Create feature discovered message
    */
-  static featureDiscovered(fromRole: string, features: any[], toRole?: string): AgentMessage {
+  static featureDiscovered(fromRole: string, features: unknown[], toRole?: string): AgentMessage {
     return {
       id: generateUUID(),
       type: 'FEATURE_DISCOVERED',
@@ -388,7 +388,7 @@ export class MessageFactory {
   /**
    * Create test completed message
    */
-  static testCompleted(fromRole: string, result: any, toRole?: string): AgentMessage {
+  static testCompleted(fromRole: string, result: unknown, toRole?: string): AgentMessage {
     return {
       id: generateUUID(),
       type: 'TEST_COMPLETED',
@@ -402,7 +402,7 @@ export class MessageFactory {
   /**
    * Create issue found message
    */
-  static issueFound(fromRole: string, issue: any, toRole?: string): AgentMessage {
+  static issueFound(fromRole: string, issue: unknown, toRole?: string): AgentMessage {
     return {
       id: generateUUID(),
       type: 'ISSUE_FOUND',
@@ -416,7 +416,7 @@ export class MessageFactory {
   /**
    * Create repair suggested message
    */
-  static repairSuggested(fromRole: string, repair: any, toRole?: string): AgentMessage {
+  static repairSuggested(fromRole: string, repair: unknown, toRole?: string): AgentMessage {
     return {
       id: generateUUID(),
       type: 'REPAIR_SUGGESTED',
@@ -444,7 +444,7 @@ export class MessageFactory {
   /**
    * Create agent done message
    */
-  static agentDone(fromRole: string, result?: any, toRole?: string): AgentMessage {
+  static agentDone(fromRole: string, result?: unknown, toRole?: string): AgentMessage {
     return {
       id: generateUUID(),
       type: 'AGENT_DONE',

@@ -20,7 +20,8 @@ import {
   SimilarExperience,
   RepairAttempt,
 } from './experience-types';
-import { ScenarioResult } from './types';
+import { ScenarioResult, TestTarget } from './types';
+import { JsonStorage } from '../storage/json-storage';
 
 // =====================================================
 // EXPERIENCE STORE CONFIGURATION
@@ -53,6 +54,7 @@ export class ExperienceStore {
   private experiences: Map<string, TestExperience> = new Map();
   private config: Required<ExperienceStoreConfig>;
   private strategyStats: Map<string, StrategyEffectiveness> = new Map();
+  private storage: JsonStorage;
 
   constructor(config: ExperienceStoreConfig = {}) {
     this.config = {
@@ -64,7 +66,11 @@ export class ExperienceStore {
     };
 
     // Initialize storage
-    this.initializeStorage();
+    this.storage = new JsonStorage({
+      storageDir: this.config.storageDir,
+      fileExtension: '.json',
+      createDir: true,
+    });
 
     // Load existing experiences
     if (this.config.persistEnabled) {
@@ -180,7 +186,7 @@ export class ExperienceStore {
    * @param signature - Problem signature
    * @returns Successful test plans
    */
-  getSuccessfulPlans(signature: string): Array<{ plan: any; experience: TestExperience }> {
+  getSuccessfulPlans(signature: string): Array<{ plan: Record<string, unknown>; experience: TestExperience }> {
     const similarExperiences = this.querySimilar(signature, 10);
 
     return similarExperiences
@@ -346,7 +352,7 @@ export class ExperienceStore {
    * @param additionalContext - Additional context for signature
    * @returns Problem signature
    */
-  generateSignature(target: any, additionalContext?: string): string {
+  generateSignature(target: TestTarget | Record<string, unknown>, additionalContext?: string): string {
     // Create signature from URL and context
     const url = target.url || '';
     const name = target.name || '';
@@ -365,31 +371,21 @@ export class ExperienceStore {
   // =====================================================
 
   /**
-   * Initialize storage directory
-   */
-  private initializeStorage(): void {
-    const dir = path.dirname(this.config.experienceFile);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  }
-
-  /**
    * Load experiences from disk
    */
   private load(): void {
     try {
-      if (fs.existsSync(this.config.experienceFile)) {
-        const data = fs.readFileSync(this.config.experienceFile, 'utf-8');
-        const experiences = JSON.parse(data) as TestExperience[];
+      // Use synchronous get for backward compatibility
+      const experiences = JSON.parse(JSON.stringify(this.storage.get('experiences'))) as TestExperience[] | null;
 
+      if (experiences && Array.isArray(experiences)) {
         this.experiences.clear();
         experiences.forEach(exp => {
           this.experiences.set(exp.id, exp);
           this.updateStrategyStats(exp);
         });
 
-        console.log(`✓ Loaded ${this.experiences.size} experiences from ${this.config.experienceFile}`);
+        console.log(`✓ Loaded ${this.experiences.size} experiences from storage`);
       }
     } catch (error) {
       console.error('Failed to load experiences:', error);
@@ -399,12 +395,10 @@ export class ExperienceStore {
   /**
    * Save experiences to disk
    */
-  private async save(): Promise<void> {
+  private save(): void {
     try {
       const experiences = Array.from(this.experiences.values());
-      const data = JSON.stringify(experiences, null, 2);
-
-      fs.writeFileSync(this.config.experienceFile, data, 'utf-8');
+      this.storage.set('experiences', experiences);
     } catch (error) {
       console.error('Failed to save experiences:', error);
     }

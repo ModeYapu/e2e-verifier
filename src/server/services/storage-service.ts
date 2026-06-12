@@ -56,21 +56,21 @@ export class StorageService {
   /**
    * Get historical trend data for a site
    */
-  getSiteTrends(siteName: string, days: number = 30): any {
+  getSiteTrends(siteName: string, days: number = 30): unknown {
     return this.trendAnalyzer.calculatePassRate(siteName, days);
   }
 
   /**
    * Get regression detection for a site
    */
-  getSiteRegressions(siteName: string, recentDays: number = 7, historicalDays: number = 30, threshold: number = 10): any {
+  getSiteRegressions(siteName: string, recentDays: number = 7, historicalDays: number = 30, threshold: number = 10): unknown {
     return this.trendAnalyzer.detectRegressions(siteName, recentDays, historicalDays, threshold);
   }
 
   /**
    * Get all site quality profiles
    */
-  getAllProfiles(days: number = 30, siteNames?: string[]): any[] {
+  getAllProfiles(days: number = 30, siteNames?: string[]): unknown[] {
     const allSiteNames = siteNames || this.resultStore.getAllSiteNames();
     return allSiteNames.map(siteName =>
       this.qualityCalculator.calculateProfile(siteName, days)
@@ -80,7 +80,7 @@ export class StorageService {
   /**
    * Get quality profile for a specific site
    */
-  getSiteProfile(siteName: string, days: number = 30): any {
+  getSiteProfile(siteName: string, days: number = 30): unknown {
     return this.qualityCalculator.calculateProfile(siteName, days);
   }
 

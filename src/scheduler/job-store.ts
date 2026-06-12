@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Job, JobStatus, JobStats, JobFilter } from './types';
+import { JsonStorage } from '../storage/json-storage';
 
 /**
  * Job Store class for managing persistent job storage
@@ -13,11 +14,19 @@ export class JobStore {
   private jobs: Map<string, Job> = new Map();
   private filePath: string;
   private dataDir: string;
+  private storage: JsonStorage;
 
   constructor(dataDir: string = 'data') {
     this.dataDir = dataDir;
-    this.filePath = path.join(dataDir, 'jobs.json');
-    this.ensureDataDir();
+    this.filePath = 'jobs';
+
+    // Initialize storage
+    this.storage = new JsonStorage({
+      storageDir: dataDir,
+      fileExtension: '.json',
+      createDir: true,
+    });
+
     this.loadJobs();
   }
 
@@ -35,27 +44,24 @@ export class JobStore {
    */
   private loadJobs(): void {
     try {
-      if (fs.existsSync(this.filePath)) {
-        const content = fs.readFileSync(this.filePath, 'utf-8');
-        const data = JSON.parse(content);
+      const data = this.storage.get(this.filePath) as { jobs: Job[] } | null;
 
-        if (Array.isArray(data.jobs)) {
-          for (const jobData of data.jobs) {
-            const job = this.deserializeJob(jobData);
+      if (data && data.jobs && Array.isArray(data.jobs)) {
+        for (const jobData of data.jobs) {
+          const job = this.deserializeJob(jobData);
 
-            // Recovery: reset running jobs to pending on server restart
-            if (job.status === 'running') {
-              job.status = 'pending';
-              job.startedAt = undefined;
-              job.progress = 'Job was interrupted - pending retry';
-            }
-
-            this.jobs.set(job.id, job);
+          // Recovery: reset running jobs to pending on server restart
+          if (job.status === 'running') {
+            job.status = 'pending';
+            job.startedAt = undefined;
+            job.progress = 'Job was interrupted - pending retry';
           }
-          console.log(`[JobStore] Loaded ${this.jobs.size} jobs from ${this.filePath}`);
+
+          this.jobs.set(job.id, job);
         }
+        console.log(`[JobStore] Loaded ${this.jobs.size} jobs from ${this.filePath}`);
       } else {
-        console.log(`[JobStore] No existing jobs file found at ${this.filePath}`);
+        console.log(`[JobStore] No existing jobs found`);
       }
     } catch (error) {
       console.error(`[JobStore] Error loading jobs: ${error}`);
@@ -71,12 +77,8 @@ export class JobStore {
     try {
       const jobsArray = Array.from(this.jobs.values()).map(job => this.serializeJob(job));
       const data = { jobs: jobsArray, lastUpdated: new Date().toISOString() };
-      const content = JSON.stringify(data, null, 2);
 
-      // Atomic write: temp file + rename
-      const tempPath = `${this.filePath}.tmp`;
-      fs.writeFileSync(tempPath, content, 'utf-8');
-      fs.renameSync(tempPath, this.filePath);
+      this.storage.set(this.filePath, data);
     } catch (error) {
       console.error(`[JobStore] Error saving jobs: ${error}`);
       throw error;

@@ -5,23 +5,29 @@
 
 import { Router, Request, Response } from 'express';
 import { VerifyService, FastVerifyRequest, DeepVerifyRequest, OrchestratedVerifyRequest, MatrixVerifyRequest, IntelligentVerifyRequest, MultiAgentVerifyRequest } from '../services/verify-service';
+import { JobService } from '../services/job-service';
+import {
+  FastVerifyRequest as TypedFastVerifyRequest,
+  DeepVerifyRequest as TypedDeepVerifyRequest,
+  OrchestratedVerifyRequest as TypedOrchestratedVerifyRequest,
+  MatrixVerifyRequest as TypedMatrixVerifyRequest,
+  IntelligentVerifyRequest as TypedIntelligentVerifyRequest,
+  createError
+} from '../../types/express';
+import { validateBody, validationSchemas } from '../../middleware/validate';
 
-export function createVerifyRoutes(verifyService: VerifyService): Router {
+export function createVerifyRoutes(verifyService: VerifyService, jobService: JobService): Router {
   const router = Router();
 
   /**
    * POST /api/verify - Fast verification (synchronous)
    */
-  router.post('/verify', async (req: Request, res: Response): Promise<void> => {
+  router.post('/verify', validateBody(validationSchemas.verify), async (req: TypedFastVerifyRequest, res: Response): Promise<void> => {
     try {
-      const body = req.body as FastVerifyRequest;
+      const body = req.body;
 
       if (!body.url || !body.name) {
-        res.status(400).json({
-          success: false,
-          error: 'Missing required fields: url, name'
-        });
-        return;
+        throw createError('Missing required fields: url, name', 'VALIDATION_ERROR');
       }
 
       console.log(`[${new Date().toISOString()}] Starting fast verification for: ${body.name} (${body.url})`);
@@ -41,30 +47,31 @@ export function createVerifyRoutes(verifyService: VerifyService): Router {
         data: result
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Fast verification error:`, error);
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
-      });
+      // Let error handler middleware take care of errors
+      throw error;
     }
   });
 
   /**
    * POST /api/verify/deep - Deep verification (asynchronous)
    */
-  router.post('/verify/deep', async (req: Request, res: Response): Promise<void> => {
+  router.post('/verify/deep', validateBody(validationSchemas.verify), async (req: TypedDeepVerifyRequest, res: Response): Promise<void> => {
     try {
-      const body = req.body as DeepVerifyRequest;
+      const body = req.body;
 
       if (!body.url || !body.task) {
-        res.status(400).json({
-          success: false,
-          error: 'Missing required fields: url, task'
-        });
-        return;
+        throw createError('Missing required fields: url, task', 'VALIDATION_ERROR');
       }
 
-      const job = verifyService.createDeepVerificationJob(body);
+      const job = jobService.createAndEnqueueJob('deep', {
+        deepVerify: {
+          url: body.url,
+          task: body.task,
+          model: body.model,
+          maxSteps: body.maxSteps,
+          temperature: body.temperature
+        }
+      });
 
       console.log(`[${new Date().toISOString()}] Created deep verification job: ${job.id}`);
 
@@ -73,12 +80,7 @@ export function createVerifyRoutes(verifyService: VerifyService): Router {
         success: true,
         jobId: job.id,
         status: 'pending',
-        message: 'Deep verification job created. Use GET /api/jobs/:jobId to poll for results.'
-      });
-
-      // Start deep verification in background
-      verifyService.runDeepVerification(job.id, body).catch(err => {
-        console.error(`[${new Date().toISOString()}] Deep verification background task error:`, err);
+        message: 'Deep verification job created. Use GET /api/jobs/:id/detail to poll for results.'
       });
 
       // Update stats
@@ -87,11 +89,8 @@ export function createVerifyRoutes(verifyService: VerifyService): Router {
         stats.totalDeepVerifications++;
       }
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Deep verification setup error:`, error);
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
-      });
+      // Let error handler middleware take care of errors
+      throw error;
     }
   });
 
@@ -110,7 +109,14 @@ export function createVerifyRoutes(verifyService: VerifyService): Router {
         return;
       }
 
-      const job = verifyService.createOrchestratedVerificationJob(body);
+      const job = jobService.createAndEnqueueJob('orchestrated', {
+        orchestratedVerify: {
+          sites: body.sites,
+          strict: body.strict,
+          model: body.model,
+          skipDeep: body.skipDeep
+        }
+      });
 
       console.log(`[${new Date().toISOString()}] Created orchestrated verification job: ${job.id}`);
 
@@ -118,12 +124,7 @@ export function createVerifyRoutes(verifyService: VerifyService): Router {
         success: true,
         jobId: job.id,
         status: 'pending',
-        message: 'Orchestrated verification job created. Use GET /api/jobs/:jobId to poll for results.'
-      });
-
-      // Start orchestrated verification in background
-      verifyService.runOrchestratedVerification(job.id, body).catch(err => {
-        console.error(`[${new Date().toISOString()}] Orchestrated verification background task error:`, err);
+        message: 'Orchestrated verification job created. Use GET /api/jobs/:id/detail to poll for results.'
       });
 
       // Update stats
@@ -185,7 +186,7 @@ export function createVerifyRoutes(verifyService: VerifyService): Router {
   /**
    * POST /api/verify/intelligent - Intelligent verification (synchronous or asynchronous)
    */
-  router.post('/verify/intelligent', async (req: Request, res: Response): Promise<void> => {
+  router.post('/verify/intelligent', validateBody(validationSchemas.verify), async (req: Request, res: Response): Promise<void> => {
     try {
       const body = req.body as IntelligentVerifyRequest;
 

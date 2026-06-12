@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { getAllKeys, createKey, deleteKey } from '../../middleware/api-auth';
+import { validateBody, validationSchemas } from '../../middleware/validate';
 
 export function createKeyRoutes(): Router {
   const router = Router();
@@ -21,15 +22,15 @@ export function createKeyRoutes(): Router {
         lastUsedAt: k.lastUsedAt
       }));
       res.json(keys);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
   /**
    * POST /api/admin/keys - Create a new API key
    */
-  router.post('/admin/keys', async (req: Request, res: Response): Promise<void> => {
+  router.post('/admin/keys', validateBody(validationSchemas.apiKey), async (req: Request, res: Response): Promise<void> => {
     try {
       const { name } = req.body;
       if (!name) {
@@ -38,8 +39,8 @@ export function createKeyRoutes(): Router {
       }
       const key = createKey(name);
       res.status(201).json(key);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -50,8 +51,8 @@ export function createKeyRoutes(): Router {
     try {
       const ok = deleteKey(req.params.id as string);
       res.json({ deleted: ok });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 

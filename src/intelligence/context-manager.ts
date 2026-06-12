@@ -57,6 +57,16 @@ export interface ContextManagerConfig {
 }
 
 /**
+ * Context message structure
+ */
+interface ContextMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: number;
+  metadata?: Record<string, unknown>;
+}
+
+/**
  * Default configuration
  */
 const DEFAULT_CONFIG: ContextManagerConfig = {
@@ -72,8 +82,8 @@ const DEFAULT_CONFIG: ContextManagerConfig = {
 export class ContextManager {
   private config: ContextManagerConfig;
   private domFilter: DOMFilter;
-  private isolatedContexts: Map<string, any[]> = new Map();
-  private sharedContext: any[] = [];
+  private isolatedContexts: Map<string, ContextMessage[]> = new Map();
+  private sharedContext: ContextMessage[] = [];
 
   constructor(config?: Partial<ContextManagerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -115,7 +125,7 @@ export class ContextManager {
   /**
    * 2. compressContext - Compress conversation history
    */
-  compressContext(messages: any[], ratio?: number): ContextCompressionResult {
+  compressContext(messages: ContextMessage[], ratio?: number): ContextCompressionResult {
     const compressionRatio = ratio ?? this.config.compressionRatio;
     const originalLength = JSON.stringify(messages).length;
 
@@ -156,7 +166,7 @@ export class ContextManager {
   /**
    * Add to isolated context
    */
-  addToIsolatedContext(taskId: string, data: any): void {
+  addToIsolatedContext(taskId: string, data: ContextMessage): void {
     if (!this.isolatedContexts.has(taskId)) {
       this.isolatedContexts.set(taskId, []);
     }
@@ -166,7 +176,7 @@ export class ContextManager {
   /**
    * Add to shared context
    */
-  addToSharedContext(data: any): void {
+  addToSharedContext(data: ContextMessage): void {
     this.sharedContext.push(data);
   }
 
@@ -254,12 +264,12 @@ export class ContextManager {
   /**
    * 5. writeBack - Persist key findings to scratchpad
    */
-  writeBack(key: string, value: any): void {
+  writeBack(key: string, value: unknown): void {
     const scratchpadPath = path.join(this.config.scratchpadDir, `${key}.json`);
 
     try {
       // Read existing data
-      let existingData: any[] = [];
+      let existingData: unknown[] = [];
       if (fs.existsSync(scratchpadPath)) {
         const content = fs.readFileSync(scratchpadPath, 'utf-8');
         existingData = JSON.parse(content);
@@ -282,7 +292,7 @@ export class ContextManager {
   /**
    * Read from scratchpad
    */
-  readFromScratchpad(key: string): any[] {
+  readFromScratchpad(key: string): unknown[] {
     const scratchpadPath = path.join(this.config.scratchpadDir, `${key}.json`);
 
     try {
@@ -333,7 +343,7 @@ export class ContextManager {
   /**
    * Extract key points from messages
    */
-  private extractKeyPoints(messages: any[]): string[] {
+  private extractKeyPoints(messages: ContextMessage[]): string[] {
     const points: string[] = [];
 
     for (const msg of messages) {
@@ -357,7 +367,7 @@ export class ContextManager {
   /**
    * Create compressed summary
    */
-  private createCompressedSummary(messages: any[], keyPoints: string[]): any[] {
+  private createCompressedSummary(messages: ContextMessage[], keyPoints: string[]): ContextMessage[] {
     const compressed = [];
 
     // Add key points as summary

@@ -4,6 +4,7 @@
  */
 
 import { chromium, Browser, Page, BrowserContext } from '@playwright/test';
+import { BrowserPool } from '../browser/browser-pool';
 import * as fs from 'fs';
 import * as path from 'path';
 import { URL } from 'url';
@@ -32,6 +33,7 @@ export class AutonomousExplorer {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
+  private browserPool: BrowserPool;
   private pageAnalyzer: PageAnalyzer;
   private testGenerator: TestGenerator | null = null;
   private scriptEngine: ScriptEngine;
@@ -46,6 +48,12 @@ export class AutonomousExplorer {
     this.logger = new Logger({ prefix: 'Explorer' });
     this.outputDir = config.outputDir || 'explorer-output';
     this.screenshotDir = path.join(this.outputDir, 'screenshots');
+
+    // Initialize BrowserPool
+    this.browserPool = BrowserPool.getInstance({
+      maxInstances: 2,
+      headless: true,
+    });
 
     // Create output directories
     this.ensureDirectories();
@@ -392,10 +400,8 @@ export class AutonomousExplorer {
    * Initialize browser and page
    */
   private async initializeBrowser(): Promise<void> {
-    this.browser = await chromium.launch({ headless: true });
-    this.context = await this.browser.newContext();
-    this.page = await this.context.newPage();
-
+    // Use BrowserPool to get a page
+    this.page = await this.browserPool.acquirePage();
     // Set viewport
     await this.page.setViewportSize({ width: 1920, height: 1080 });
   }
@@ -590,8 +596,10 @@ ${waitForLine}`;
    */
   private async cleanup(): Promise<void> {
     try {
-      await this.context?.close();
-      await this.browser?.close();
+      // Release page back to the pool
+      if (this.page) {
+        this.browserPool.releasePage(this.page);
+      }
     } catch (error) {
       this.logger.warn(`Cleanup error: ${error}`);
     }

@@ -138,7 +138,7 @@ export function findTestPlan(projectDir: string): string | null {
 function parseSimpleYaml(text: string): any {
   const lines = text.split('\n');
   const root: any = {};
-  const stack: Array<{ obj: any; indent: number; key?: string }> = [{ obj: root, indent: -1 }];
+  const stack: Array<{ obj: Record<string, unknown>; indent: number; key?: string }> = [{ obj: root, indent: -1 }];
 
   let i = 0;
   while (i < lines.length) {
@@ -163,7 +163,7 @@ function parseSimpleYaml(text: string): any {
     if (trimmed.includes(':')) {
       const colonIdx = trimmed.indexOf(':');
       const key = trimmed.substring(0, colonIdx).trim();
-      let value: any = trimmed.substring(colonIdx + 1).trim();
+      let value: unknown = trimmed.substring(colonIdx + 1).trim();
 
       // Skip if key starts with - (list item with key)
       if (key === '') {
@@ -172,9 +172,11 @@ function parseSimpleYaml(text: string): any {
       }
 
       // Remove quotes
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
+      if (typeof value === 'string') {
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
       }
 
       // Check if value is a list indicator
@@ -183,7 +185,7 @@ function parseSimpleYaml(text: string): any {
         const nextLine = lines[i + 1];
         if (nextLine && nextLine.trim().startsWith('- ')) {
           // It's a list
-          const list: any[] = [];
+          const list: unknown[] = [];
           parent[key] = list;
           i++;
           while (i < lines.length) {
@@ -223,14 +225,15 @@ function parseSimpleYaml(text: string): any {
           continue;
         } else {
           // Nested object
-          parent[key] = {};
-          stack.push({ obj: parent[key], indent: indent });
+          const nestedObj: Record<string, unknown> = {};
+          parent[key] = nestedObj;
+          stack.push({ obj: nestedObj, indent: indent });
           i++;
           continue;
         }
       }
 
-      parent[key] = parseValue(value);
+      parent[key] = parseValue(typeof value === 'string' ? value : String(value));
     }
 
     i++;
@@ -239,8 +242,8 @@ function parseSimpleYaml(text: string): any {
   return root;
 }
 
-function parseInlineObject(text: string): any {
-  const obj: any = {};
+function parseInlineObject(text: string): Record<string, unknown> {
+  const obj: Record<string, unknown> = {};
   // Split by comma or just parse single key: value
   const parts = text.split(',').map(s => s.trim());
   for (const part of parts) {
@@ -252,7 +255,7 @@ function parseInlineObject(text: string): any {
   return obj;
 }
 
-function parseValue(val: string): any {
+function parseValue(val: string): unknown {
   if (!val || val === '') return '';
   val = val.trim();
   if ((val.startsWith('"') && val.endsWith('"')) ||

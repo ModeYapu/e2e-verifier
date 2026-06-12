@@ -1,4 +1,5 @@
 import { chromium, Browser, Page, BrowserContext } from '@playwright/test';
+import { BrowserPool } from './browser/browser-pool';
 import { SiteConfig, TestResult, CheckResult, ScreenshotResult, CustomCheck, AuthConfig } from './types';
 import { PerformanceChecker } from './checks/performance';
 import { AccessibilityChecker } from './checks/accessibility';
@@ -15,10 +16,24 @@ export class Verifier {
   private page: Page | null = null;
   private consoleMonitor: ConsoleMonitor | null = null;
   private ownsBrowser: boolean;
+  private browserPool?: BrowserPool;
+  private pooledPage?: Page;
 
-  constructor(private config: SiteConfig, sharedBrowser?: Browser) {
-    this.ownsBrowser = !sharedBrowser;
-    this.browser = sharedBrowser || null;
+  constructor(private config: SiteConfig, browserOrPool?: Browser | BrowserPool) {
+    // Support both Browser (legacy) and BrowserPool (new)
+    if (browserOrPool) {
+      if ('acquirePage' in browserOrPool) {
+        // It's a BrowserPool
+        this.browserPool = browserOrPool as BrowserPool;
+        this.ownsBrowser = false;
+      } else {
+        // It's a Browser
+        this.browser = browserOrPool as Browser;
+        this.ownsBrowser = false; // We don't own a passed-in browser
+      }
+    } else {
+      this.ownsBrowser = true; // We'll launch our own browser
+    }
   }
 
   async verify(): Promise<TestResult> {
@@ -35,7 +50,22 @@ export class Verifier {
       try {
         // Launch browser if not provided
         if (!this.browser) {
-          this.browser = await chromium.launch({ headless: true });
+          if (this.browserPool) {
+            // Use BrowserPool for page management
+            this.pooledPage = await this.browserPool.acquirePage();
+            this.page = this.pooledPage;
+            // We don't own the browser context in pool mode
+            this.ownsBrowser = false;
+          } else if (this.ownsBrowser) {
+            // Launch own browser (backward compatibility)
+            this.browser = await chromium.launch({ headless: true });
+          }
+        }
+
+        // Create context and page if we own the browser
+        if (this.browser && !this.page && !this.browserPool) {
+          this.context = await this.browser.newContext();
+          this.page = await this.context.newPage();
         }
         this.context = await this.browser.newContext();
         this.page = await this.context.newPage();
@@ -342,6 +372,11 @@ export class Verifier {
           if (this.ownsBrowser) {
             await this.browser?.close();
             this.browser = null;
+          }
+          // Release pooled page back to the pool
+          if (this.pooledPage && this.browserPool) {
+            this.browserPool.releasePage(this.pooledPage);
+            this.pooledPage = undefined;
           }
         } catch (cleanupError) {
           new Logger({ prefix: 'Verifier' }).error(`Cleanup error: ${cleanupError}`);

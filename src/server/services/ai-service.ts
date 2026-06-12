@@ -151,7 +151,7 @@ Respond in JSON format:
   /**
    * Get self-healing locator statistics
    */
-  getLocatorStats(): any {
+  getLocatorStats(): unknown {
     const locator = getSelfHealingLocator();
     return locator.getCacheStats();
   }

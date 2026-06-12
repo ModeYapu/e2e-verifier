@@ -339,8 +339,8 @@ export class MultiStrategyEvaluator implements ITestEvaluator {
   /**
    * Map recommendation type to suggestion type
    */
-  private mapRecommendationTypeToSuggestionType(recType: string): any {
-    const typeMapping: Record<string, any> = {
+  private mapRecommendationTypeToSuggestionType(recType: string): Suggestion['type'] {
+    const typeMapping: Record<string, Suggestion['type']> = {
       'repair': 'repair_selector',
       'retry': 'add_retry',
       'investigate': 'unknown',

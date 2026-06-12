@@ -27,6 +27,29 @@ export type {
 };
 
 // =====================================================
+// COMMON VALUE TYPES
+// =====================================================
+
+/**
+ * Common types for assertion values and expected results
+ */
+export type AssertionValue = string | number | boolean | RegExp | Record<string, unknown> | unknown[] | null;
+
+/**
+ * Type guard to check if a value is a string
+ */
+export function isStringValue(value: AssertionValue): value is string {
+  return typeof value === 'string';
+}
+
+/**
+ * Type guard to check if a value is a number
+ */
+export function isNumberValue(value: AssertionValue): value is number {
+  return typeof value === 'number';
+}
+
+// =====================================================
 // TEST TARGET - What to test
 // =====================================================
 
@@ -41,7 +64,7 @@ export interface TestTarget {
   /** Natural language description of what to test */
   description?: string;
   /** Optional site configuration if available */
-  siteConfig?: any; // SiteConfig from types/index.ts
+  siteConfig?: Record<string, unknown>; // SiteConfig from types/index.ts
   /** Test priority (affects planning depth) */
   priority?: 'high' | 'normal' | 'low';
   /** Tags for categorization */
@@ -152,7 +175,7 @@ export interface PlannedAssertion {
   /** Assertion type */
   type: AssertionType;
   /** Expected value */
-  expected: any;
+  expected: AssertionValue;
   /** CSS selector for element-based assertions */
   selector?: string;
   /** Attribute name for attribute assertions */
@@ -204,7 +227,7 @@ export interface StepResult {
   /** Whether step passed */
   passed: boolean;
   /** Actual result (if different from expected) */
-  actual?: any;
+  actual?: AssertionValue;
   /** Error message if step failed */
   error?: string;
   /** Screenshot taken at this step */
@@ -306,7 +329,7 @@ export interface Suggestion {
     selector?: string;
   };
   /** Suggested fix (if applicable) */
-  fix?: any;
+  fix?: string | number | boolean | Record<string, unknown>;
   /** Confidence in this suggestion (0-1) */
   confidence?: number;
 }
@@ -352,9 +375,9 @@ export interface RepairAttempt {
   /** Description of what was tried */
   description: string;
   /** Original value */
-  originalValue?: any;
+  originalValue?: AssertionValue;
   /** New value */
-  newValue?: any;
+  newValue?: AssertionValue;
   /** Whether this specific repair worked */
   worked?: boolean;
 }
@@ -428,6 +451,14 @@ export interface IntelligenceOptions {
   outputDir?: string;
   /** Whether to emit detailed events */
   verbose?: boolean;
+  /** Maximum number of scenarios to generate */
+  maxScenarios?: number;
+  /** Maximum number of steps per scenario */
+  maxSteps?: number;
+  /** Enabled testing strategies */
+  enabledStrategies?: string[];
+  /** Confidence threshold for decisions */
+  confidenceThreshold?: number;
 }
 
 // =====================================================
@@ -459,7 +490,7 @@ export interface IntelligenceEvent {
   /** Timestamp */
   timestamp: string;
   /** Event data */
-  data: any;
+  data: TestPlan | ScenarioResult | EvaluationResult | RepairResult | Error | Record<string, unknown>;
   /** Progress (0-1) */
   progress?: number;
 }

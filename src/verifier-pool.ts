@@ -1,32 +1,32 @@
 import { chromium, Browser } from '@playwright/test';
 import { SiteConfig, TestResult } from './types';
 import { Verifier } from './verifier';
+import { BrowserPool } from './browser/browser-pool';
 
 export interface VerifyAllOptions {
   parallel?: number;
 }
 
 export class VerifierPool {
-  private browser: Browser | null = null;
+  private browserPool: BrowserPool;
+
+  constructor() {
+    this.browserPool = BrowserPool.getInstance({
+      maxInstances: 2,
+      headless: true,
+    });
+  }
 
   async init(): Promise<void> {
-    if (!this.browser) {
-      this.browser = await chromium.launch({ headless: true });
-    }
+    // BrowserPool initializes lazily, no explicit init needed
   }
 
   async close(): Promise<void> {
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
-    }
+    await this.browserPool.close();
   }
 
   async verify(config: SiteConfig): Promise<TestResult> {
-    if (!this.browser) {
-      throw new Error('Pool not initialized. Call init() first.');
-    }
-    const verifier = new Verifier(config, this.browser);
+    const verifier = new Verifier(config, this.browserPool);
     return verifier.verify();
   }
 
@@ -61,7 +61,7 @@ export class VerifierPool {
     return chunks;
   }
 
-  getBrowser(): Browser | null {
-    return this.browser;
+  getBrowserPool(): BrowserPool {
+    return this.browserPool;
   }
 }

@@ -220,8 +220,8 @@ export class LogicCheckStrategy implements VerificationStrategy {
         const threshold = assertionResult.assertion.expected;
         const actual = assertionResult.actual;
 
-        if (typeof actual === 'object' && actual !== null) {
-          const metricValue = (actual as any).value || (actual as any).duration;
+        if (typeof actual === 'object' && actual !== null && typeof threshold === 'number') {
+          const metricValue = (actual as Record<string, unknown>).value || (actual as Record<string, unknown>).duration;
           if (typeof metricValue === 'number') {
             const ratio = metricValue / threshold;
             if (ratio > 2) {

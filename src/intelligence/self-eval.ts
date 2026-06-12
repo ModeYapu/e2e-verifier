@@ -127,8 +127,8 @@ export class SelfEvalEngine {
     const qualityScore = this.calculatePlanQualityScore(comprehensive, appropriate, missingCoverage, overEngineered);
 
     const evaluation: PlanEvaluation = {
-      plan,
-      result,
+      plan: plan as unknown as Record<string, unknown>,
+      result: result as unknown as Record<string, unknown>,
       comprehensive,
       appropriate,
       missingCoverage,

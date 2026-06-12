@@ -365,25 +365,44 @@ export class MultiAgentOrchestrator {
     roleType: TestRoleType,
     target: TestTarget,
     previousResults?: AgentExecutionResult[]
-  ): Promise<any> {
+  ): Promise<MultiAgentResult> {
+    let agentResult: AgentExecutionResult;
+
     switch (roleType) {
       case 'explorer':
-        return this.executeExplorer(target);
+        agentResult = await this.executeExplorer(target);
+        break;
       case 'tester':
-        return this.executeTester(target, previousResults);
+        agentResult = await this.executeTester(target, previousResults);
+        break;
       case 'reviewer':
-        return this.executeReviewer(target, previousResults);
+        agentResult = await this.executeReviewer(target, previousResults);
+        break;
       case 'repairer':
-        return this.executeRepairer(target, previousResults);
+        agentResult = await this.executeRepairer(target, previousResults);
+        break;
       default:
         throw new Error(`Unknown role type: ${roleType}`);
     }
+
+    // Construct MultiAgentResult from AgentExecutionResult
+    return {
+      mode: 'sequential',
+      target,
+      results: [agentResult],
+      finalVerdict: agentResult.status === 'success' ? 'pass' : agentResult.status === 'failure' ? 'fail' : 'inconclusive',
+      confidence: 0.8,
+      messages: [],
+      workspace: [],
+      duration: agentResult.duration,
+      timestamp: agentResult.timestamp,
+    };
   }
 
   /**
    * Execute explorer agent
    */
-  private async executeExplorer(target: TestTarget): Promise<any> {
+  private async executeExplorer(target: TestTarget): Promise<AgentExecutionResult> {
     // Generate test plan
     const plan = await this.planner.plan(target);
 
@@ -398,13 +417,20 @@ export class MultiAgentOrchestrator {
       MessageFactory.featureDiscovered('explorer', features, 'orchestrator')
     );
 
-    return { plan, features };
+    return {
+      role: 'explorer',
+      agentId: 'explorer-1',
+      status: 'success',
+      result: { plan, features },
+      duration: 0,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
    * Execute tester agent
    */
-  private async executeTester(target: TestTarget, previousResults?: AgentExecutionResult[]): Promise<any> {
+  private async executeTester(target: TestTarget, previousResults?: AgentExecutionResult[]): Promise<AgentExecutionResult> {
     // Get scenarios from previous explorer results
     const explorerResult = previousResults?.find(r => r.role === 'explorer');
     if (!explorerResult) {
@@ -425,13 +451,20 @@ export class MultiAgentOrchestrator {
       );
     }
 
-    return { results };
+    return {
+      role: 'tester',
+      agentId: 'tester-1',
+      status: 'success',
+      result: { results },
+      duration: 0,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
    * Execute reviewer agent
    */
-  private async executeReviewer(target: TestTarget, previousResults?: AgentExecutionResult[]): Promise<any> {
+  private async executeReviewer(target: TestTarget, previousResults?: AgentExecutionResult[]): Promise<AgentExecutionResult> {
     // Collect all test results
     const testResults = previousResults?.filter(r => r.role === 'tester') || [];
     const scenarioResults = testResults.flatMap(r =>
@@ -448,13 +481,20 @@ export class MultiAgentOrchestrator {
       );
     }
 
-    return { analysis };
+    return {
+      role: 'reviewer',
+      agentId: 'reviewer-1',
+      status: 'success',
+      result: { analysis },
+      duration: 0,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
    * Execute repairer agent
    */
-  private async executeRepairer(target: TestTarget, previousResults?: AgentExecutionResult[]): Promise<any> {
+  private async executeRepairer(target: TestTarget, previousResults?: AgentExecutionResult[]): Promise<AgentExecutionResult> {
     // Get issues from reviewer results
     const reviewerResult = previousResults?.find(r => r.role === 'reviewer');
     if (!reviewerResult) {
@@ -475,7 +515,14 @@ export class MultiAgentOrchestrator {
       );
     }
 
-    return { repairs };
+    return {
+      role: 'repairer',
+      agentId: 'repairer-1',
+      status: 'success',
+      result: { repairs },
+      duration: 0,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
@@ -536,12 +583,13 @@ export class MultiAgentOrchestrator {
   /**
    * Extract scenarios from explorer result
    */
-  private extractScenarios(explorerResult: any): PlannedScenario[] {
-    if (explorerResult.plan?.scenarios) {
-      return explorerResult.plan.scenarios;
+  private extractScenarios(explorerResult: AgentExecutionResult): PlannedScenario[] {
+    const resultData = explorerResult.result as { plan?: { scenarios?: PlannedScenario[] }; features?: PlannedScenario[] };
+    if (resultData.plan?.scenarios) {
+      return resultData.plan.scenarios;
     }
-    if (explorerResult.features) {
-      return explorerResult.features;
+    if (resultData.features) {
+      return resultData.features;
     }
     return [];
   }
@@ -549,9 +597,9 @@ export class MultiAgentOrchestrator {
   /**
    * Extract plan from result
    */
-  private extractPlan(result: any): TestPlan {
-    if (result.plan) return result.plan;
-    if (result.result?.plan) return result.result.plan;
+  private extractPlan(result: AgentExecutionResult): TestPlan {
+    const resultData = result.result as { plan?: TestPlan };
+    if (resultData.plan) return resultData.plan;
     throw new Error('No plan found in result');
   }
 
@@ -559,10 +607,11 @@ export class MultiAgentOrchestrator {
    * Categorize scenarios for parallel execution
    */
   private categorizeScenarios(scenarios: PlannedScenario[]): Record<string, PlannedScenario[]> {
+    // Since PlannedScenario doesn't have priority property, return all as normal
     return {
-      high: scenarios.filter(s => (s as any).priority === 'high'),
-      normal: scenarios.filter(s => !(s as any).priority || (s as any).priority === 'normal'),
-      low: scenarios.filter(s => (s as any).priority === 'low'),
+      high: [],
+      normal: scenarios,
+      low: [],
     };
   }
 
@@ -584,7 +633,13 @@ export class MultiAgentOrchestrator {
   /**
    * Analyze test results
    */
-  private analyzeResults(results: ScenarioResult[]): any {
+  private analyzeResults(results: ScenarioResult[]): {
+    total: number;
+    passed: number;
+    failed: number;
+    passRate: number;
+    issues: Array<{ scenarioId: string; error?: string; failedSteps: number }>;
+  } {
     const passed = results.filter(r => r.passed).length;
     const failed = results.filter(r => !r.passed).length;
 
@@ -608,12 +663,10 @@ export class MultiAgentOrchestrator {
   /**
    * Suggest repair for issue
    */
-  private suggestRepair(issue: any): any {
+  private suggestRepair(issue: { description: string; severity: string }): { suggestion: string; priority: string } | null {
     return {
-      issue: issue.scenarioId,
-      type: 'selector', // Simplified
-      description: `Repair failed test ${issue.scenarioId}`,
       suggestion: 'Update selector or add wait condition',
+      priority: issue.severity === 'high' ? 'high' : 'normal',
     };
   }
 
@@ -631,7 +684,7 @@ export class MultiAgentOrchestrator {
   /**
    * Get message broker stats
    */
-  getStats(): any {
+  getStats(): { messages: unknown; workspace: unknown } {
     return {
       messages: this.messageBroker.getStats(),
       workspace: this.workspace.getStats(),

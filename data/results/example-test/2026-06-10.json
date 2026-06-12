@@ -1,0 +1,71 @@
+{
+  "results": [
+    {
+      "siteName": "example-test",
+      "url": "https://example.com",
+      "timestamp": "2026-06-10T11:53:22.257Z",
+      "passed": false,
+      "duration": 7678,
+      "checks": [
+        {
+          "name": "Status Code",
+          "type": "http",
+          "passed": true,
+          "message": "Expected 200, got 200",
+          "details": {
+            "actual": 200,
+            "expected": 200
+          }
+        },
+        {
+          "name": "Performance",
+          "type": "performance",
+          "passed": true,
+          "message": "FCP: 988ms, DCL: 0ms, Load: 0ms, Size: 0.00KB",
+          "details": {
+            "domContentLoaded": 0.09999990463256836,
+            "loadTime": 0,
+            "fcp": 988,
+            "pageWeight": 0
+          }
+        },
+        {
+          "name": "Accessibility",
+          "type": "accessibility",
+          "passed": true,
+          "message": "All checks passed",
+          "details": {
+            "passed": true,
+            "issues": []
+          }
+        },
+        {
+          "name": "SEO",
+          "type": "seo",
+          "passed": false,
+          "message": "Failed: Meta description, Open Graph tags",
+          "details": {
+            "passed": false,
+            "checks": {
+              "titleTag": true,
+              "metaDescription": false,
+              "h1Presence": true,
+              "favicon": true,
+              "viewportMeta": true,
+              "openGraphTags": false
+            }
+          }
+        },
+        {
+          "name": "Console Errors",
+          "type": "console",
+          "passed": true,
+          "message": "No console errors"
+        }
+      ],
+      "screenshots": [],
+      "errors": []
+    }
+  ],
+  "lastUpdated": "2026-06-10T11:53:22.258Z"
+}

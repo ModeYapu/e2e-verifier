@@ -3,7 +3,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { chromium, Browser } from '@playwright/test';
+import { Browser } from '@playwright/test';
 import { JobQueue } from './job-queue';
 import { JobStore } from './job-store';
 import { Job, JobStatus } from './types';
@@ -18,6 +18,7 @@ import { IntelligentOrchestrator, OrchestratorFactory } from '../intelligence/or
 import { TestTarget } from '../intelligence/types';
 import { ResultStore } from '../storage/result-store';
 import { TestResult } from '../types';
+import { BrowserPool } from '../browser/browser-pool';
 
 /**
  * Scheduler configuration
@@ -47,7 +48,7 @@ export class Scheduler extends EventEmitter {
   private config: SchedulerConfig;
   private workers: WorkerState[] = new Array();
   private isRunning: boolean = false;
-  private sharedBrowser: Browser | null = null;
+  private browserPool: BrowserPool;
   private schedulingInterval: NodeJS.Timeout | null = null;
 
   constructor(jobQueue: JobQueue, jobStore: JobStore, config?: Partial<SchedulerConfig>) {
@@ -59,6 +60,9 @@ export class Scheduler extends EventEmitter {
       maxConcurrency: config?.maxConcurrency ?? 2,
       headless: config?.headless ?? true
     };
+
+    // Initialize browser pool
+    this.browserPool = BrowserPool.getInstance({ headless: this.config.headless });
 
     // Listen to job queue events
     this.jobQueue.on('job.completed', this.handleJobCompleted.bind(this));
@@ -77,10 +81,8 @@ export class Scheduler extends EventEmitter {
     console.log('[Scheduler] Starting...');
     this.isRunning = true;
 
-    // Initialize shared browser pool
-    console.log('[Scheduler] Initializing browser pool...');
-    this.sharedBrowser = await chromium.launch({ headless: this.config.headless });
-    console.log('[Scheduler] Browser pool ready');
+    // BrowserPool is now managing browser instances
+    console.log('[Scheduler] Using shared browser pool');
 
     // Initialize worker pool
     console.log(`[Scheduler] Initializing worker pool (max concurrency: ${this.config.maxConcurrency})`);
@@ -88,7 +90,7 @@ export class Scheduler extends EventEmitter {
       this.workers.push({
         id: `worker-${i}`,
         busy: false,
-        browser: this.sharedBrowser
+        browser: undefined // Will use BrowserPool when needed
       });
     }
 
@@ -129,15 +131,9 @@ export class Scheduler extends EventEmitter {
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // Close browser pool
-    if (this.sharedBrowser) {
-      try {
-        await this.sharedBrowser.close();
-        console.log('[Scheduler] Browser pool closed');
-      } catch (error) {
-        console.error('[Scheduler] Error closing browser:', error);
-      }
-    }
+    // BrowserPool manages browser cleanup
+    // We don't close the pool here as it may be used by other components
+    console.log('[Scheduler] Workers cleaned up');
 
     console.log('[Scheduler] Stopped successfully');
     this.emit('stopped');
@@ -283,7 +279,8 @@ export class Scheduler extends EventEmitter {
       customChecks: config.customChecks
     };
 
-    const verifier = new Verifier(siteConfig, this.sharedBrowser || undefined);
+    // Verifier will handle its own browser management using BrowserPool
+    const verifier = new Verifier(siteConfig);
     return await verifier.verify();
   }
 
@@ -469,6 +466,9 @@ export class Scheduler extends EventEmitter {
         maxRounds: config.options?.maxRepairRounds || 3,
       },
     });
+
+    // Initialize orchestrator before running
+    await orchestrator.init();
 
     // Run intelligent verification
     const result = await orchestrator.run(target, {

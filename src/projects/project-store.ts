@@ -2,29 +2,32 @@
  * Project Store - CRUD operations for multi-tenant project management
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import { Project, Member, CreateProjectRequest, UpdateProjectRequest } from './types';
+import { JsonStorage } from '../storage/json-storage';
 
-const PROJECTS_FILE = path.join(process.cwd(), 'data', 'projects.json');
+const PROJECTS_FILE = 'projects';
+const STORAGE_DIR = path.join(process.cwd(), 'data');
+
+// Initialize storage
+const storage = new JsonStorage({
+  storageDir: STORAGE_DIR,
+  fileExtension: '.json',
+  createDir: true,
+});
 
 function loadProjects(): Project[] {
   try {
-    if (fs.existsSync(PROJECTS_FILE)) {
-      return JSON.parse(fs.readFileSync(PROJECTS_FILE, 'utf-8'));
-    }
+    const projects = storage.get(PROJECTS_FILE) as Project[] | null;
+    return projects || [];
   } catch (e) {
     console.error('Failed to load projects:', e);
+    return [];
   }
-  return [];
 }
 
 function saveProjects(projects: Project[]): void {
-  const dir = path.dirname(PROJECTS_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  fs.writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2));
+  storage.set(PROJECTS_FILE, projects);
 }
 
 export class ProjectStore {

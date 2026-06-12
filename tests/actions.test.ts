@@ -184,7 +184,7 @@ const TEST_HTML = `
   <input id="input" type="text">
   <textarea id="textarea"></textarea>
   <button id="btn">Click Me</button>
-  <button id="dialogBtn">Show Dialog</button>
+  <button id="dialogBtn" onclick="alert('Dialog triggered')">Show Dialog</button>
   <select id="select"><option value="a">A</option><option value="b">B</option></select>
   <input id="checkbox" type="checkbox">
   <div id="scroll-container" style="height:100px;overflow:auto;">
@@ -419,13 +419,14 @@ describe('executeSingleAction', () => {
   });
 
   test('handleDialog', async () => {
-    let dialogMsg = '';
-    await runner.executeSingleAction({
+    // The button now has onclick="alert('Dialog triggered')" so it will fire a dialog
+    // The action should handle it successfully without timeout
+    await expect(runner.executeSingleAction({
       type: 'handleDialog',
       triggerSelector: '#dialogBtn',
-      dialogAction: 'accept'
-    }).catch(() => {}); // dialogBtn may not fire dialog, that's ok
-    // If dialogBtn fires a dialog, it's auto-accepted
+      dialogAction: 'accept',
+      timeout: 3000
+    })).resolves.toBeUndefined();
   });
 
   // --- Edge cases ---

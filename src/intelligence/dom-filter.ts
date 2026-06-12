@@ -24,6 +24,11 @@ interface DOMElement {
 }
 
 /**
+ * Parsed DOM structure (can be object or array)
+ */
+type ParsedDOM = DOMElement | DOMElement[] | Record<string, unknown>;
+
+/**
  * Filter configuration
  */
 export interface DOMFilterConfig {
@@ -70,11 +75,11 @@ export class DOMFilter {
    */
   filterDOM(rawDOM: string, task?: string): string {
     try {
-      let parsed: any;
+      let parsed: ParsedDOM;
 
       // Try to parse as JSON first (Playwright snapshot format)
       if (rawDOM.trim().startsWith('{') || rawDOM.trim().startsWith('[')) {
-        parsed = JSON.parse(rawDOM);
+        parsed = JSON.parse(rawDOM) as ParsedDOM;
         if (Array.isArray(parsed)) {
           parsed = { elements: parsed };
         }
@@ -105,26 +110,26 @@ export class DOMFilter {
   /**
    * Filter a single node
    */
-  private filterNode(node: any, task?: string): any {
+  private filterNode(node: ParsedDOM, task?: string): ParsedDOM {
     if (!node || typeof node !== 'object') {
       return node;
     }
 
     // Handle arrays
     if (Array.isArray(node)) {
-      return node.map(child => this.filterNode(child, task)).filter(Boolean);
+      return node.map(child => this.filterNode(child, task)).filter(Boolean) as DOMElement[];
     }
 
     // Handle different node structures
-    if (node.tagName) {
-      return this.filterElement(node, task);
+    if ((node as DOMElement).tagName) {
+      return this.filterElement(node as DOMElement, task);
     }
 
     // Handle generic objects
-    const filtered: any = {};
+    const filtered: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(node)) {
       if (this.shouldKeepKey(key)) {
-        filtered[key] = this.filterNode(value, task);
+        filtered[key] = this.filterNode(value as ParsedDOM, task);
       }
     }
     return filtered;
@@ -133,7 +138,7 @@ export class DOMFilter {
   /**
    * Filter an element
    */
-  private filterElement(element: any, task?: string): any | null {
+  private filterElement(element: DOMElement, task?: string): DOMElement | null {
     const tagName = (element.tagName || '').toLowerCase();
     const attrs = element.attributes || {};
 
@@ -151,7 +156,7 @@ export class DOMFilter {
     }
 
     // Filter children
-    const filteredChildren: any[] = [];
+    const filteredChildren: DOMElement[] = [];
     if (element.children && Array.isArray(element.children)) {
       for (const child of element.children) {
         const filtered = this.filterElement(child, task);
@@ -172,7 +177,7 @@ export class DOMFilter {
   /**
    * Check if element should be removed
    */
-  private shouldRemoveElement(element: any, task?: string): boolean {
+  private shouldRemoveElement(element: DOMElement, task?: string): boolean {
     const tagName = (element.tagName || '').toLowerCase();
     const attrs = element.attributes || {};
     const className = attrs.class || attrs.className || '';
@@ -245,7 +250,7 @@ export class DOMFilter {
   /**
    * Check if element is a key element
    */
-  private isKeyElement(element: any): boolean {
+  private isKeyElement(element: DOMElement): boolean {
     const tagName = (element.tagName || '').toLowerCase();
     const attrs = element.attributes || {};
 
@@ -305,7 +310,7 @@ export class DOMFilter {
   /**
    * Generate selector for element
    */
-  private generateSelector(element: any): string {
+  private generateSelector(element: DOMElement): string {
     const tagName = (element.tagName || '').toLowerCase();
     const attrs = element.attributes || {};
 
@@ -331,7 +336,7 @@ export class DOMFilter {
   /**
    * Check if element matches selector
    */
-  private matchesSelector(element: any, selector: string): boolean {
+  private matchesSelector(element: DOMElement, selector: string): boolean {
     const tagName = (element.tagName || '').toLowerCase();
     const attrs = element.attributes || {};
 
@@ -365,7 +370,7 @@ export class DOMFilter {
    */
   private parseHTML(html: string): any {
     // Simple HTML parser
-    const elements: any[] = [];
+    const elements: DOMElement[] = [];
     const regex = /<(\w+)([^>]*)>([^<]*)/g;
     let match;
 
@@ -406,11 +411,11 @@ export class DOMFilter {
   private formatFiltered(filtered: any): string {
     // Convert back to string representation
     if (filtered.elements && Array.isArray(filtered.elements)) {
-      return filtered.elements.map((el: any) => this.formatElement(el, 0)).join('\n');
+      return filtered.elements.map((el: DOMElement) => this.formatElement(el, 0)).join('\n');
     }
 
     if (Array.isArray(filtered)) {
-      return filtered.map((el: any) => this.formatElement(el, 0)).join('\n');
+      return filtered.map((el: DOMElement) => this.formatElement(el, 0)).join('\n');
     }
 
     return this.formatElement(filtered, 0);
@@ -419,7 +424,7 @@ export class DOMFilter {
   /**
    * Format single element
    */
-  private formatElement(element: any, depth: number): string {
+  private formatElement(element: DOMElement, depth: number): string {
     const indent = '  '.repeat(depth);
     const tagName = element.tagName || '?';
     const attrs = element.attributes || {};

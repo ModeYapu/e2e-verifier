@@ -5,10 +5,51 @@
 
 import { Router, Request, Response } from 'express';
 import { JobService } from '../services/job-service';
-import { VerifyService } from '../services/verify-service';
 import { JobType, JobPriority, JobStatus } from '../../scheduler/types';
+import { CreateJobRequest, createError } from '../../types/express';
+import { validateBody, validationSchemas } from '../../middleware/validate';
 
-export function createJobRoutes(jobService: JobService, verifyService: VerifyService): Router {
+// =====================================================
+// REQUEST/RESPONSE TYPES
+// =====================================================
+
+export interface LegacyJobResponse {
+  success: boolean;
+  jobId: string;
+  type: JobType;
+  status: JobStatus;
+  progress: string;
+  createdAt: string;
+  completedAt?: string;
+  result?: unknown;
+  error?: string;
+}
+
+export interface JobDetailResponse {
+  success: boolean;
+  job: {
+    id: string;
+    type: JobType;
+    status: JobStatus;
+    priority: JobPriority;
+    config: unknown;
+    progress: string;
+    retryCount: number;
+    maxRetries: number;
+    createdAt: string;
+    startedAt?: string;
+    completedAt?: string;
+    timeout?: number;
+    result?: unknown;
+    error?: string;
+  };
+}
+
+export interface CreateBatchJobRequest {
+  jobs: any[];
+}
+
+export function createJobRoutes(jobService: JobService): Router {
   const router = Router();
 
   /**
@@ -17,7 +58,7 @@ export function createJobRoutes(jobService: JobService, verifyService: VerifySer
   router.get('/jobs/:jobId', (req: Request, res: Response): void => {
     const { jobId } = req.params;
     const jobIdString = Array.isArray(jobId) ? jobId[0] : jobId;
-    const job = verifyService.getJob(jobIdString);
+    const job = jobService.getJob(jobIdString);
 
     if (!job) {
       res.status(404).json({
@@ -27,7 +68,7 @@ export function createJobRoutes(jobService: JobService, verifyService: VerifySer
       return;
     }
 
-    const response: any = {
+    const response: LegacyJobResponse = {
       success: true,
       jobId: job.id,
       type: job.type,
@@ -57,7 +98,7 @@ export function createJobRoutes(jobService: JobService, verifyService: VerifySer
   router.delete('/jobs/:jobId', (req: Request, res: Response): void => {
     const { jobId } = req.params;
     const jobIdString = Array.isArray(jobId) ? jobId[0] : jobId;
-    const deleted = verifyService.deleteJob(jobIdString);
+    const deleted = jobService.cancelJob(jobIdString);
 
     if (!deleted) {
       res.status(404).json({
@@ -77,7 +118,7 @@ export function createJobRoutes(jobService: JobService, verifyService: VerifySer
    * GET /api/jobs - List all jobs (legacy)
    */
   router.get('/jobs', (req: Request, res: Response): void => {
-    const jobs = verifyService.listJobs();
+    const jobs = jobService.listJobs({offset: 0, limit: 1000});
 
     res.json({
       success: true,
@@ -89,26 +130,18 @@ export function createJobRoutes(jobService: JobService, verifyService: VerifySer
   /**
    * POST /api/jobs - Create a new job
    */
-  router.post('/jobs', async (req: Request, res: Response): Promise<void> => {
+  router.post('/jobs', validateBody(validationSchemas.job), async (req: CreateJobRequest, res: Response): Promise<void> => {
     try {
       const body = req.body;
 
       if (!body.type || !body.config) {
-        res.status(400).json({
-          success: false,
-          error: 'Missing required fields: type, config'
-        });
-        return;
+        throw createError('Missing required fields: type, config', 'VALIDATION_ERROR');
       }
 
       // Validate job type
-      const validTypes: JobType[] = ['fast', 'deep', 'orchestrated', 'matrix'];
+      const validTypes: JobType[] = ['fast', 'deep', 'orchestrated', 'matrix', 'intelligent'];
       if (!validTypes.includes(body.type)) {
-        res.status(400).json({
-          success: false,
-          error: `Invalid job type. Must be one of: ${validTypes.join(', ')}`
-        });
-        return;
+        throw createError(`Invalid job type. Must be one of: ${validTypes.join(', ')}`, 'VALIDATION_ERROR');
       }
 
       // Create job
@@ -131,11 +164,8 @@ export function createJobRoutes(jobService: JobService, verifyService: VerifySer
         message: 'Job created and queued. Use GET /api/jobs/:id/detail to check status.'
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error creating job:`, error);
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
-      });
+      // Let error handler middleware take care of errors
+      throw error;
     }
   });
 
@@ -158,11 +188,12 @@ export function createJobRoutes(jobService: JobService, verifyService: VerifySer
         limit: pageSize
       };
 
-      const jobs = jobService.getQueueStats().total === 0
+      const queueStats = jobService.getQueueStats() as { total: number; pending: number; running: number; completed: number; failed: number };
+      const jobs = queueStats.total === 0
         ? []
         : jobService.listJobs(filter);
 
-      const totalJobs = jobService.getQueueStats().total;
+      const totalJobs = queueStats.total;
 
       res.json({
         success: true,
@@ -210,7 +241,7 @@ export function createJobRoutes(jobService: JobService, verifyService: VerifySer
         return;
       }
 
-      const response: any = {
+      const response: JobDetailResponse = {
         success: true,
         job: {
           id: job.id,

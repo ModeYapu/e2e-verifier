@@ -20,8 +20,8 @@ export function createWebhookRoutes(): Router {
     try {
       const webhooks = webhookConfig.getAll();
       res.json(webhooks);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -37,8 +37,8 @@ export function createWebhookRoutes(): Router {
       }
       const wh = webhookConfig.create(url, secret, events, true);
       res.status(201).json(wh);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -54,8 +54,8 @@ export function createWebhookRoutes(): Router {
         return;
       }
       res.json(wh);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -66,8 +66,8 @@ export function createWebhookRoutes(): Router {
     try {
       const ok = webhookConfig.delete(req.params.id as string);
       res.json({ deleted: ok });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 
@@ -83,8 +83,8 @@ export function createWebhookRoutes(): Router {
       }
       const result = await webhookDelivery.sendTest(wh);
       res.json({ success: true, result });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch (e: unknown) {
+      res.status(500).json({ error: (e as Error).message });
     }
   });
 

@@ -7,9 +7,11 @@ import express, { Request, Response, Router } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { chromium, Browser } from '@playwright/test';
+import { BrowserPool } from '../browser/browser-pool';
 import { WebhookConfigManager } from '../config/webhook-config';
 import { WebhookDelivery } from '../integrations/webhook';
 import { projectAuth } from '../middleware/project-auth';
+import { apiKeyAuth } from '../middleware/api-auth';
 import { ProjectStore } from '../projects/project-store';
 import experienceRoutes from '../api/routes/experience-routes';
 import { IntelligentOrchestrator } from '../intelligence/orchestrator';
@@ -34,6 +36,7 @@ import { createAIRoutes } from './routes/ai-routes';
 import { createDashboardRoutes } from './routes/dashboard-routes';
 import { createTrendRoutes } from './routes/trend-routes';
 import { createReportRoutes } from './routes/report-routes';
+import { errorHandler } from '../middleware/error-handler';
 
 /**
  * Server statistics
@@ -51,7 +54,6 @@ interface ServerStats {
 export class VerifyServer {
   private app: express.Application;
   private router: Router;
-  private browser: Browser | null = null;
   private verifyService: VerifyService;
   private jobService: JobService;
   private projectService: ProjectService;
@@ -131,6 +133,9 @@ export class VerifyServer {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+    // Apply API key authentication (automatically skips /health endpoint)
+    this.app.use('/api', apiKeyAuth);
+
     // Serve static dashboard files
     const dashboardPath = path.join(__dirname, '../../dashboard');
     this.app.use('/dashboard', express.static(dashboardPath));
@@ -179,8 +184,8 @@ export class VerifyServer {
   private setupRoutes(): void {
     // Register all route modules
     this.app.use('/api', createHealthRoutes(this.verifyService));
-    this.app.use('/api', createVerifyRoutes(this.verifyService));
-    this.app.use('/api', createJobRoutes(this.jobService, this.verifyService));
+    this.app.use('/api', createVerifyRoutes(this.verifyService, this.jobService));
+    this.app.use('/api', createJobRoutes(this.jobService));
     this.app.use('/api', createProjectRoutes(this.projectService));
     this.app.use('/api', createWebhookRoutes());
     this.app.use('/api', createKeyRoutes());
@@ -194,13 +199,8 @@ export class VerifyServer {
   }
 
   private setupErrorHandling(): void {
-    this.app.use((err: Error, req: Request, res: Response, next: express.NextFunction) => {
-      console.error(`[${new Date().toISOString()}] Error:`, err.message);
-      res.status(500).json({
-        success: false,
-        error: err.message || 'Internal server error'
-      });
-    });
+    // Use our centralized error handler
+    this.app.use(errorHandler);
   }
 
   private shouldRequireApiAuth(): boolean {
@@ -230,9 +230,12 @@ export class VerifyServer {
     // Update uptime
     this.app.set('uptime', Date.now() - this.serverStartTime);
 
-    // Launch browser pool (singleton)
-    console.log(`[${new Date().toISOString()}] Launching browser pool...`);
-    this.browser = await chromium.launch({ headless: this.headless });
+    // Initialize browser pool (singleton)
+    console.log(`[${new Date().toISOString()}] Initializing browser pool...`);
+    BrowserPool.getInstance({
+      headless: this.headless,
+      maxInstances: 2, // Shared pool for all services
+    });
     console.log(`[${new Date().toISOString()}] Browser pool ready`);
 
     // Initialize intelligent orchestrator
@@ -296,14 +299,12 @@ export class VerifyServer {
       console.error(`[${new Date().toISOString()}] Error stopping scheduler:`, schedulerError);
     }
 
-    // Close browser
-    if (this.browser) {
-      try {
-        await this.browser.close();
-        console.log(`[${new Date().toISOString()}] Browser pool closed`);
-      } catch (browserError) {
-        console.error(`[${new Date().toISOString()}] Error closing browser:`, browserError);
-      }
+    // Close browser pool
+    try {
+      await BrowserPool.getInstance().close();
+      console.log(`[${new Date().toISOString()}] Browser pool closed`);
+    } catch (browserError) {
+      console.error(`[${new Date().toISOString()}] Error closing browser pool:`, browserError);
     }
 
     return new Promise<void>((resolve, reject) => {
@@ -333,35 +334,3 @@ export class VerifyServer {
 
   private server: ReturnType<express.Application['listen']> | null = null;
 }
-
-// Startup
-// ────────────────────────────────────────────────────────────────────
-
-// Create and start server
-const PORT = parseInt(process.env.PORT || '3002', 10);
-const HOST = process.env.HOST || '127.0.0.1';
-const HEADLESS = process.env.HEADLESS !== 'false';
-
-const server = new VerifyServer(PORT, HOST, HEADLESS);
-
-server.start().catch((err) => {
-  console.error('[FATAL] Failed to start server:', err);
-  process.exit(1);
-});
-
-// Handle graceful shutdown
-const shutdown = async (signal: string) => {
-  console.log(`\n[${new Date().toISOString()}] Received ${signal} - shutting down gracefully...`);
-
-  try {
-    await server.stop();
-    console.log(`[${new Date().toISOString()}] Shutdown complete`);
-    process.exit(0);
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error during shutdown:`, error);
-    process.exit(1);
-  }
-};
-
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));

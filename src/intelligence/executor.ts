@@ -23,6 +23,7 @@ import {
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
+import { BrowserPool } from '../browser/browser-pool';
 
 // =====================================================
 // EXECUTOR INTERFACE
@@ -71,6 +72,8 @@ export interface PlaywrightExecutorConfig {
     slowMo?: number;
     devtools?: boolean;
   };
+  /** Optional BrowserPool for shared browser instances */
+  browserPool?: BrowserPool;
 }
 
 // =====================================================
@@ -87,6 +90,8 @@ export class PlaywrightExecutor implements ITestExecutor {
   private context?: BrowserContext;
   private ownPage?: Page;
   private artifacts: Artifact[] = [];
+  private browserPool?: BrowserPool;
+  private pooledPage?: Page;
 
   constructor(config: PlaywrightExecutorConfig = {}) {
     this.config = {
@@ -103,7 +108,11 @@ export class PlaywrightExecutor implements ITestExecutor {
         slowMo: config.launchOptions?.slowMo || 0,
         devtools: config.launchOptions?.devtools || false,
       },
+      browserPool: config.browserPool,
     };
+
+    // Store browser pool reference
+    this.browserPool = config.browserPool;
 
     // Ensure output directory exists
     if (!fs.existsSync(this.config.outputDir)) {
@@ -229,9 +238,16 @@ export class PlaywrightExecutor implements ITestExecutor {
    * Initialize browser and page
    */
   private async initialize(): Promise<void> {
-    this.browser = await chromium.launch(this.config.launchOptions);
-    this.context = await this.browser.newContext();
-    this.ownPage = await this.context.newPage();
+    if (this.browserPool) {
+      // Use BrowserPool for page management
+      this.pooledPage = await this.browserPool.acquirePage();
+      this.ownPage = this.pooledPage;
+    } else {
+      // Launch own browser (backward compatibility)
+      this.browser = await chromium.launch(this.config.launchOptions);
+      this.context = await this.browser.newContext();
+      this.ownPage = await this.context.newPage();
+    }
   }
 
   /**
@@ -496,7 +512,8 @@ export class PlaywrightExecutor implements ITestExecutor {
       case 'text-contains':
         if (!assertion.selector) throw new Error('text-contains requires selector');
         const text = await page.textContent(assertion.selector);
-        const contains = text ? text.includes(assertion.expected) : false;
+        const expectedStr = typeof assertion.expected === 'string' ? assertion.expected : String(assertion.expected);
+        const contains = text ? text.includes(expectedStr) : false;
         return { passed: contains, actual: text };
 
       case 'text-equals':
@@ -513,12 +530,15 @@ export class PlaywrightExecutor implements ITestExecutor {
       case 'attribute-contains':
         if (!assertion.selector || !assertion.attribute) throw new Error('attribute-contains requires selector and attribute');
         const attrContains = await page.getAttribute(assertion.selector, assertion.attribute);
-        const attrContainsValue = attrContains ? attrContains.includes(assertion.expected) : false;
+        const expectedAttrStr = typeof assertion.expected === 'string' ? assertion.expected : String(assertion.expected);
+        const attrContainsValue = attrContains ? attrContains.includes(expectedAttrStr) : false;
         return { passed: attrContainsValue, actual: attrContains };
 
       case 'url-matches':
         const currentUrl = page.url();
-        const urlMatches = currentUrl.match(assertion.expected) !== null;
+        const expectedPattern = assertion.expected instanceof RegExp ? assertion.expected :
+                               (typeof assertion.expected === 'string' ? new RegExp(assertion.expected) : new RegExp(String(assertion.expected)));
+        const urlMatches = currentUrl.match(expectedPattern) !== null;
         return { passed: urlMatches, actual: currentUrl };
 
       case 'title-equals':
@@ -597,17 +617,25 @@ export class PlaywrightExecutor implements ITestExecutor {
    * Cleanup browser resources
    */
   private async cleanup(): Promise<void> {
-    if (this.ownPage) {
-      await this.ownPage.close();
+    if (this.pooledPage && this.browserPool) {
+      // Release the pooled page back to the pool
+      this.browserPool.releasePage(this.pooledPage);
+      this.pooledPage = undefined;
       this.ownPage = undefined;
-    }
-    if (this.context) {
-      await this.context.close();
-      this.context = undefined;
-    }
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = undefined;
+    } else {
+      // Close own resources
+      if (this.ownPage) {
+        await this.ownPage.close();
+        this.ownPage = undefined;
+      }
+      if (this.context) {
+        await this.context.close();
+        this.context = undefined;
+      }
+      if (this.browser) {
+        await this.browser.close();
+        this.browser = undefined;
+      }
     }
   }
 

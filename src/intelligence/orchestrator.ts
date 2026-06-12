@@ -44,24 +44,59 @@ export interface IntelligentOrchestratorConfig {
   /** Planner configuration */
   planner?: {
     useLLM?: boolean;
-    llmConfig?: any;
-    configConfig?: any;
+    llmConfig?: {
+      llm: {
+        apiKey: string;
+        apiBase: string;
+        model: string;
+        temperature?: number;
+        maxTokens?: number;
+      };
+    };
+    configConfig?: Record<string, unknown>;
   };
   /** Executor configuration */
-  executor?: any;
+  executor?: {
+    outputDir?: string;
+    enableScreenshots?: boolean;
+    enableConsoleLogs?: boolean;
+    enableNetworkLogs?: boolean;
+    baseUrl?: string;
+    defaultTimeout?: number;
+    maxRetries?: number;
+    retryDelay?: number;
+    launchOptions?: {
+      headless?: boolean;
+      slowMo?: number;
+      devtools?: boolean;
+    };
+  };
   /** Evaluator configuration */
   evaluator?: {
     evaluatorType?: 'llm' | 'rule' | 'multi-strategy';
     useLLM?: boolean;
-    llmConfig?: any;
-    ruleConfig?: any;
-    multiStrategyConfig?: any;
+    llmConfig?: {
+      llm: {
+        apiKey: string;
+        apiBase: string;
+        model: string;
+        temperature?: number;
+        maxTokens?: number;
+      };
+    };
+    ruleConfig?: Record<string, unknown>;
+    multiStrategyConfig?: {
+      enabledStrategies?: string[];
+      confidenceThreshold?: number;
+      outputDir?: string;
+      verbose?: boolean;
+    };
   };
   /** Repair loop configuration */
   repairLoop?: {
     enable?: boolean;
     maxRounds?: number;
-    config?: any;
+    config?: Record<string, unknown>;
   };
   /** Experience store configuration */
   experienceStore?: {
@@ -116,7 +151,7 @@ export class IntelligentOrchestrator extends EventEmitter {
 
   /**
    * Initialize the orchestrator and create all components
-   * This method is called automatically on first run() if not called explicitly
+   * This method must be called explicitly before run() or runMultiple()
    */
   async init(): Promise<void> {
     if (this.initialized) {
@@ -201,9 +236,9 @@ export class IntelligentOrchestrator extends EventEmitter {
    * @returns Promise<IntelligenceRunResult> - Complete run result
    */
   async run(target: TestTarget, options: IntelligenceOptions = {}): Promise<IntelligenceRunResult> {
-    // Auto-initialize if not already initialized
+    // Require explicit initialization
     if (!this.initialized) {
-      await this.init();
+      throw new Error("Orchestrator not initialized. Call init() first.");
     }
 
     const startTime = Date.now();

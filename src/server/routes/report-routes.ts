@@ -6,6 +6,30 @@
 import { Router, Request, Response } from 'express';
 import { JobService } from '../services/job-service';
 
+// =====================================================
+// RESPONSE TYPES
+// =====================================================
+
+export interface JobReportResponse {
+  success: boolean;
+  job: {
+    id: string;
+    type: string;
+    status: string;
+    priority: string;
+    config: unknown;
+    progress: string;
+    retryCount: number;
+    maxRetries: number;
+    createdAt: string;
+    startedAt?: string;
+    completedAt?: string;
+    timeout?: number;
+    error?: string;
+    result?: unknown;
+  };
+}
+
 export function createReportRoutes(jobService: JobService): Router {
   const router = Router();
 
@@ -27,7 +51,7 @@ export function createReportRoutes(jobService: JobService): Router {
         return;
       }
 
-      const response: any = {
+      const response: JobReportResponse = {
         success: true,
         job: {
           id: job.id,

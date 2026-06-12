@@ -28,7 +28,7 @@ export interface TestExperience {
   /** Implicit reward (-1 to 1) */
   reward: number;
   /** Test plan that was used */
-  testPlan: any; // TestPlan from types.ts
+  testPlan: Record<string, unknown>; // TestPlan from types.ts
   /** Repair history if any */
   repairHistory?: RepairAttempt[];
   /** Timestamp of experience */
@@ -86,9 +86,9 @@ export interface RepairAttempt {
   /** Description of what was tried */
   description: string;
   /** Original value */
-  originalValue?: any;
+  originalValue?: string | number | boolean | Record<string, unknown>;
   /** New value */
-  newValue?: any;
+  newValue?: string | number | boolean | Record<string, unknown>;
   /** Whether this specific repair worked */
   worked?: boolean;
   /** Timestamp */
@@ -187,7 +187,7 @@ export interface SimilarExperience {
  */
 export interface PlanAdaptation {
   /** Adapted plan */
-  plan: any; // TestPlan from types.ts
+  plan: Record<string, unknown>; // TestPlan from types.ts
   /** What was adapted */
   adaptations: string[];
   /** Confidence in adaptation (0-1) */
@@ -223,9 +223,9 @@ export interface StrategyEvaluation {
  */
 export interface PlanEvaluation {
   /** Plan being evaluated */
-  plan: any; // TestPlan from types.ts
+  plan: Record<string, unknown>; // TestPlan from types.ts
   /** Result from execution */
-  result: any; // ScenarioResult from types.ts
+  result: Record<string, unknown>; // ScenarioResult from types.ts
   /** Was plan comprehensive? */
   comprehensive: boolean;
   /** Were steps appropriate? */

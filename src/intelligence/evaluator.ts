@@ -30,6 +30,37 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // =====================================================
+// LLM EVALUATOR TYPES
+// =====================================================
+
+/**
+ * Types for LLM response parsing
+ */
+interface LLMEvalResponseIssue {
+  severity?: 'critical' | 'high' | 'medium' | 'low';
+  description?: string;
+  stepId?: string;
+}
+
+interface LLMEvalResponseSuggestion {
+  type?: string;
+  description?: string;
+  target?: Record<string, unknown>;
+  fix?: string | number | boolean | Record<string, unknown>;
+  confidence?: number;
+}
+
+interface LLMEvalResponse {
+  verdict: 'pass' | 'fail' | 'flaky' | 'inconclusive';
+  confidence: number;
+  reasoning?: string;
+  failureCategory?: FailureCategory;
+  issues?: LLMEvalResponseIssue[];
+  suggestions?: LLMEvalResponseSuggestion[];
+  needsRepair?: boolean;
+}
+
+// =====================================================
 // EVALUATOR INTERFACE
 // =====================================================
 
@@ -245,7 +276,7 @@ export class LLMEvaluator implements ITestEvaluator {
         throw new Error('No JSON found in LLM response');
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]) as LLMEvalResponse;
 
       const validVerdicts = ['pass', 'fail', 'flaky', 'inconclusive'];
       const validCategories = ['environment', 'page_bug', 'script_issue', 'data_issue', 'flaky', 'infrastructure', 'unknown'];
@@ -258,17 +289,21 @@ export class LLMEvaluator implements ITestEvaluator {
         throw new Error(`Invalid confidence: ${parsed.confidence}`);
       }
 
-      const issues: Issue[] = (parsed.issues || []).map((issue: any) => ({
+      const issues: Issue[] = (parsed.issues || []).map((issue: LLMEvalResponseIssue) => ({
         severity: issue.severity || 'medium',
-        category: validCategories.includes(parsed.failureCategory) ? parsed.failureCategory : 'unknown',
+        category: validCategories.includes(parsed.failureCategory!) ? parsed.failureCategory! : 'unknown',
         description: issue.description || 'Unknown issue',
         stepId: issue.stepId,
       }));
 
-      const suggestions: Suggestion[] = (parsed.suggestions || []).map((suggestion: any) => ({
-        type: suggestion.type || 'unknown',
+      const suggestions: Suggestion[] = (parsed.suggestions || []).map((suggestion: LLMEvalResponseSuggestion) => ({
+        type: (suggestion.type || 'unknown') as Suggestion['type'],
         description: suggestion.description || 'Fix the issue',
-        target: suggestion.target,
+        target: suggestion.target ? {
+          stepId: suggestion.target.stepId as string | undefined,
+          assertionId: suggestion.target.assertionId as string | undefined,
+          selector: suggestion.target.selector as string | undefined,
+        } : undefined,
         fix: suggestion.fix,
         confidence: suggestion.confidence,
       }));
@@ -297,6 +332,44 @@ export class LLMEvaluator implements ITestEvaluator {
 // =====================================================
 // RULE EVALUATOR
 // =====================================================
+
+/**
+ * Configuration for rule-based evaluator
+ */
+export interface RuleEvaluatorConfig {
+  /** Confidence threshold for considering a result conclusive */
+  confidenceThreshold?: number;
+  /** Maximum number of console errors before considering test failed */
+  maxConsoleErrors?: number;
+  /** Whether to consider retries as flaky */
+  treatRetriesAsFlaky?: boolean;
+  /** Whether to consider selector issues as repairable */
+  selectorIssuesRepairable?: boolean;
+}
+
+/**
+ * Analysis types for rule-based evaluation
+ */
+interface StepAnalysis {
+  totalSteps: number;
+  passedSteps: number;
+  failedSteps: number;
+  selectorFailures: number;
+  timeoutFailures: number;
+  criticalFailures: number;
+}
+
+interface AssertionAnalysis {
+  totalAssertions: number;
+  passedAssertions: number;
+  failedAssertions: number;
+}
+
+interface ConsoleAnalysis {
+  totalErrors: number;
+  criticalErrors: number;
+  errorPatterns: Map<string, number>;
+}
 
 /**
  * Configuration for rule-based evaluator
@@ -505,9 +578,9 @@ export class RuleEvaluator implements ITestEvaluator {
 
   private determineVerdict(
     result: ScenarioResult,
-    stepAnalysis: any,
-    assertionAnalysis: any,
-    consoleAnalysis: any
+    stepAnalysis: StepAnalysis,
+    assertionAnalysis: AssertionAnalysis,
+    consoleAnalysis: ConsoleAnalysis
   ): 'pass' | 'fail' | 'flaky' | 'inconclusive' {
     // Check if result passed
     if (result.passed) {
@@ -533,8 +606,8 @@ export class RuleEvaluator implements ITestEvaluator {
 
   private determineFailureCategory(
     result: ScenarioResult,
-    stepAnalysis: any,
-    consoleAnalysis: any
+    stepAnalysis: StepAnalysis,
+    consoleAnalysis: ConsoleAnalysis
   ): FailureCategory {
     // Check for environment issues
     if (stepAnalysis.timeoutFailures > 0 || consoleAnalysis.criticalErrors > 0) {
@@ -578,16 +651,16 @@ export class RuleEvaluator implements ITestEvaluator {
 
   private generateIssues(
     result: ScenarioResult,
-    stepAnalysis: any,
-    assertionAnalysis: any,
-    consoleAnalysis: any
+    stepAnalysis: StepAnalysis,
+    assertionAnalysis: AssertionAnalysis,
+    consoleAnalysis: ConsoleAnalysis
   ): Issue[] {
     const issues: Issue[] = [];
 
     // Add step failure issues
     result.stepResults.forEach((stepResult, index) => {
       if (!stepResult.passed) {
-        let severity = 'medium';
+        let severity: 'critical' | 'high' | 'medium' | 'low' = 'medium';
         if (stepResult.step.critical !== false) {
           severity = 'critical';
         } else if (stepResult.error && stepResult.error.toLowerCase().includes('timeout')) {
@@ -595,7 +668,7 @@ export class RuleEvaluator implements ITestEvaluator {
         }
 
         issues.push({
-          severity: severity as any,
+          severity,
           category: stepAnalysis.selectorFailures > 0 ? 'script_issue' : 'environment',
           description: stepResult.error || 'Step failed',
           stepId: stepResult.step.id,

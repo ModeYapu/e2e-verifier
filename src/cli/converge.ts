@@ -424,7 +424,7 @@ class ConvergenceEngine {
       'webgpu-studio': 'http://127.0.0.1/webgpu/'
     };
 
-    const authMap: Record<string, any> = {
+    const authMap: Record<string, unknown> = {
       'logmonitor': {
         loginUrl: 'http://127.0.0.1/logmon/login',
         formSelector: '.el-form',

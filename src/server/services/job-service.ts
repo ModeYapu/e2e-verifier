@@ -109,7 +109,7 @@ export class JobService {
   /**
    * Get job queue statistics
    */
-  getQueueStats(): any {
+  getQueueStats(): unknown {
     return this.jobQueue.getStats();
   }
 

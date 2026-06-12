@@ -45,7 +45,7 @@ export interface StrategyVerdict {
   issues: StrategyIssue[];
 
   /** Additional metadata from the strategy */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
