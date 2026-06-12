@@ -14,6 +14,7 @@ import {
   PlannedScenario,
   PlannedStep,
   PlannedAssertion,
+  ScenarioResult,
 } from './types';
 import {
   TestExperience,
@@ -275,7 +276,7 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
   async recordExperience(
     target: TestTarget,
     plan: TestPlan,
-    result: any,
+    result: ScenarioResult & { repairAttempts?: Array<Partial<RepairAttempt>>; meta?: { browser?: string; viewport?: { width: number; height: number } } },
     reward: RewardSignal
   ): Promise<void> {
     const signature = this.experienceStore.generateSignature(target);

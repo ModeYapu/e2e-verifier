@@ -495,7 +495,7 @@ export class PlaywrightExecutor implements ITestExecutor {
     assertion: PlannedAssertion,
     page: Page,
     consoleLogs: ConsoleLog[]
-  ): Promise<{ passed: boolean; actual: any }> {
+  ): Promise<{ passed: boolean; actual: StepActualValue }> {
     switch (assertion.type) {
       case 'element-exists':
         if (!assertion.selector) throw new Error('element-exists requires selector');
@@ -555,7 +555,7 @@ export class PlaywrightExecutor implements ITestExecutor {
       case 'javascript':
         if (typeof assertion.expected === 'string') {
           const jsResult = await page.evaluate(assertion.expected);
-          return { passed: Boolean(jsResult), actual: jsResult };
+          return { passed: Boolean(jsResult), actual: jsResult as StepActualValue };
         }
         return { passed: true, actual: null };
 

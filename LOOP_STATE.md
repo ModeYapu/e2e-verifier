@@ -122,16 +122,34 @@
 - **Verified**: tsc clean, jest 208/208 pass
 - **Commit**: <pending>
 
+### Round 13 — 2026-06-12
+- **Slice**: P3 (continued): Fix :any types in intelligence/ and explorer/ directories
+- **Changes**:
+  - src/intelligence/self-eval.ts: 使用 ExperienceStatistics 类型
+  - src/intelligence/orchestrator.ts: 使用 ExperienceStatistics, ExperienceQuery, TestExperience, ImprovementSuggestions 类型
+  - src/intelligence/types.ts: actual 字段使用 AssertionValue 类型
+  - src/intelligence/executor.ts: 返回类型使用 StepActualValue
+  - src/intelligence/experience-planner.ts: result 参数使用 ScenarioResult 扩展类型
+  - src/explorer/explorer-strategy.ts: pageAnalyzer 使用 PageAnalyzer 类型
+  - src/explorer/test-generator.ts: 新增 ParsedPageTestPlan, ParsedTestCase 接口
+  - src/explorer/page-analyzer.ts: element 参数使用具体类型
+  - src/explorer/explorer-report.ts: pages 参数使用 PageAnalysis 类型
+  - src/verifier.ts: 使用 ScreenshotConfig 类型，parsedBody 使用 unknown
+  - src/intelligence/strategies/edge-case.ts: assertion 使用 PlannedAssertion 类型
+  - 共修复 23 处 `: any` 类型
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: <pending>
+
 ## Current State
 
 ### Code Stats
 - 113 个 TypeScript 文件，~29K 行代码
 - **208 个自动化测试全通过**
-- 35 个 `: any` 类型待替换 (从 48 减少 13)
+- 12 个 `: any` 类型待替换 (从 35 减少 23)
 - 553 处 console.log/warn/error 待替换
 
 ### NEXT_SLICE
-P3 (continued): Fix remaining 35 :any types. Next batch focus: intelligence/ (orchestrator.ts, self-eval.ts), explorer/ (test-generator.ts, explorer-report.ts, page-analyzer.ts), verifier.ts - ~15 occurrences
+P3 (final): Fix remaining 12 :any types. Locations: types/index.ts (1), ai/ (4), server/services/storage-service.ts (1), engine/ (2), utils/html-report.ts (1), integrations/github.ts (1). Note: evaluator-core.ts:167 is a string literal (acceptable).
 
 ## Site Configs
 - `travel-planner.json` — 3 sites, 31 checks

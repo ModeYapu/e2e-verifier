@@ -249,7 +249,7 @@ export interface AssertionResult {
   /** Whether assertion passed */
   passed: boolean;
   /** Actual value */
-  actual?: any;
+  actual?: AssertionValue;
   /** Error message if failed */
   error?: string;
   /** Screenshot showing assertion state */

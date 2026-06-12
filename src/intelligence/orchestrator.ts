@@ -24,6 +24,7 @@ import {
   FailureCategory,
   PlannedScenario
 } from './types';
+import { ExperienceStatistics, ExperienceQuery, TestExperience, ImprovementSuggestions } from './experience-types';
 import { ITestPlanner, PlannerFactory } from './planner';
 import { ITestExecutor, ExecutorFactory } from './executor';
 import { ITestEvaluator, EvaluatorFactory } from './evaluator';
@@ -459,11 +460,11 @@ export class IntelligentOrchestrator extends EventEmitter {
   /**
    * Emit an event
    */
-  private emitEvent(type: IntelligenceEventType, data: any): void {
+  private emitEvent(type: IntelligenceEventType, data: unknown): void {
     const event: IntelligenceEvent = {
       type,
       timestamp: new Date().toISOString(),
-      data,
+      data: data as TestPlan | ScenarioResult | EvaluationResult | RepairResult | Error | Record<string, unknown>,
     };
     this.emit(type, event);
   }
@@ -510,7 +511,12 @@ export class IntelligentOrchestrator extends EventEmitter {
   /**
    * Get repair statistics if repair loop is enabled
    */
-  getRepairStatistics(): any | null {
+  getRepairStatistics(): {
+    totalRepairs: number;
+    successfulRepairs: number;
+    failedRepairs: number;
+    successRate: number;
+  } | null {
     if (this.repairLoop) {
       return this.repairLoop.getRepairStatistics();
     }
@@ -520,7 +526,7 @@ export class IntelligentOrchestrator extends EventEmitter {
   /**
    * Get repair history for a specific scenario
    */
-  getRepairHistory(scenarioId: string): any[] {
+  getRepairHistory(scenarioId: string): RepairResult[] {
     if (this.repairLoop) {
       return this.repairLoop.getRepairHistory(scenarioId);
     }
@@ -530,7 +536,7 @@ export class IntelligentOrchestrator extends EventEmitter {
   /**
    * Get experience statistics if experience store is enabled
    */
-  getExperienceStatistics(siteName?: any): any | null {
+  getExperienceStatistics(siteName?: string): ExperienceStatistics | null {
     if (this.experienceStore) {
       return this.experienceStore.getStats(siteName);
     }
@@ -554,7 +560,7 @@ export class IntelligentOrchestrator extends EventEmitter {
   /**
    * Query experiences from the experience store
    */
-  queryExperiences(query?: any): any[] {
+  queryExperiences(query?: ExperienceQuery): TestExperience[] {
     if (this.experienceStore) {
       return this.experienceStore.query(query || {});
     }
@@ -564,7 +570,7 @@ export class IntelligentOrchestrator extends EventEmitter {
   /**
    * Get improvement suggestions from self-evaluation engine
    */
-  async getImprovementSuggestions(siteName?: string): Promise<any | null> {
+  async getImprovementSuggestions(siteName?: string): Promise<ImprovementSuggestions | null> {
     if (this.selfEvalEngine) {
       return await this.selfEvalEngine.getSuggestions(siteName);
     }

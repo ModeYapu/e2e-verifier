@@ -1,6 +1,6 @@
 import { chromium, Browser, Page, BrowserContext } from '@playwright/test';
 import { BrowserPool } from './browser/browser-pool';
-import { SiteConfig, TestResult, CheckResult, ScreenshotResult, CustomCheck, AuthConfig } from './types';
+import { SiteConfig, TestResult, CheckResult, ScreenshotResult, CustomCheck, AuthConfig, ScreenshotConfig } from './types';
 import { PerformanceChecker } from './checks/performance';
 import { AccessibilityChecker } from './checks/accessibility';
 import { SEOChecker } from './checks/seo';
@@ -333,7 +333,7 @@ export class Verifier {
             const screenshotUtil = new ScreenshotUtil(this.page, this.config.name);
 
             // Normalize: support both string[] and ScreenshotConfig[]
-            const normalizedConfigs = screenshotConfigs.map((s: any) =>
+            const normalizedConfigs = screenshotConfigs.map((s: string | ScreenshotConfig) =>
               typeof s === 'string' ? { name: s } : s
             );
 
@@ -648,7 +648,7 @@ export class Verifier {
                 opts.headers = reqHeaders;
                 const resp = await fetch(url, opts);
                 const respBody = await resp.text();
-                let parsedBody: any = null;
+                let parsedBody: unknown = null;
                 try { parsedBody = JSON.parse(respBody); } catch {}
                 return {
                   status: resp.status,
@@ -656,8 +656,8 @@ export class Verifier {
                   body: parsedBody || respBody,
                   ok: resp.ok
                 };
-              } catch (err: any) {
-                return { status: 0, statusMatches: false, error: err.message, ok: false };
+              } catch (err: unknown) {
+                return { status: 0, statusMatches: false, error: err instanceof Error ? err.message : String(err), ok: false };
               }
             }, { url: fullUrl, method, body: check.body, headers: check.headers, expectedStatus });
           });

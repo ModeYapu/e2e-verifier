@@ -19,13 +19,14 @@ import type {
 } from './types';
 import { AuthConfig } from '../types';
 import { buildSiteMap, generateHeuristicPlan, generateHeuristicScript } from './explorer-tools';
+import { PageAnalyzer } from './page-analyzer';
 
 /**
  * Phase 1: Discovery - explore all accessible pages
  */
 export async function runDiscoveryPhase(
   page: Page,
-  pageAnalyzer: any,
+  pageAnalyzer: PageAnalyzer,
   config: ExploreConfig,
   logger: Logger,
   performLogin: (page: Page, auth: AuthConfig, url: string) => Promise<void>

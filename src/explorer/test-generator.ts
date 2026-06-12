@@ -16,6 +16,27 @@ import {
 import { AuthConfig } from '../types';
 import { Logger } from '../utils/logger';
 
+/**
+ * Parsed page test plan from LLM response
+ */
+interface ParsedPageTestPlan {
+  url?: string;
+  pageName?: string;
+  tests?: ParsedTestCase[];
+}
+
+/**
+ * Parsed test case from LLM response
+ */
+interface ParsedTestCase {
+  name?: string;
+  description?: string;
+  steps?: unknown;
+  assertions?: unknown;
+  priority?: string;
+  estimatedDuration?: number;
+}
+
 const TEST_GENERATION_SYSTEM_PROMPT = `You are an expert E2E test automation engineer specializing in Playwright.
 Your task is to analyze page structures and generate comprehensive test plans.
 
@@ -337,10 +358,10 @@ Generate a complete, standalone Playwright script that executes this test.`;
         const parsed = JSON.parse(jsonStr);
 
         // Ensure proper structure
-        const pages: PageTestPlan[] = (parsed.pages || []).map((p: any) => ({
-          url: p.url,
-          pageName: p.pageName || p.url,
-          tests: (p.tests || []).map((t: any) => this.normalizeTestCase(t))
+        const pages: PageTestPlan[] = (parsed.pages || []).map((p: ParsedPageTestPlan) => ({
+          url: p.url || '',
+          pageName: p.pageName || p.url || '',
+          tests: (p.tests || []).map((t: ParsedTestCase) => this.normalizeTestCase(t))
         }));
 
         const totalTests = pages.reduce((sum, p) => sum + p.tests.length, 0);
@@ -371,7 +392,7 @@ Generate a complete, standalone Playwright script that executes this test.`;
         const jsonStr = jsonMatch[1] || jsonMatch[0];
         const parsed = JSON.parse(jsonStr);
         const tests = Array.isArray(parsed) ? parsed : (parsed.tests || []);
-        return tests.map((t: any) => this.normalizeTestCase(t));
+        return tests.map((t: ParsedTestCase) => this.normalizeTestCase(t));
       }
     } catch (error) {
       this.logger.warn(`Failed to parse test cases JSON: ${error}`);
@@ -383,13 +404,13 @@ Generate a complete, standalone Playwright script that executes this test.`;
   /**
    * Normalize test case to ensure all required fields
    */
-  private normalizeTestCase(t: any): TestCase {
+  private normalizeTestCase(t: ParsedTestCase): TestCase {
     return {
       name: t.name || 'Unnamed Test',
       description: t.description || t.name || '',
       steps: Array.isArray(t.steps) ? t.steps : [t.steps || 'Execute test'],
       assertions: Array.isArray(t.assertions) ? t.assertions : [t.assertions || 'Test passes'],
-      priority: t.priority || 'medium',
+      priority: (t.priority || 'medium') as 'high' | 'medium' | 'low',
       estimatedDuration: t.estimatedDuration || 5000
     };
   }

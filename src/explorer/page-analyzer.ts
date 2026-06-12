@@ -672,7 +672,7 @@ export class PageAnalyzer {
   /**
    * Get a CSS selector for an element (in-page context)
    */
-  private getSelectorForElement(element: any): string {
+  private getSelectorForElement(element: { id?: string; className?: string | string[]; tagName: string }): string {
     if (element.id) {
       return `#${element.id}`;
     }

@@ -5,7 +5,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { ExploreResult, DiscoveryResult, SiteMapNode } from './types';
+import { ExploreResult, DiscoveryResult, SiteMapNode, PageAnalysis } from './types';
 import { Logger } from '../utils/logger';
 
 export interface ReportOptions {
@@ -503,7 +503,7 @@ export class ExplorerReport {
   /**
    * Generate HTML for site map
    */
-  private generateSiteMapHtml(pages: any[]): string {
+  private generateSiteMapHtml(pages: PageAnalysis[]): string {
     const visited = new Set<string>();
     let html = '';
 

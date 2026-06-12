@@ -9,7 +9,7 @@
  */
 
 import { VerificationStrategy, StrategyVerdict, StrategyIssue, VerificationContext } from '../verification-types';
-import { ScenarioResult, PlannedStep } from '../types';
+import { ScenarioResult, PlannedStep, PlannedAssertion } from '../types';
 
 export class EdgeCaseStrategy implements VerificationStrategy {
   name = 'edge-case';
@@ -216,7 +216,7 @@ export class EdgeCaseStrategy implements VerificationStrategy {
   /**
    * Analyze assertion for edge cases
    */
-  private analyzeAssertionForEdgeCases(assertion: any): EdgeCase[] {
+  private analyzeAssertionForEdgeCases(assertion: PlannedAssertion): EdgeCase[] {
     const edgeCases: EdgeCase[] = [];
 
     switch (assertion.type) {

@@ -15,6 +15,7 @@ import {
   ImprovementSuggestions,
   StrategyWeight,
   StrategyEffectiveness,
+  ExperienceStatistics,
 } from './experience-types';
 import { ExperienceStore } from './experience-store';
 import { ScenarioResult, TestPlan } from './types';
@@ -559,13 +560,18 @@ export class SelfEvalEngine {
    * @param stats - Experience statistics
    * @returns Improvement suggestions
    */
-  private generateImprovementSuggestions(stats: any): Array<{
+  private generateImprovementSuggestions(stats: ExperienceStatistics): Array<{
     area: string;
     suggestion: string;
     priority: 'high' | 'medium' | 'low';
     expectedImpact: number;
   }> {
-    const suggestions: any[] = [];
+    const suggestions: Array<{
+      area: string;
+      suggestion: string;
+      priority: 'high' | 'medium' | 'low';
+      expectedImpact: number;
+    }> = [];
 
     // Low success rate
     if (stats.avgReward < 0) {
@@ -599,7 +605,7 @@ export class SelfEvalEngine {
 
     // Strategy-specific suggestions
     for (const [strategy, effectiveness] of Object.entries(stats.byStrategy)) {
-      if ((effectiveness as any).successRate < 0.5) {
+      if (effectiveness.successRate < 0.5) {
         suggestions.push({
           area: `Strategy: ${strategy}`,
           suggestion: `${strategy} has low success rate - consider alternatives`,
@@ -617,15 +623,19 @@ export class SelfEvalEngine {
    * @param stats - Experience statistics
    * @returns Strategy adjustments
    */
-  private generateStrategyAdjustments(stats: any): Array<{
+  private generateStrategyAdjustments(stats: ExperienceStatistics): Array<{
     strategy: string;
     adjustment: 'increase' | 'decrease' | 'maintain';
     reason: string;
   }> {
-    const adjustments: any[] = [];
+    const adjustments: Array<{
+      strategy: string;
+      adjustment: 'increase' | 'decrease' | 'maintain';
+      reason: string;
+    }> = [];
 
     for (const [strategy, effectiveness] of Object.entries(stats.byStrategy)) {
-      const eff = effectiveness as any;
+      const eff = effectiveness;
 
       if (eff.successRate > 0.8) {
         adjustments.push({
