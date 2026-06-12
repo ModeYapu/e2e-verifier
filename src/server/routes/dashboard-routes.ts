@@ -5,6 +5,18 @@
 
 import { Router, Request, Response } from 'express';
 import { JobService } from '../services/job-service';
+import type { TestResult } from '../../types';
+
+/**
+ * Type guard to check if JobResult is a TestResult
+ */
+function isTestResult(result: unknown): result is TestResult {
+  return result !== null &&
+    typeof result === 'object' &&
+    'passed' in result &&
+    'siteName' in result &&
+    typeof (result as TestResult).passed === 'boolean';
+}
 
 export function createDashboardRoutes(jobService: JobService): Router {
   const router = Router();
@@ -100,14 +112,16 @@ export function createDashboardRoutes(jobService: JobService): Router {
         const site = siteMap.get(siteName)!;
         site.totalTests++;
 
-        if (job.result?.passed) {
-          site.passedTests++;
-          site.lastResult = { passed: true };
-          site.lastJobId = job.id;
-        } else if (job.result?.passed === false) {
-          site.failedTests++;
-          site.lastResult = { passed: false };
-          site.lastJobId = job.id;
+        if (job.result && isTestResult(job.result)) {
+          if (job.result.passed) {
+            site.passedTests++;
+            site.lastResult = { passed: true };
+            site.lastJobId = job.id;
+          } else {
+            site.failedTests++;
+            site.lastResult = { passed: false };
+            site.lastJobId = job.id;
+          }
         }
       }
 
@@ -154,7 +168,7 @@ export function createDashboardRoutes(jobService: JobService): Router {
         const day = trendsByDay.get(dayKey)!;
         day.total++;
 
-        if (job.result?.passed) {
+        if (job.result && isTestResult(job.result) && job.result.passed) {
           day.passed++;
         }
       }

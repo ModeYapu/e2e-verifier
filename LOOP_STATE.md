@@ -78,8 +78,16 @@
   - 更新 src/scheduler/scheduler.ts: 类型守卫使用 unknown 而非 any，executeJobByType 返回 JobResult
   - 共修复 8 处 `: any` 类型
 - **Verified**: jest 208/208 pass
+- **Commit**: 379ffff
+
+### Round 9 — 2026-06-12
+- **Slice**: P3 (continued): Fix JobResult union type access errors
+- **Changes**:
+  - 修复 src/integrations/webhook.ts: 创建完整 TestResult 对象替代简略 mock
+  - 修复 src/server/routes/dashboard-routes.ts: 添加 isTestResult 类型守卫，安全访问 passed 属性
+  - 解决 TypeScript 编译错误（webhook.ts line 195, dashboard-routes.ts lines 103/107/157）
+- **Verified**: tsc clean, jest 208/208 pass
 - **Commit**: <pending>
-- **注**: 其他文件 (webhook.ts, dashboard-routes.ts) 的 JobResult 联合类型访问问题待后续处理
 
 ## Current State
 

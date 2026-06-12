@@ -191,9 +191,20 @@ export class WebhookDelivery {
       startedAt: new Date(),
       completedAt: new Date(),
       result: {
+        siteName: 'test-site',
+        url: 'https://example.com',
+        timestamp: new Date().toISOString(),
         passed: true,
-        totalChecks: 5,
-        failedChecks: 0
+        duration: 1000,
+        checks: [
+          { name: 'check1', type: 'test', passed: true, message: 'OK' },
+          { name: 'check2', type: 'test', passed: true, message: 'OK' },
+          { name: 'check3', type: 'test', passed: true, message: 'OK' },
+          { name: 'check4', type: 'test', passed: true, message: 'OK' },
+          { name: 'check5', type: 'test', passed: true, message: 'OK' }
+        ],
+        screenshots: [],
+        errors: []
       }
     };
 
