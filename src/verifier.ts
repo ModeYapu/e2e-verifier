@@ -9,6 +9,7 @@ import { NetworkMonitor } from './checks/network';
 import { VisualRegressionChecker } from './checks/visual-regression';
 import { ScreenshotUtil } from './utils/screenshot';
 import { Logger, LogLevel } from './utils/logger';
+import { PageError, AssertionError } from './utils/errors';
 
 export class Verifier {
   private browser: Browser | null = null;
@@ -482,7 +483,7 @@ export class Verifier {
    * Verify login success by checking page content
    */
   private async verifyLoginSuccess(auth: AuthConfig, timeout: number, logger: Logger): Promise<void> {
-    if (!this.page) throw new Error('Page not initialized');
+    if (!this.page) throw PageError.pageNotInitialized();
 
     // Check 1: Element existence
     if (auth.verifySelector) {
@@ -490,7 +491,7 @@ export class Verifier {
         await this.page.waitForSelector(auth.verifySelector, { timeout });
         logger.info(`Login verified: element found ${auth.verifySelector}`);
       } catch (e) {
-        throw new Error(`Login verification failed: element not found ${auth.verifySelector}`);
+        throw AssertionError.loginFailed(`element not found ${auth.verifySelector}`, { selector: auth.verifySelector });
       }
     }
 
@@ -499,12 +500,12 @@ export class Verifier {
       try {
         const pageText = await this.page.textContent('body');
         if (!pageText?.includes(auth.verifyText)) {
-          throw new Error(`Login verification failed: expected text "${auth.verifyText}" not found`);
+          throw AssertionError.textMismatch('body', auth.verifyText, 'not found');
         }
         logger.info(`Login verified: text found "${auth.verifyText}"`);
       } catch (e) {
-        if (e instanceof Error) throw e;
-        throw new Error(`Login verification failed: text check error ${e}`);
+        if (e instanceof AssertionError) throw e;
+        throw AssertionError.loginFailed(`text check error ${e}`, { originalError: String(e) });
       }
     }
 
@@ -513,21 +514,31 @@ export class Verifier {
       try {
         const element = this.page.locator(auth.verifyAttribute.selector).first();
         await element.waitFor({ state: 'attached', timeout });
-        
+
         const attrValue = await element.getAttribute(auth.verifyAttribute.attribute);
-        
+
         if (attrValue === null) {
-          throw new Error(`Login verification failed: attribute "${auth.verifyAttribute.attribute}" not found on ${auth.verifyAttribute.selector}`);
+          throw AssertionError.attributeMismatch(
+            auth.verifyAttribute.selector,
+            auth.verifyAttribute.attribute,
+            auth.verifyAttribute.value ?? 'any',
+            'not found'
+          );
         }
-        
+
         if (auth.verifyAttribute.value !== undefined && attrValue !== auth.verifyAttribute.value) {
-          throw new Error(`Login verification failed: expected attribute "${auth.verifyAttribute.attribute}" = "${auth.verifyAttribute.value}", got "${attrValue}"`);
+          throw AssertionError.attributeMismatch(
+            auth.verifyAttribute.selector,
+            auth.verifyAttribute.attribute,
+            auth.verifyAttribute.value,
+            attrValue
+          );
         }
-        
+
         logger.info(`Login verified: attribute ${auth.verifyAttribute.attribute} found`);
       } catch (e) {
-        if (e instanceof Error) throw e;
-        throw new Error(`Login verification failed: attribute check error ${e}`);
+        if (e instanceof AssertionError) throw e;
+        throw AssertionError.loginFailed(`attribute check error ${e}`, { originalError: String(e) });
       }
     }
 
@@ -537,20 +548,20 @@ export class Verifier {
         const token = await this.page.evaluate((key) => {
           return localStorage.getItem(key);
         }, auth.tokenKey);
-        
+
         if (!token) {
-          throw new Error(`Login verification failed: token "${auth.tokenKey}" not found in localStorage`);
+          throw AssertionError.valueMismatch(`localStorage.${auth.tokenKey}`, 'any', 'not found');
         }
         logger.info(`Login verified: token found in localStorage`);
       } catch (e) {
-        if (e instanceof Error) throw e;
-        throw new Error(`Login verification failed: localStorage check error ${e}`);
+        if (e instanceof AssertionError) throw e;
+        throw AssertionError.loginFailed(`localStorage check error ${e}`, { originalError: String(e) });
       }
     }
   }
 
   private async runCustomCheck(check: CustomCheck): Promise<CheckResult> {
-    if (!this.page) throw new Error('Page not initialized');
+    if (!this.page) throw PageError.pageNotInitialized();
 
     try {
       switch (check.type) {

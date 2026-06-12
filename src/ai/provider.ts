@@ -5,6 +5,7 @@
 // Import unified types from common
 import type { ChatMessage } from '../types/common';
 import { LLMRegistry } from '../llm/llm-registry';
+import { InfrastructureError, ValidationError } from '../utils/errors';
 
 /**
  * Options for AI provider operations
@@ -133,7 +134,7 @@ export class OpenAIProvider implements AIProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+      throw InfrastructureError.apiFailure('OpenAI', response.status, response.statusText);
     }
 
     const data = await response.json();
@@ -314,7 +315,7 @@ export class FallbackProvider implements AIProvider {
     }
 
     if (!this.secondary.isAvailable()) {
-      throw new Error('Both primary and secondary providers are unavailable');
+      throw InfrastructureError.providerUnavailable('Both primary and secondary providers');
     }
 
     return await this.secondary.chat(messages, options);
@@ -330,7 +331,7 @@ export class FallbackProvider implements AIProvider {
     }
 
     if (!this.secondary.isAvailable()) {
-      throw new Error('Both primary and secondary providers are unavailable');
+      throw InfrastructureError.providerUnavailable('Both primary and secondary providers');
     }
 
     return await this.secondary.analyzeImage(imageUrl, prompt, options);
@@ -355,7 +356,7 @@ export class ProviderFactory {
       case 'anthropic':
         return new AnthropicProvider(config.apiKey, config.apiBase, config.model);
       default:
-        throw new Error(`Unknown provider type: ${config.type}`);
+        throw ValidationError.invalidValue('config.type', config.type, 'glm, openai, or anthropic');
     }
   }
 
@@ -419,7 +420,10 @@ export class ProviderFactory {
       return primary;
     }
 
-    throw new Error('No AI provider configured. Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GLM_API_KEY environment variable.');
+    throw InfrastructureError.configurationError(
+      'AI provider',
+      'Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GLM_API_KEY environment variable'
+    );
   }
 
   /**
