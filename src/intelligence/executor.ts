@@ -20,7 +20,13 @@ import {
   StepAction,
   AssertionType
 } from './types';
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { chromium, type Browser, type BrowserContext, type Page, type ConsoleMessage } from 'playwright';
+
+/**
+ * Actual value from step execution
+ * Can be primitive types, null, or undefined
+ */
+type StepActualValue = string | number | boolean | null | undefined;
 import * as fs from 'fs';
 import * as path from 'path';
 import { BrowserPool } from '../browser/browser-pool';
@@ -256,9 +262,9 @@ export class PlaywrightExecutor implements ITestExecutor {
   private setupConsoleLogging(page: Page, consoleLogs: ConsoleLog[]): void {
     if (!this.config.enableConsoleLogs) return;
 
-    page.on('console', msg => {
+    page.on('console', (msg: ConsoleMessage) => {
       consoleLogs.push({
-        level: msg.type() as any,
+        level: msg.type(),
         message: msg.text(),
         timestamp: Date.now(),
       });
@@ -311,7 +317,7 @@ export class PlaywrightExecutor implements ITestExecutor {
   ): Promise<StepResult> {
     const startTime = Date.now();
     let passed = false;
-    let actual: any;
+    let actual: StepActualValue;
     let error: string | undefined;
     let screenshot: string | undefined;
 
@@ -448,7 +454,7 @@ export class PlaywrightExecutor implements ITestExecutor {
     artifacts: Artifact[]
   ): Promise<AssertionResult> {
     let passed = false;
-    let actual: any;
+    let actual: StepActualValue;
     let error: string | undefined;
     let screenshot: string | undefined;
 

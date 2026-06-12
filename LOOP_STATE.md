@@ -98,16 +98,28 @@
 - **Verified**: tsc clean, jest 208/208 pass
 - **Commit**: <pending>
 
+### Round 11 — 2026-06-12
+- **Slice**: P3 (continued): Fix :any types in intelligence/core modules
+- **Changes**:
+  - src/intelligence/executor.ts: 新增 StepActualValue 类型，ConsoleLog 扩展支持所有 Playwright ConsoleMessage 类型
+  - src/engine/test-plan-parser.ts: 新增 YamlNode 类型用于解析结果
+  - src/server/verify-server.ts: 引入 Job 类型用于事件回调
+  - src/intelligence/multi-test-orchestrator.ts: 新增 AgentResultValue 和 WorkspaceEntry 类型
+  - src/intelligence/dom-filter.ts: ParsedDOM 扩展支持 ParsedDOMWithElements
+  - 共修复 10 处 `: any` 类型
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: <pending>
+
 ## Current State
 
 ### Code Stats
 - 113 个 TypeScript 文件，~29K 行代码
 - **208 个自动化测试全通过**
-- 68 个 `: any` 类型待替换
+- 48 个 `: any` 类型待替换 (从 58 减少 10)
 - 553 处 console.log/warn/error 待替换
 
 ### NEXT_SLICE
-MILESTONE_REACHED: P0, P1, P2 complete. P3 substantial progress (11/69 fixed). Remaining :any types scattered across 30+ files - better addressed incrementally. Recommend starting P4 (console.log → logger, 553 occurrences).
+P3 (continued): Fix remaining 48 :any types. Next batch focus: cli/ directory (converge.ts, explore.ts, verify-deep.ts, verify-orchestrated.ts, verify-craft.ts) - ~16 occurrences
 
 ## Site Configs
 - `travel-planner.json` — 3 sites, 31 checks

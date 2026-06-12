@@ -24,9 +24,16 @@ interface DOMElement {
 }
 
 /**
+ * Parsed DOM structure with elements wrapper
+ */
+interface ParsedDOMWithElements {
+  elements: DOMElement[];
+}
+
+/**
  * Parsed DOM structure (can be object or array)
  */
-type ParsedDOM = DOMElement | DOMElement[] | Record<string, unknown>;
+type ParsedDOM = DOMElement | DOMElement[] | ParsedDOMWithElements;
 
 /**
  * Filter configuration
@@ -132,7 +139,7 @@ export class DOMFilter {
         filtered[key] = this.filterNode(value as ParsedDOM, task);
       }
     }
-    return filtered;
+    return filtered as unknown as ParsedDOM;
   }
 
   /**
@@ -368,7 +375,7 @@ export class DOMFilter {
   /**
    * Parse HTML to structured format
    */
-  private parseHTML(html: string): any {
+  private parseHTML(html: string): ParsedDOM {
     // Simple HTML parser
     const elements: DOMElement[] = [];
     const regex = /<(\w+)([^>]*)>([^<]*)/g;
@@ -408,17 +415,17 @@ export class DOMFilter {
   /**
    * Format filtered DOM
    */
-  private formatFiltered(filtered: any): string {
+  private formatFiltered(filtered: ParsedDOM): string {
     // Convert back to string representation
-    if (filtered.elements && Array.isArray(filtered.elements)) {
-      return filtered.elements.map((el: DOMElement) => this.formatElement(el, 0)).join('\n');
+    if ('elements' in filtered && Array.isArray((filtered as ParsedDOMWithElements).elements)) {
+      return (filtered as ParsedDOMWithElements).elements.map((el: DOMElement) => this.formatElement(el, 0)).join('\n');
     }
 
     if (Array.isArray(filtered)) {
       return filtered.map((el: DOMElement) => this.formatElement(el, 0)).join('\n');
     }
 
-    return this.formatElement(filtered, 0);
+    return this.formatElement(filtered as DOMElement, 0);
   }
 
   /**

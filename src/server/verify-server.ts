@@ -17,6 +17,7 @@ import experienceRoutes from '../api/routes/experience-routes';
 import { IntelligentOrchestrator } from '../intelligence/orchestrator';
 import { parseIntelligenceConfigFromEnv } from '../intelligence/config';
 import { LLMRegistry } from '../llm/llm-registry';
+import type { Job } from '../scheduler/types';
 
 // Import services
 import { VerifyService } from './services/verify-service';
@@ -112,12 +113,12 @@ export class VerifyServer {
     // Initialize webhook integration
     this.webhookConfig = new WebhookConfigManager();
     this.webhookDelivery = new WebhookDelivery();
-    this.jobService.getScheduler().on('job.completed', (job: any) => {
+    this.jobService.getScheduler().on('job.completed', (job: Job) => {
       for (const wh of this.webhookConfig.getEnabledForEvent('job.completed')) {
         this.webhookDelivery.send('job.completed', job, wh).catch(() => {});
       }
     });
-    this.jobService.getScheduler().on('job.failed', (job: any) => {
+    this.jobService.getScheduler().on('job.failed', (job: Job) => {
       for (const wh of this.webhookConfig.getEnabledForEvent('job.failed')) {
         this.webhookDelivery.send('job.failed', job, wh).catch(() => {});
       }

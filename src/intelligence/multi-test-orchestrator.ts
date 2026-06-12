@@ -9,12 +9,17 @@
  */
 
 import { TestRoleType, getRole, getRoleDependencies, getAllRoles } from './test-roles';
-import { AgentMessage, MessageBroker, MessageFactory, AgentWorkspace } from './agent-message';
+import { AgentMessage, MessageBroker, MessageFactory, AgentWorkspace, type WorkspaceEntry } from './agent-message';
 import { TestTarget, TestPlan, ScenarioResult, PlannedScenario } from './types';
 import { ITestExecutor, ExecutorFactory } from './executor';
 import { LLMClient } from '../agent/llm-client';
 import { LLMRegistry } from '../llm/llm-registry';
 import { LLMPlanner } from './planner';
+
+/**
+ * Agent execution result value - varies by role
+ */
+type AgentResultValue = ScenarioResult | { plan: TestPlan; features: unknown[] } | { results: ScenarioResult[] } | { analysis: unknown } | { repairs: unknown[] } | string;
 
 /**
  * Orchestration modes
@@ -47,7 +52,7 @@ export interface MultiAgentResult {
   finalVerdict: 'pass' | 'fail' | 'inconclusive';
   confidence: number;
   messages: AgentMessage[];
-  workspace: any[];
+  workspace: WorkspaceEntry[];
   duration: number;
   timestamp: string;
 }
@@ -59,7 +64,7 @@ export interface AgentExecutionResult {
   role: TestRoleType;
   agentId: string;
   status: 'success' | 'failure' | 'partial';
-  result: any;
+  result: AgentResultValue;
   duration: number;
   timestamp: string;
 }
@@ -175,7 +180,7 @@ export class MultiAgentOrchestrator {
     }
 
     // Extract scenarios from explorer result
-    const scenarios = this.extractScenarios(explorerResult.result);
+    const scenarios = this.extractScenarios(explorerResult);
 
     // Run testers in parallel
     const maxParallel = this.config.maxParallelAgents || 3;
@@ -208,7 +213,7 @@ export class MultiAgentOrchestrator {
     }
 
     // Phase 2: Distribute work to testers
-    const scenarios = this.extractScenarios(explorerResult.result);
+    const scenarios = this.extractScenarios(explorerResult);
     const categorizedScenarios = this.categorizeScenarios(scenarios);
 
     // Create specialized testers for different categories
@@ -365,7 +370,7 @@ export class MultiAgentOrchestrator {
     roleType: TestRoleType,
     target: TestTarget,
     previousResults?: AgentExecutionResult[]
-  ): Promise<MultiAgentResult> {
+  ): Promise<AgentResultValue> {
     let agentResult: AgentExecutionResult;
 
     switch (roleType) {
@@ -385,18 +390,8 @@ export class MultiAgentOrchestrator {
         throw new Error(`Unknown role type: ${roleType}`);
     }
 
-    // Construct MultiAgentResult from AgentExecutionResult
-    return {
-      mode: 'sequential',
-      target,
-      results: [agentResult],
-      finalVerdict: agentResult.status === 'success' ? 'pass' : agentResult.status === 'failure' ? 'fail' : 'inconclusive',
-      confidence: 0.8,
-      messages: [],
-      workspace: [],
-      duration: agentResult.duration,
-      timestamp: agentResult.timestamp,
-    };
+    // Return the agent's result value
+    return agentResult.result;
   }
 
   /**
@@ -437,7 +432,7 @@ export class MultiAgentOrchestrator {
       throw new Error('No explorer result found for tester');
     }
 
-    const plan = this.extractPlan(explorerResult.result);
+    const plan = this.extractPlanFromResult(explorerResult.result);
     const results: ScenarioResult[] = [];
 
     // Execute each scenario
@@ -468,7 +463,7 @@ export class MultiAgentOrchestrator {
     // Collect all test results
     const testResults = previousResults?.filter(r => r.role === 'tester') || [];
     const scenarioResults = testResults.flatMap(r =>
-      Array.isArray(r.result.results) ? r.result.results : [r.result]
+      Array.isArray((r.result as { results?: ScenarioResult[] }).results) ? (r.result as { results: ScenarioResult[] }).results : [r.result as ScenarioResult]
     );
 
     // Analyze results
@@ -501,12 +496,13 @@ export class MultiAgentOrchestrator {
       throw new Error('No reviewer result found for repairer');
     }
 
-    const issues = reviewerResult.result.analysis.issues || [];
+    const analysisResult = reviewerResult.result as { analysis?: { issues?: unknown[] } };
+    const issues = analysisResult.analysis?.issues || [];
     const repairs = [];
 
     for (const issue of issues) {
       // Analyze issue and suggest repair
-      const repair = this.suggestRepair(issue);
+      const repair = this.suggestRepair(issue as { description: string; severity: string });
       repairs.push(repair);
 
       // Report repair suggestion
@@ -604,6 +600,15 @@ export class MultiAgentOrchestrator {
   }
 
   /**
+   * Extract plan from agent result value
+   */
+  private extractPlanFromResult(result: AgentResultValue): TestPlan {
+    const resultData = result as { plan?: TestPlan };
+    if (resultData.plan) return resultData.plan;
+    throw new Error('No plan found in result');
+  }
+
+  /**
    * Categorize scenarios for parallel execution
    */
   private categorizeScenarios(scenarios: PlannedScenario[]): Record<string, PlannedScenario[]> {
@@ -620,8 +625,10 @@ export class MultiAgentOrchestrator {
    */
   private checkConsensus(debateResults: AgentExecutionResult[]): boolean {
     const verdicts = debateResults.map(r => {
-      if (r.result.analysis?.verdict) return r.result.analysis.verdict;
-      if (r.result.result?.analysis?.verdict) return r.result.result.analysis.verdict;
+      const analysisResult = r.result as { analysis?: { verdict?: string } };
+      if (analysisResult.analysis?.verdict) return analysisResult.analysis.verdict;
+      const nestedResult = r.result as { result?: { analysis?: { verdict?: string } } };
+      if (nestedResult.result?.analysis?.verdict) return nestedResult.result.analysis.verdict;
       return 'unknown';
     });
 

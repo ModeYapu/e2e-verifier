@@ -258,9 +258,10 @@ export interface AssertionResult {
 
 /**
  * Console log entry
+ * Level types match Playwright ConsoleMessage.type()
  */
 export interface ConsoleLog {
-  level: 'log' | 'warn' | 'error' | 'info' | 'debug';
+  level: 'log' | 'warning' | 'warn' | 'error' | 'info' | 'debug' | 'trace' | 'table' | 'time' | 'dir' | 'dirxml' | 'clear' | 'startGroup' | 'startGroupCollapsed' | 'endGroup' | 'assert' | 'profile' | 'profileEnd' | 'count' | 'timeEnd';
   message: string;
   timestamp: number;
   url?: string;

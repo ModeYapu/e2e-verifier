@@ -1,6 +1,6 @@
 /**
  * Test Plan Parser — 解析项目维护的 test-plan.yaml
- * 
+ *
  * 每个 project/e2e-test/test-plan.yaml 声明：
  * - 环境配置（URL、认证）
  * - 依赖准备（造流量、启动服务）
@@ -13,6 +13,11 @@ import * as yaml from 'js-yaml';
 import { Logger } from '../utils/logger';
 
 const logger = new Logger({ prefix: 'TestPlanParser' });
+
+/**
+ * Parsed YAML structure (non-circular)
+ */
+type YamlNode = string | number | boolean | null | Record<string, unknown> | unknown[];
 
 // ========== Types ==========
 
@@ -135,9 +140,9 @@ export function findTestPlan(projectDir: string): string | null {
 // ========== Simple YAML Parser ==========
 // (No dependency on yaml library — just enough for test-plan format)
 
-function parseSimpleYaml(text: string): any {
+function parseSimpleYaml(text: string): Record<string, YamlNode> {
   const lines = text.split('\n');
-  const root: any = {};
+  const root: Record<string, YamlNode> = {};
   const stack: Array<{ obj: Record<string, unknown>; indent: number; key?: string }> = [{ obj: root, indent: -1 }];
 
   let i = 0;
