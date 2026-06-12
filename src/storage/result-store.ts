@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { TestResult } from '../types';
+import { logger } from '../utils/logger';
 
 /**
  * Date range filter
@@ -91,7 +92,7 @@ export class ResultStore {
       }
       return [];
     } catch (error) {
-      console.error(`[ResultStore] Error loading results from ${filePath}:`, error);
+      logger.error(`[ResultStore] Error loading results from ${filePath}: ${error}`);
       return [];
     }
   }
@@ -107,7 +108,7 @@ export class ResultStore {
       fs.writeFileSync(tempPath, content, 'utf-8');
       fs.renameSync(tempPath, filePath);
     } catch (error) {
-      console.error(`[ResultStore] Error saving results to ${filePath}:`, error);
+      logger.error(`[ResultStore] Error saving results to ${filePath}: ${error}`);
       throw error;
     }
   }
@@ -120,7 +121,7 @@ export class ResultStore {
     const existingResults = this.loadResults(result.siteName, date);
     existingResults.push(result);
     this.saveResults(result.siteName, date, existingResults);
-    console.log(`[ResultStore] Saved result for ${result.siteName} at ${result.timestamp}`);
+    logger.info(`[ResultStore] Saved result for ${result.siteName} at ${result.timestamp}`);
   }
 
   /**
@@ -143,7 +144,7 @@ export class ResultStore {
           }
         }
       } catch (error) {
-        console.error(`[ResultStore] Error reading site directory ${siteDir}:`, error);
+        logger.error(`[ResultStore] Error reading site directory ${siteDir}: ${error}`);
       }
 
       return allResults.sort((a, b) =>
@@ -183,7 +184,7 @@ export class ResultStore {
         allResults.push(...results);
       }
     } catch (error) {
-      console.error(`[ResultStore] Error reading results directory ${this.resultsDir}:`, error);
+      logger.error(`[ResultStore] Error reading results directory ${this.resultsDir}: ${error}`);
     }
 
     return allResults.sort((a, b) =>
@@ -252,7 +253,7 @@ export class ResultStore {
       const siteDirs = fs.readdirSync(this.resultsDir);
       return siteDirs.map(dir => dir.replace(/_/g, ' ')); // Reverse sanitization for display
     } catch (error) {
-      console.error(`[ResultStore] Error reading results directory:`, error);
+      logger.error(`[ResultStore] Error reading results directory: ${error}`);
       return [];
     }
   }
@@ -347,13 +348,13 @@ export class ResultStore {
             if (fileDate < cutoffDate) {
               const filePath = path.join(sitePath, file);
               fs.unlinkSync(filePath);
-              console.log(`[ResultStore] Deleted old result file: ${filePath}`);
+              logger.info(`[ResultStore] Deleted old result file: ${filePath}`);
             }
           }
         }
       }
     } catch (error) {
-      console.error(`[ResultStore] Error during cleanup:`, error);
+      logger.error(`[ResultStore] Error during cleanup: ${error}`);
     }
   }
 }

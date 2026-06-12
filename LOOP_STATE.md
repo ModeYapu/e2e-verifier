@@ -253,8 +253,27 @@
 - **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
 - 421 处 console.log/warn/error 待替换
 
+### Round 19 — 2026-06-12 (partial)
+- **Slice**: P4-batch5 (partial): Replace console calls with logger in config/ + storage/ + partial remaining
+- **Changes**:
+  - src/config/webhook-config.ts: 8× console → logger
+  - src/storage/result-store.ts: 10× console → logger
+  - src/storage/json-storage.ts: 13× console → logger
+  - 共修复 31 处 console 调用
+- **Status**: Partial - many CLI and other files remain
+- **Verified**: tsc clean
+- **Commit**: <pending>
+
+## Current State
+
+### Code Stats
+- 113 个 TypeScript 文件，~29K 行代码
+- **208 个自动化测试全通过**
+- **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
+- 390 处 console.log/warn/error 待替换 (主要在 CLI 工具和其他模块)
+
 ### NEXT_SLICE
-**P4-batch5**: Replace console.log/warn/error → logger in remaining src/ files
+**P4-batch5 (continued)**: Replace console calls in remaining files (CLI tools have many console outputs, some acceptable)
 
 ## Site Configs
 

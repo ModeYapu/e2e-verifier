@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 /**
  * Storage interface for key-value operations (synchronous for backward compatibility)
@@ -118,7 +119,7 @@ export class JsonStorage implements IStorage {
       const content = fs.readFileSync(filePath, 'utf-8');
       return JSON.parse(content);
     } catch (error) {
-      console.error(`[JsonStorage] Error reading key '${key}':`, error);
+      logger.error(`[JsonStorage] Error reading key '${key}': ${error}`);
       return null;
     }
   }
@@ -154,14 +155,14 @@ export class JsonStorage implements IStorage {
         fs.unlinkSync(tempPath);
       }
     } catch (error) {
-      console.error(`[JsonStorage] Error writing key '${key}':`, error);
+      logger.error(`[JsonStorage] Error writing key '${key}': ${error}`);
 
       // Clean up temp file on error
       if (fs.existsSync(tempPath)) {
         try {
           fs.unlinkSync(tempPath);
         } catch (cleanupError) {
-          console.error(`[JsonStorage] Error cleaning up temp file:`, cleanupError);
+          logger.error(`[JsonStorage] Error cleaning up temp file: ${cleanupError}`);
         }
       }
 
@@ -190,7 +191,7 @@ export class JsonStorage implements IStorage {
       fs.unlinkSync(filePath);
       return true;
     } catch (error) {
-      console.error(`[JsonStorage] Error deleting key '${key}':`, error);
+      logger.error(`[JsonStorage] Error deleting key '${key}': ${error}`);
       return false;
     }
   }
@@ -219,7 +220,7 @@ export class JsonStorage implements IStorage {
 
       return keys.sort();
     } catch (error) {
-      console.error(`[JsonStorage] Error listing keys:`, error);
+      logger.error(`[JsonStorage] Error listing keys: ${error}`);
       return [];
     }
   }
@@ -232,7 +233,7 @@ export class JsonStorage implements IStorage {
       const filePath = this.getFilePath(key);
       return fs.existsSync(filePath);
     } catch (error) {
-      console.error(`[JsonStorage] Error checking key '${key}':`, error);
+      logger.error(`[JsonStorage] Error checking key '${key}': ${error}`);
       return false;
     }
   }
@@ -262,7 +263,7 @@ export class JsonStorage implements IStorage {
         }
       }
     } catch (error) {
-      console.error('[JsonStorage] Error getting stats:', error);
+      logger.error(`[JsonStorage] Error getting stats: ${error}`);
     }
 
     return {
@@ -290,7 +291,7 @@ export class JsonStorage implements IStorage {
         }
       }
     } catch (error) {
-      console.error('[JsonStorage] Error clearing storage:', error);
+      logger.error(`[JsonStorage] Error clearing storage: ${error}`);
       throw error;
     }
   }
@@ -319,9 +320,9 @@ export class JsonStorage implements IStorage {
         }
       }
 
-      console.log(`[JsonStorage] Backed up ${files.length} files to ${targetDir}`);
+      logger.info(`[JsonStorage] Backed up ${files.length} files to ${targetDir}`);
     } catch (error) {
-      console.error('[JsonStorage] Error backing up storage:', error);
+      logger.error(`[JsonStorage] Error backing up storage: ${error}`);
       throw error;
     }
   }
@@ -352,9 +353,9 @@ export class JsonStorage implements IStorage {
         }
       }
 
-      console.log(`[JsonStorage] Restored ${restoredCount} files from ${backupDir}`);
+      logger.info(`[JsonStorage] Restored ${restoredCount} files from ${backupDir}`);
     } catch (error) {
-      console.error('[JsonStorage] Error restoring storage:', error);
+      logger.error(`[JsonStorage] Error restoring storage: ${error}`);
       throw error;
     }
   }

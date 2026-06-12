@@ -5,6 +5,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 /**
  * Webhook configuration interface
@@ -53,14 +54,14 @@ export class WebhookConfigManager {
           this.configs.set(config.id, config);
         }
 
-        console.log(`[WebhookConfig] Loaded ${this.configs.size} webhook configs`);
+        logger.info(`[WebhookConfig] Loaded ${this.configs.size} webhook configs`);
       } else {
         // Initialize with empty array
         this.save();
-        console.log('[WebhookConfig] Initialized empty webhook config file');
+        logger.info('[WebhookConfig] Initialized empty webhook config file');
       }
     } catch (error) {
-      console.error('[WebhookConfig] Error loading webhook configs:', error);
+      logger.error(`[WebhookConfig] Error loading webhook configs: ${error}`);
       this.configs.clear();
     }
   }
@@ -72,9 +73,9 @@ export class WebhookConfigManager {
     try {
       const configs = Array.from(this.configs.values());
       fs.writeFileSync(this.configPath, JSON.stringify(configs, null, 2));
-      console.log(`[WebhookConfig] Saved ${configs.length} webhook configs`);
+      logger.info(`[WebhookConfig] Saved ${configs.length} webhook configs`);
     } catch (error) {
-      console.error('[WebhookConfig] Error saving webhook configs:', error);
+      logger.error(`[WebhookConfig] Error saving webhook configs: ${error}`);
       throw error;
     }
   }
@@ -113,7 +114,7 @@ export class WebhookConfigManager {
     this.configs.set(id, config);
     this.save();
 
-    console.log(`[WebhookConfig] Created webhook config: ${id}`);
+    logger.info(`[WebhookConfig] Created webhook config: ${id}`);
     return config;
   }
 
@@ -137,7 +138,7 @@ export class WebhookConfigManager {
     this.configs.set(id, updatedConfig);
     this.save();
 
-    console.log(`[WebhookConfig] Updated webhook config: ${id}`);
+    logger.info(`[WebhookConfig] Updated webhook config: ${id}`);
     return updatedConfig;
   }
 
@@ -148,7 +149,7 @@ export class WebhookConfigManager {
     const deleted = this.configs.delete(id);
     if (deleted) {
       this.save();
-      console.log(`[WebhookConfig] Deleted webhook config: ${id}`);
+      logger.info(`[WebhookConfig] Deleted webhook config: ${id}`);
     }
     return deleted;
   }
