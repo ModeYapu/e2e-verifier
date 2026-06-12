@@ -28,6 +28,7 @@ import { VisualConsistencyStrategy } from './strategies/visual-consistency';
 import { CrossReferenceStrategy } from './strategies/cross-reference';
 import { EdgeCaseStrategy } from './strategies/edge-case';
 import { EvidenceScoringStrategy } from './strategies/evidence-scoring';
+import { logger } from '../utils/logger';
 
 // =====================================================
 // MULTI-STRATEGY EVALUATOR CONFIG
@@ -182,7 +183,7 @@ export class MultiStrategyEvaluator implements ITestEvaluator {
     );
 
     if (this.config.verbose) {
-      console.log(`Running ${enabledStrategies.length} strategies in parallel: ${enabledStrategies.join(', ')}`);
+      logger.info(`Running ${enabledStrategies.length} strategies in parallel: ${enabledStrategies.join(', ')}`);
     }
 
     // Create strategy promises
@@ -192,7 +193,7 @@ export class MultiStrategyEvaluator implements ITestEvaluator {
         const verdict = await strategy.verify(result, context);
         return { name: strategyName, verdict, error: null };
       } catch (error) {
-        console.error(`Strategy ${strategyName} failed:`, error);
+        logger.error(`Strategy ${strategyName} failed: ${error}`);
         return {
           name: strategyName,
           verdict: null,
@@ -399,13 +400,13 @@ export class MultiStrategyEvaluator implements ITestEvaluator {
    * Log evaluation summary
    */
   private logEvaluationSummary(evaluation: EvaluationResult, report: VerificationReport): void {
-    console.log('\n=== Multi-Strategy Evaluation Summary ===');
-    console.log(`Verdict: ${evaluation.verdict}`);
-    console.log(`Confidence: ${(evaluation.confidence * 100).toFixed(1)}%`);
-    console.log(`Strategies Used: ${report.metadata.strategiesUsed.join(', ')}`);
-    console.log(`Total Issues: ${evaluation.issues.length}`);
-    console.log(`Recommendations: ${report.recommendations.length}`);
-    console.log('========================================\n');
+    logger.info('\n=== Multi-Strategy Evaluation Summary ===');
+    logger.info(`Verdict: ${evaluation.verdict}`);
+    logger.info(`Confidence: ${(evaluation.confidence * 100).toFixed(1)}%`);
+    logger.info(`Strategies Used: ${report.metadata.strategiesUsed.join(', ')}`);
+    logger.info(`Total Issues: ${evaluation.issues.length}`);
+    logger.info(`Recommendations: ${report.recommendations.length}`);
+    logger.info('========================================\n');
   }
 
   /**

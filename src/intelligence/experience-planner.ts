@@ -26,6 +26,7 @@ import {
 } from './experience-types';
 import { ExperienceStore } from './experience-store';
 import { ITestPlanner } from './planner';
+import { logger } from '../utils/logger';
 
 // =====================================================
 // EXPERIENCE-GUIDED PLANNER CONFIGURATION
@@ -84,11 +85,11 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
    * @returns Generated test plan
    */
   async plan(target: TestTarget): Promise<TestPlan> {
-    console.log(`\n🧠 Experience-Guided Planning for: ${target.name || target.url}`);
+    logger.info(`\n🧠 Experience-Guided Planning for: ${target.name || target.url}`);
 
     // Generate problem signature
     const signature = this.experienceStore.generateSignature(target);
-    console.log(`  Signature: ${signature}`);
+    logger.info(`  Signature: ${signature}`);
 
     // Query for similar experiences
     const similarExperiences = this.experienceStore.querySimilar(
@@ -96,7 +97,7 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
       this.config.maxSimilarExperiences
     );
 
-    console.log(`  Found ${similarExperiences.length} similar experiences`);
+    logger.info(`  Found ${similarExperiences.length} similar experiences`);
 
     // Check if we have high-confidence successful experiences
     const successfulExperiences = similarExperiences.filter(
@@ -104,12 +105,12 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
     );
 
     if (successfulExperiences.length > 0 && this.config.enableAdaptation) {
-      console.log(`  ✓ Reusing successful experience (similarity: ${successfulExperiences[0].similarity.toFixed(2)})`);
+      logger.info(`  ✓ Reusing successful experience (similarity: ${successfulExperiences[0].similarity.toFixed(2)})`);
       return this.adaptPlan(target, successfulExperiences[0]);
     }
 
     // Fall back to base planner
-    console.log(`  Using LLM planner (no suitable experience found)`);
+    logger.info(`  Using LLM planner (no suitable experience found)`);
     const plan = await this.basePlanner.plan(target);
 
     // Add experience-guided metadata
@@ -151,7 +152,7 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
       },
     };
 
-    console.log(`  Adaptations: ${adaptations.join(', ')}`);
+    logger.info(`  Adaptations: ${adaptations.join(', ')}`);
     return adaptedPlan;
   }
 
@@ -312,7 +313,7 @@ export class ExperienceGuidedPlanner implements ITestPlanner {
     // Record experience
     await this.experienceStore.record(experience);
 
-    console.log(`✓ Experience recorded: ${outcome} (reward: ${reward.reward.toFixed(2)})`);
+    logger.info(`✓ Experience recorded: ${outcome} (reward: ${reward.reward.toFixed(2)})`);
   }
 
   /**

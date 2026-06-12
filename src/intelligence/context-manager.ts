@@ -12,6 +12,7 @@
 import { DOMFilter } from './dom-filter';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 /**
  * Context selection result
@@ -285,7 +286,7 @@ export class ContextManager {
       // Write back
       fs.writeFileSync(scratchpadPath, JSON.stringify(existingData, null, 2));
     } catch (error) {
-      console.error(`Failed to write back to scratchpad: ${error}`);
+      logger.error(`Failed to write back to scratchpad: ${error}`);
     }
   }
 
@@ -302,7 +303,7 @@ export class ContextManager {
       }
       return [];
     } catch (error) {
-      console.error(`Failed to read from scratchpad: ${error}`);
+      logger.error(`Failed to read from scratchpad: ${error}`);
       return [];
     }
   }
@@ -393,7 +394,7 @@ export class ContextManager {
     const totalAllocated = allocations.reduce((sum, a) => sum + a.budget, 0);
 
     if (totalAllocated < totalNeeded) {
-      console.warn(`⚠️ Budget warning: allocated ${totalAllocated} but needed ${totalNeeded} tokens`);
+      logger.warn(`⚠️ Budget warning: allocated ${totalAllocated} but needed ${totalNeeded} tokens`);
     }
   }
 }

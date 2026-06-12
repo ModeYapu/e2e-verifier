@@ -33,6 +33,7 @@ import { EventEmitter } from 'events';
 import { ExperienceStore, ExperienceStoreFactory } from './experience-store';
 import { ExperienceGuidedPlanner, ExperienceGuidedPlannerFactory } from './experience-planner';
 import { SelfEvalEngine, SelfEvalEngineFactory } from './self-eval';
+import { logger } from '../utils/logger';
 
 // =====================================================
 // ORCHESTRATOR CONFIGURATION
@@ -224,7 +225,7 @@ export class IntelligentOrchestrator extends EventEmitter {
         });
       }
 
-      console.log('✓ Experience store enabled with ' + this.experienceStore.getCount() + ' experiences');
+      logger.info('✓ Experience store enabled with ' + this.experienceStore.getCount() + ' experiences');
     }
 
     this.initialized = true;
@@ -257,21 +258,21 @@ export class IntelligentOrchestrator extends EventEmitter {
       const plan = await this.planner.plan(target);
 
       this.emitEvent('plan_complete', { plan, target });
-      console.log(`✓ Plan generated: ${plan.scenarios.length} scenarios`);
+      logger.info(`✓ Plan generated: ${plan.scenarios.length} scenarios`);
 
       // Phase 2: Execute and evaluate each scenario
       for (let i = 0; i < plan.scenarios.length; i++) {
         const scenario = plan.scenarios[i];
 
         this.emitEvent('execute_start', { scenario, index: i });
-        console.log(`\nExecuting scenario ${i + 1}/${plan.scenarios.length}: ${scenario.name}`);
+        logger.info(`\nExecuting scenario ${i + 1}/${plan.scenarios.length}: ${scenario.name}`);
 
         // Execute scenario
         const result = await this.executor.execute(scenario);
         scenarioResults.push(result);
 
         this.emitEvent('execute_complete', { result, scenario });
-        console.log(`  Execution: ${result.passed ? '✓ PASSED' : '✗ FAILED'} (${result.duration}ms)`);
+        logger.info(`  Execution: ${result.passed ? '✓ PASSED' : '✗ FAILED'} (${result.duration}ms)`);
 
         // Evaluate result
         this.emitEvent('evaluate_start', { result });
@@ -279,7 +280,7 @@ export class IntelligentOrchestrator extends EventEmitter {
         evaluations.push(evaluation);
 
         this.emitEvent('evaluate_complete', { evaluation, result });
-        console.log(`  Evaluation: ${evaluation.verdict} (confidence: ${evaluation.confidence.toFixed(2)})`);
+        logger.info(`  Evaluation: ${evaluation.verdict} (confidence: ${evaluation.confidence.toFixed(2)})`);
 
         // Record experience if experience store is enabled
         if (this.experienceStore && this.experienceGuidedPlanner) {
@@ -304,18 +305,18 @@ export class IntelligentOrchestrator extends EventEmitter {
                   similarExperiences[0].experience,
                   result
                 );
-                console.log(`  Strategy evaluation: ${strategyEval.effective ? '✓ Effective' : '✗ Ineffective'} (${strategyEval.confidence.toFixed(2)})`);
+                logger.info(`  Strategy evaluation: ${strategyEval.effective ? '✓ Effective' : '✗ Ineffective'} (${strategyEval.confidence.toFixed(2)})`);
               }
             }
           } catch (error) {
-            console.error('  Failed to record experience:', error);
+            logger.error(`  Failed to record experience: ${error}`);
           }
         }
 
         // Phase 3: Repair if needed
         if (mergedOptions.enableRepair && this.repairLoop && evaluation.needsRepair) {
           this.emitEvent('repair_start', { result, evaluation });
-          console.log(`  Attempting repair...`);
+          logger.info(`  Attempting repair...`);
 
           const repairResult = await this.repairLoop.repair(scenario, result, evaluation);
           repairs.push(repairResult);
@@ -323,7 +324,7 @@ export class IntelligentOrchestrator extends EventEmitter {
           this.emitEvent('repair_complete', { repairResult });
 
           if (repairResult.success) {
-            console.log(`  ✓ Repair successful!`);
+            logger.info(`  ✓ Repair successful!`);
             // Update result and evaluation with repaired versions
             if (repairResult.repairedResult) {
               const repairedIndex = scenarioResults.length - 1;
@@ -334,7 +335,7 @@ export class IntelligentOrchestrator extends EventEmitter {
               evaluations[repairedIndex] = repairResult.repairedEvaluation;
             }
           } else {
-            console.log(`  ✗ Repair failed after ${repairResult.attemptNumber} attempts`);
+            logger.info(`  ✗ Repair failed after ${repairResult.attemptNumber} attempts`);
           }
         }
       }
@@ -358,7 +359,7 @@ export class IntelligentOrchestrator extends EventEmitter {
         },
       };
 
-      console.log(`\n${this.formatSummary(finalResult)}`);
+      logger.info(`\n${this.formatSummary(finalResult)}`);
 
       return finalResult;
     } catch (error) {
@@ -482,15 +483,16 @@ export class IntelligentOrchestrator extends EventEmitter {
     const results: IntelligenceRunResult[] = [];
 
     for (let i = 0; i < targets.length; i++) {
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`Testing target ${i + 1}/${targets.length}: ${targets[i].name || targets[i].url}`);
-      console.log(`${'='.repeat(60)}\n`);
+      logger.info(`\n${'='.repeat(60)}`);
+      logger.info(`Testing target ${i + 1}/${targets.length}: ${targets[i].name || targets[i].url}`);
+      logger.info(`${'='.repeat(60)}\n`);
 
       try {
         const result = await this.run(targets[i], options);
         results.push(result);
       } catch (error) {
-        console.error(`Failed to test target ${targets[i].url}:`, error.message);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error(`Failed to test target ${targets[i].url}: ${errorMsg}`);
         // Continue with other targets even if one fails
       }
     }

@@ -22,6 +22,7 @@ import {
 } from './experience-types';
 import { ScenarioResult, TestTarget } from './types';
 import { JsonStorage } from '../storage/json-storage';
+import { logger } from '../utils/logger';
 
 // =====================================================
 // EXPERIENCE STORE CONFIGURATION
@@ -385,10 +386,10 @@ export class ExperienceStore {
           this.updateStrategyStats(exp);
         });
 
-        console.log(`✓ Loaded ${this.experiences.size} experiences from storage`);
+        logger.info(`✓ Loaded ${this.experiences.size} experiences from storage`);
       }
     } catch (error) {
-      console.error('Failed to load experiences:', error);
+      logger.error(`Failed to load experiences: ${error}`);
     }
   }
 
@@ -400,7 +401,7 @@ export class ExperienceStore {
       const experiences = Array.from(this.experiences.values());
       this.storage.set('experiences', experiences);
     } catch (error) {
-      console.error('Failed to save experiences:', error);
+      logger.error(`Failed to save experiences: ${error}`);
     }
   }
 
@@ -514,7 +515,7 @@ export class ExperienceStore {
       this.experiences.delete(exp.id);
     });
 
-    console.log(`Pruned ${toRemove.length} old experiences`);
+    logger.info(`Pruned ${toRemove.length} old experiences`);
   }
 
   /**

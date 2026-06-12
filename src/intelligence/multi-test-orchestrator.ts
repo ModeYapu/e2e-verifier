@@ -15,6 +15,7 @@ import { ITestExecutor, ExecutorFactory } from './executor';
 import { LLMClient } from '../agent/llm-client';
 import { LLMRegistry } from '../llm/llm-registry';
 import { LLMPlanner } from './planner';
+import { logger } from '../utils/logger';
 
 /**
  * Agent execution result value - varies by role
@@ -158,7 +159,7 @@ export class MultiAgentOrchestrator {
 
       // If agent failed, stop the chain
       if (agentResult.status === 'failure') {
-        console.warn(`Agent ${roleType} failed, stopping sequential execution`);
+        logger.warn(`Agent ${roleType} failed, stopping sequential execution`);
         break;
       }
     }
@@ -263,7 +264,7 @@ export class MultiAgentOrchestrator {
 
       // Check if consensus reached
       if (this.checkConsensus(debateResults)) {
-        console.log(`Consensus reached after ${round + 1} debate rounds`);
+        logger.info(`Consensus reached after ${round + 1} debate rounds`);
         break;
       }
 

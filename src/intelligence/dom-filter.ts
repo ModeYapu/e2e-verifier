@@ -12,6 +12,8 @@
  * - Test-critical elements
  */
 
+import { logger } from '../utils/logger';
+
 /**
  * DOM element structure
  */
@@ -101,7 +103,7 @@ export class DOMFilter {
       // Convert back to string
       return this.formatFiltered(filtered);
     } catch (error) {
-      console.error('DOM filter error:', error);
+      logger.error(`DOM filter error: ${error}`);
       // Return original if parsing fails
       return this.createMinimalDOM(rawDOM);
     }
