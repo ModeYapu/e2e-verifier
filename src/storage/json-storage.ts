@@ -165,7 +165,7 @@ export class JsonStorage implements IStorage {
         }
       }
 
-      throw error;
+      return; // Graceful: log but don't throw
     }
   }
 
