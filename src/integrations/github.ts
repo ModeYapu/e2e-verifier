@@ -4,6 +4,7 @@
  */
 
 import { Job, JobStatus } from '../scheduler/types';
+import { logger } from '../utils/logger';
 
 /**
  * GitHub commit status states
@@ -47,13 +48,13 @@ export class GitHubIntegration {
   constructor(token?: string) {
     this.token = token || process.env.GITHUB_TOKEN || '';
     if (!this.token) {
-      console.warn('[GitHub] No GITHUB_TOKEN provided - GitHub API calls will fail');
+      logger.warn('[GitHub] No GITHUB_TOKEN provided - GitHub API calls will fail');
     }
 
     // Support GitHub Enterprise Server
     if (process.env.GITHUB_API_URL) {
       this.apiBaseUrl = process.env.GITHUB_API_URL;
-      console.log(`[GitHub] Using custom API URL: ${this.apiBaseUrl}`);
+      logger.info(`[GitHub] Using custom API URL: ${this.apiBaseUrl}`);
     }
   }
 
@@ -94,11 +95,11 @@ export class GitHubIntegration {
       }
 
       const data = await response.json();
-      console.log(`[GitHub] Created commit status for ${owner}/${repoName} SHA ${sha}: ${state}`);
+      logger.info(`[GitHub] Created commit status for ${owner}/${repoName} SHA ${sha}: ${state}`);
 
       return data;
     } catch (error) {
-      console.error('[GitHub] Error creating commit status:', error);
+      logger.error(`[GitHub] Error creating commit status: ${error}`);
       return null;
     }
   }
@@ -132,11 +133,11 @@ export class GitHubIntegration {
       }
 
       const data = await response.json();
-      console.log(`[GitHub] Created comment on PR #${prNumber} in ${owner}/${repoName}`);
+      logger.info(`[GitHub] Created comment on PR #${prNumber} in ${owner}/${repoName}`);
 
       return data;
     } catch (error) {
-      console.error('[GitHub] Error creating PR comment:', error);
+      logger.error(`[GitHub] Error creating PR comment: ${error}`);
       return null;
     }
   }

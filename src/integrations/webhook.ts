@@ -6,6 +6,7 @@
 import { WebhookConfig } from '../config/webhook-config';
 import { Job, JobStatus } from '../scheduler/types';
 import * as crypto from 'crypto';
+import { logger } from '../utils/logger';
 
 /**
  * Webhook event types
@@ -60,7 +61,7 @@ export class WebhookDelivery {
         const response = await this.deliver(config.url, payload, signature);
 
         if (response.ok) {
-          console.log(`[Webhook] Successfully delivered ${event} for job ${job.id} to ${config.url}`);
+          logger.info(`[Webhook] Successfully delivered ${event} for job ${job.id} to ${config.url}`);
           return {
             success: true,
             statusCode: response.status,
@@ -73,20 +74,20 @@ export class WebhookDelivery {
 
         // Don't retry on client errors (4xx) except 429 (rate limit)
         if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-          console.error(`[Webhook] Client error ${response.status} for job ${job.id} - not retrying`);
+          logger.error(`[Webhook] Client error ${response.status} for job ${job.id} - not retrying`);
           break;
         }
 
         // Retry on server errors (5xx) and rate limit (429)
         if (attempt < this.retryDelays.length) {
           const delay = this.retryDelays[attempt];
-          console.log(`[Webhook] Attempt ${attempt + 1} failed for job ${job.id}, retrying in ${delay}ms...`);
+          logger.info(`[Webhook] Attempt ${attempt + 1} failed for job ${job.id}, retrying in ${delay}ms...`);
           await this.sleep(delay);
         }
 
       } catch (error) {
         lastError = error instanceof Error ? error.message : String(error);
-        console.error(`[Webhook] Attempt ${attempt + 1} failed for job ${job.id}:`, lastError);
+        logger.error(`[Webhook] Attempt ${attempt + 1} failed for job ${job.id}: ${lastError}`);
 
         if (attempt < this.retryDelays.length) {
           const delay = this.retryDelays[attempt];
@@ -95,7 +96,7 @@ export class WebhookDelivery {
       }
     }
 
-    console.error(`[Webhook] Failed to deliver ${event} for job ${job.id} after ${this.retryDelays.length + 1} attempts`);
+    logger.error(`[Webhook] Failed to deliver ${event} for job ${job.id} after ${this.retryDelays.length + 1} attempts`);
 
     return {
       success: false,
