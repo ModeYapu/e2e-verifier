@@ -57,6 +57,16 @@
   - 更新 src/explorer/autonomous-explorer.ts: 重导出模块，保持向后兼容
   - 无破坏性变更 - AutonomousExplorer 类仍从原路径导出
 - **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: 2f75a3e
+
+### Round 7 — 2026-06-12
+- **Slice**: P2: 拆分 evaluator.ts (914行) → 2 modules
+- **Changes**:
+  - 新增 src/intelligence/evaluator-core.ts: ITestEvaluator + LLMEvaluator + RuleEvaluator
+  - 新增 src/intelligence/evaluator-factory.ts: EvaluatorFactory (fromEnv, create)
+  - 更新 src/intelligence/evaluator.ts: 重导出模块，保持向后兼容
+  - 无破坏性变更 - 所有导出仍从原路径可用
+- **Verified**: tsc clean, jest 208/208 pass
 - **Commit**: <pending>
 
 ## Current State
@@ -68,7 +78,7 @@
 - 553 处 console.log/warn/error 待替换
 
 ### NEXT_SLICE
-P2: 拆分 evaluator.ts (914行) → evaluator-core + evaluator-report
+P3: `:any` 类型消灭 — 剩余 68 处 `: any` 替换为具体类型（优先 agent/ 和 server/routes/）
 
 ## Site Configs
 - `travel-planner.json` — 3 sites, 31 checks
