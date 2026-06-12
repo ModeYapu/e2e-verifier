@@ -19,6 +19,7 @@ import { TestTarget } from '../intelligence/types';
 import { ResultStore } from '../storage/result-store';
 import { TestResult, MatrixResult } from '../types';
 import { BrowserPool } from '../browser/browser-pool';
+import { logger } from '../utils/logger';
 
 /**
  * Scheduler configuration
@@ -74,18 +75,18 @@ export class Scheduler extends EventEmitter {
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.log('[Scheduler] Already running');
+      logger.info('[Scheduler] Already running');
       return;
     }
 
-    console.log('[Scheduler] Starting...');
+    logger.info('[Scheduler] Starting...');
     this.isRunning = true;
 
     // BrowserPool is now managing browser instances
-    console.log('[Scheduler] Using shared browser pool');
+    logger.info('[Scheduler] Using shared browser pool');
 
     // Initialize worker pool
-    console.log(`[Scheduler] Initializing worker pool (max concurrency: ${this.config.maxConcurrency})`);
+    logger.info(`[Scheduler] Initializing worker pool (max concurrency: ${this.config.maxConcurrency})`);
     for (let i = 0; i < this.config.maxConcurrency; i++) {
       this.workers.push({
         id: `worker-${i}`,
@@ -97,7 +98,7 @@ export class Scheduler extends EventEmitter {
     // Start scheduling loop
     this.scheduleJobs();
 
-    console.log('[Scheduler] Started successfully');
+    logger.info('[Scheduler] Started successfully');
     this.emit('started');
   }
 
@@ -106,11 +107,11 @@ export class Scheduler extends EventEmitter {
    */
   async stop(): Promise<void> {
     if (!this.isRunning) {
-      console.log('[Scheduler] Not running');
+      logger.info('[Scheduler] Not running');
       return;
     }
 
-    console.log('[Scheduler] Stopping...');
+    logger.info('[Scheduler] Stopping...');
     this.isRunning = false;
 
     // Stop scheduling loop
@@ -125,7 +126,7 @@ export class Scheduler extends EventEmitter {
 
     while (this.workers.some(w => w.busy)) {
       if (Date.now() - startTime > maxWaitTime) {
-        console.log('[Scheduler] Timeout waiting for workers to finish');
+        logger.info('[Scheduler] Timeout waiting for workers to finish');
         break;
       }
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -133,9 +134,9 @@ export class Scheduler extends EventEmitter {
 
     // BrowserPool manages browser cleanup
     // We don't close the pool here as it may be used by other components
-    console.log('[Scheduler] Workers cleaned up');
+    logger.info('[Scheduler] Workers cleaned up');
 
-    console.log('[Scheduler] Stopped successfully');
+    logger.info('[Scheduler] Stopped successfully');
     this.emit('stopped');
   }
 
@@ -166,7 +167,7 @@ export class Scheduler extends EventEmitter {
    * Assign a job to a worker
    */
   private assignJobToWorker(job: Job, worker: WorkerState): void {
-    console.log(`[Scheduler] Assigning job ${job.id} to ${worker.id}`);
+    logger.info(`[Scheduler] Assigning job ${job.id} to ${worker.id}`);
 
     worker.busy = true;
     worker.currentJob = job;
@@ -182,7 +183,7 @@ export class Scheduler extends EventEmitter {
 
     // Execute job with timeout
     this.executeJob(job, worker).catch(error => {
-      console.error(`[Scheduler] Error executing job ${job.id}:`, error);
+      logger.error(`[Scheduler] Error executing job ${job.id}: ${error}`);
       this.jobQueue.fail(job.id, `Execution error: ${error}`);
       worker.busy = false;
       worker.currentJob = undefined;
@@ -212,7 +213,7 @@ export class Scheduler extends EventEmitter {
 
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
-      console.error(`[Scheduler] Job ${job.id} failed:`, error);
+      logger.error(`[Scheduler] Job ${job.id} failed: ${error}`);
     } finally {
       const duration = Date.now() - startTime;
 
@@ -229,7 +230,7 @@ export class Scheduler extends EventEmitter {
         this.emit('job.completed', job);
       }
 
-      console.log(`[Scheduler] Job ${job.id} finished in ${duration}ms`);
+      logger.info(`[Scheduler] Job ${job.id} finished in ${duration}ms`);
     }
   }
 
@@ -490,7 +491,7 @@ export class Scheduler extends EventEmitter {
    * Handle job completed event from queue
    */
   private handleJobCompleted(job: Job): void {
-    console.log(`[Scheduler] Job ${job.id} completed successfully`);
+    logger.info(`[Scheduler] Job ${job.id} completed successfully`);
 
     // Save result if it's a TestResult
     if (job.result) {
@@ -515,7 +516,7 @@ export class Scheduler extends EventEmitter {
           }
         }
       } catch (error) {
-        console.error(`[Scheduler] Error saving result for job ${job.id}:`, error);
+        logger.error(`[Scheduler] Error saving result for job ${job.id}: ${error}`);
       }
     }
   }
@@ -558,22 +559,22 @@ export class Scheduler extends EventEmitter {
    * Handle job failed event from queue
    */
   private handleJobFailed(job: Job): void {
-    console.log(`[Scheduler] Job ${job.id} failed`);
+    logger.info(`[Scheduler] Job ${job.id} failed`);
 
     // Auto-retry if under limit
     if (job.retryCount < job.maxRetries) {
-      console.log(`[Scheduler] Scheduling retry ${job.retryCount + 1}/${job.maxRetries} for job ${job.id}`);
+      logger.info(`[Scheduler] Scheduling retry ${job.retryCount + 1}/${job.maxRetries} for job ${job.id}`);
 
       // Add delay before retry (exponential backoff)
       const retryDelay = Math.min(1000 * Math.pow(2, job.retryCount), 30000);
       setTimeout(() => {
         const retriedJob = this.jobQueue.retryJob(job.id);
         if (retriedJob) {
-          console.log(`[Scheduler] Job ${job.id} queued for retry`);
+          logger.info(`[Scheduler] Job ${job.id} queued for retry`);
         }
       }, retryDelay);
     } else {
-      console.log(`[Scheduler] Job ${job.id} reached max retries (${job.maxRetries})`);
+      logger.info(`[Scheduler] Job ${job.id} reached max retries (${job.maxRetries})`);
     }
   }
 
