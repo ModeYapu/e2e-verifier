@@ -45,8 +45,16 @@ export interface JobDetailResponse {
   };
 }
 
+export interface BatchJobData {
+  type: JobType;
+  config: unknown;
+  priority?: JobPriority;
+  maxRetries?: number;
+  timeout?: number;
+}
+
 export interface CreateBatchJobRequest {
-  jobs: any[];
+  jobs: BatchJobData[];
 }
 
 export function createJobRoutes(jobService: JobService): Router {

@@ -21,6 +21,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
+ * Error from child_process.exec with additional properties
+ */
+interface ExecError extends Error {
+  code?: number | string;
+  stdout?: string;
+  stderr?: string;
+  killed?: boolean;
+  signal?: NodeJS.Signals;
+}
+
+/**
  * System prompt for the LLM
  */
 const DEFAULT_SYSTEM_PROMPT = [
@@ -390,8 +401,9 @@ export class AgentLoop {
       const execAsync = promisify(exec);
       const { stdout, stderr } = await execAsync(command, { timeout: 10000 });
       return `Shell command output:\n${stdout.substring(0, 1000)}${stderr ? '\nStderr: ' + stderr.substring(0, 500) : ''}`;
-    } catch (error: any) {
-      return `Shell command failed (exit ${error.code || '?'}): ${(error.stdout || error.message || '').substring(0, 500)}`;
+    } catch (error) {
+      const execError = error as ExecError;
+      return `Shell command failed (exit ${execError.code || '?'}): ${(execError.stdout || execError.message || '').toString().substring(0, 500)}`;
     }
   }
 

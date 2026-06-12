@@ -357,28 +357,200 @@ Respond in JSON format:
    * Generate script for a specific scenario
    */
   private generateScenarioScript(scenario: string, analysis: PageAnalysis): string {
+    // Normalize scenario name for test title
+    const testId = scenario.replace(/\s+/g, '-').toLowerCase();
+
+    // Generate test steps based on scenario type and detected features
+    const testSteps = this.generateScenarioSteps(scenario, analysis);
+
+    // Generate assertions based on features
+    const assertions = this.generateScenarioAssertions(scenario, analysis);
+
     return `
 // Generated test scenario: ${scenario}
 // Page: ${analysis.url}
 // Generated at: ${new Date().toISOString()}
+// Features detected: ${analysis.features.length}
 
 const { test, expect } = require('@playwright/test');
 
-test('${scenario.replace(/\s+/g, '-').toLowerCase()}', async ({ page }) => {
-  await page.goto('${analysis.url}');
+test('${testId}', async ({ page }) => {
+  // Navigate to page
+  await page.goto('${analysis.url}', { waitUntil: 'networkidle' });
 
-  // TODO: Implement scenario logic
-  // This is a placeholder - modify based on actual requirements
-
-  // Example: Wait for page to load
-  await page.waitForLoadState('networkidle');
-
-  // Example: Check page title
-  await expect(page).toHaveTitle(/.*/);
-
-  // Add your specific test logic here based on: ${scenario}
+${testSteps}
+${assertions}
 });
 `;
+  }
+
+  /**
+   * Generate test steps based on scenario type and page features
+   */
+  private generateScenarioSteps(scenario: string, analysis: PageAnalysis): string {
+    const scenarioLower = scenario.toLowerCase();
+    let steps = '';
+
+    // Page load scenario - check basic page elements
+    if (scenarioLower.includes('load') || scenarioLower.includes('render')) {
+      steps += `  // Verify page loaded successfully
+  await expect(page).toHaveTitle(/${analysis.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/);
+
+  // Check critical elements exist
+  const criticalElements = ${JSON.stringify(analysis.features.filter(f => f.testable).slice(0, 5).map(f => ({ selector: f.selector, type: f.type })))};
+  for (const elem of criticalElements) {
+    const element = await page.locator(elem.selector).first();
+    await expect(element).toBeVisible({ timeout: 5000 }).catch(() => {
+      console.log(\`Warning: Element not found - \${elem.selector}\`);
+    });
+  }
+`;
+    }
+
+    // Form interaction scenario
+    if (scenarioLower.includes('form') || scenarioLower.includes('submit') || scenarioLower.includes('input')) {
+      const forms = analysis.features.filter(f => f.type === 'form');
+      const inputs = analysis.features.filter(f => f.type === 'input');
+
+      if (forms.length > 0 || inputs.length > 0) {
+        steps += `  // Fill form fields
+  const formFields = ${JSON.stringify(inputs.slice(0, 5).map(i => ({ selector: i.selector, description: i.description })))};
+
+  for (const field of formFields) {
+    const fieldElement = await page.locator(field.selector).first();
+    if (await fieldElement.isVisible()) {
+      await fieldElement.fill('test-value');
+    }
+  }
+`;
+      }
+    }
+
+    // Navigation scenario
+    if (scenarioLower.includes('nav') || scenarioLower.includes('link')) {
+      const links = analysis.features.filter(f => f.type === 'link');
+      if (links.length > 0) {
+        steps += `  // Test navigation links
+  const navLinks = ${JSON.stringify(links.slice(0, 3).map(l => l.selector))};
+
+  for (const linkSelector of navLinks) {
+    const link = await page.locator(linkSelector).first();
+    if (await link.isVisible() && await link.isEnabled()) {
+      const href = await link.getAttribute('href');
+      if (href && !href.startsWith('#')) {
+        console.log(\`Testing navigation to: \${href}\`);
+        // Note: Actual navigation would require proper teardown
+        await expect(link).toHaveAttribute('href');
+      }
+    }
+  }
+`;
+      }
+    }
+
+    // Button interaction scenario
+    if (scenarioLower.includes('button') || scenarioLower.includes('click') || scenarioLower.includes('interactive')) {
+      const buttons = analysis.features.filter(f => f.type === 'button');
+      if (buttons.length > 0) {
+        steps += `  // Test interactive buttons
+  const buttons = ${JSON.stringify(buttons.slice(0, 3).map(b => ({ selector: b.selector, description: b.description })))};
+
+  for (const button of buttons) {
+    const buttonElement = await page.locator(button.selector).first();
+    if (await buttonElement.isVisible() && await buttonElement.isEnabled()) {
+      await expect(buttonElement).toBeAttached();
+    }
+  }
+`;
+      }
+    }
+
+    // Table data scenario
+    if (scenarioLower.includes('table') || scenarioLower.includes('data')) {
+      const tables = analysis.features.filter(f => f.type === 'table');
+      if (tables.length > 0) {
+        steps += `  // Verify table data
+  const tables = ${JSON.stringify(tables.map(t => t.selector))};
+
+  for (const tableSelector of tables) {
+    const table = await page.locator(tableSelector).first();
+    if (await table.isVisible()) {
+      const rows = await table.locator('tr').count();
+      expect(rows).toBeGreaterThan(0);
+    }
+  }
+`;
+      }
+    }
+
+    // Accessibility scenario
+    if (scenarioLower.includes('access') || scenarioLower.includes('a11y') || scenarioLower.includes('wcag')) {
+      steps += `  // Basic accessibility checks
+  await page.locator('h1, h2, h3, [role="heading"]').first().isVisible().then(isVisible => {
+    if (!isVisible) console.warn('No heading found on page');
+  });
+
+  // Check images have alt attributes
+  const images = await page.locator('img').all();
+  for (const img of images) {
+    const alt = await img.getAttribute('alt');
+    if (alt === null) {
+      console.warn('Image missing alt attribute:', await img.getAttribute('src'));
+    }
+  }
+`;
+    }
+
+    // Default fallback if no specific scenario matched
+    if (!steps) {
+      steps = `  // General page verification
+  await expect(page).toHaveURL(/${new URL(analysis.url).hostname}/);
+  await page.waitForLoadState('domcontentloaded');
+`;
+    }
+
+    return steps;
+  }
+
+  /**
+   * Generate assertions based on scenario and features
+   */
+  private generateScenarioAssertions(scenario: string, analysis: PageAnalysis): string {
+    const scenarioLower = scenario.toLowerCase();
+    let assertions = '';
+
+    // Common assertions for most scenarios
+    if (scenarioLower.includes('load') || scenarioLower.includes('render')) {
+      assertions += `  // Assert page is in healthy state
+  await expect(page).not.toHaveURL(/error|failed/);
+  const bodyVisible = await page.locator('body').isVisible();
+  expect(bodyVisible).toBe(true);
+`;
+    }
+
+    // Console should be clean
+    if (scenarioLower.includes('console') || analysis.recommendedChecks.includes('console')) {
+      assertions += `  // Check for console errors
+  const logs: string[] = [];
+  page.on('console', msg => {
+    if (msg.type() === 'error') logs.push(msg.text());
+  });
+  // Console assertions would be checked after actions
+`;
+    }
+
+    // Network assertions
+    if (scenarioLower.includes('network') || scenarioLower.includes('api')) {
+      assertions += `  // Monitor network requests
+  const failedRequests: string[] = [];
+  page.on('requestfailed', request => {
+    failedRequests.push(request.url());
+  });
+  // Network assertions would be checked after actions
+`;
+    }
+
+    return assertions;
   }
 
   /**

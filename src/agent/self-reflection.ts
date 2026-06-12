@@ -4,7 +4,7 @@
  */
 
 import { ScriptEngine } from './script-engine';
-import { ReflectionResult } from './types';
+import { ReflectionResult, ScriptExecutionResult } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -185,7 +185,7 @@ export class SelfReflectionGate {
    * Determine if reflection passed based on execution results and evidence
    */
   private determinePassStatus(
-    result: any,
+    result: ScriptExecutionResult,
     evidence: string[],
     consoleAnalysis: ReflectionResult['consoleAnalysis']
   ): boolean {
@@ -224,7 +224,7 @@ export class SelfReflectionGate {
    * Generate human-readable failure reason
    */
   private generateFailureReason(
-    result: any,
+    result: ScriptExecutionResult,
     evidence: string[],
     consoleAnalysis: ReflectionResult['consoleAnalysis']
   ): string {

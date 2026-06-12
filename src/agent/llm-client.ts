@@ -3,7 +3,7 @@
  * Generic HTTP client for OpenAI-compatible APIs (GLM, OpenAI, Anthropic)
  */
 
-import { AgentConfig, LLMResponse } from './types';
+import { AgentConfig, LLMResponse, ScriptActionType } from './types';
 import type { ChatMessage } from '../types/common';
 
 /**
@@ -194,15 +194,15 @@ export class LLMClient {
   /**
    * Validate action type
    */
-  private validateActionType(type: string): any {
-    const validTypes = ['write_script', 'execute_script', 'inspect_screenshot', 'reflect', 'done'];
-    const normalizedType = type.toLowerCase().replace(/[^a-z_]/g, '_');
-    
+  private validateActionType(type: string): ScriptActionType {
+    const validTypes: ScriptActionType[] = ['write_script', 'execute_script', 'inspect_screenshot', 'reflect', 'done'];
+    const normalizedType = type.toLowerCase().replace(/[^a-z_]/g, '_') as ScriptActionType;
+
     if (!validTypes.includes(normalizedType)) {
       console.warn(`Unknown action type "${type}", defaulting to "execute_script"`);
       return 'execute_script';
     }
-    
+
     return normalizedType;
   }
 

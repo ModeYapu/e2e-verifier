@@ -12,6 +12,17 @@ import { ScriptExecutionResult, SandboxOptions } from './types';
 const execFileAsync = promisify(execFile);
 
 /**
+ * Error type from execFile when a process fails
+ */
+interface ExecFileError extends Error {
+  stdout?: string | Buffer;
+  stderr?: string | Buffer;
+  code?: number | string;
+  killed?: boolean;
+  signal?: NodeJS.Signals;
+}
+
+/**
  * Script Engine for managing Playwright script lifecycle
  */
 export class ScriptEngine {
@@ -141,17 +152,18 @@ export class ScriptEngine {
         success: true
       };
 
-    } catch (error: any) {
+    } catch (error) {
       const duration = Date.now() - startTime;
-      
+      const execError = error as ExecFileError;
+
       // Even on error, try to collect any screenshots that were created
       const screenshots = this.findScreenshots(path.join(this.scriptsDir, 'reports'));
 
       return {
-        stdout: error.stdout || '',
-        stderr: error.stderr || error.message,
+        stdout: (execError.stdout || '').toString(),
+        stderr: (execError.stderr || execError.message || '').toString(),
         screenshots,
-        exitCode: error.code || 1,
+        exitCode: typeof execError.code === 'number' ? execError.code : 1,
         duration,
         success: false
       };

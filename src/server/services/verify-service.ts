@@ -9,8 +9,6 @@ import { ResultStore } from '../../storage/result-store';
 import { BrowserPool } from '../../browser/browser-pool';
 import { fastVerify, FastVerifyRequest } from './fast-verify';
 import {
-  deepVerify,
-  orchestratedVerify,
   matrixVerify,
   DeepVerifyRequest,
   OrchestratedVerifyRequest,
@@ -72,16 +70,22 @@ export class VerifyService {
 
   /**
    * Perform deep verification
+   * NOTE: Deep verification uses the scheduler/job system for async execution.
+   * Use JobService.createAndEnqueueJob('deep', { deepVerify: {...} }) instead.
+   * The actual implementation is in scheduler.executeDeepVerify().
    */
   async deepVerify(request: DeepVerifyRequest): Promise<any> {
-    return deepVerify(request, this.resultStore);
+    throw new Error('Deep verification must use JobService. See scheduler.executeDeepVerify() for implementation.');
   }
 
   /**
    * Perform orchestrated verification
+   * NOTE: Orchestrated verification uses the scheduler/job system for async execution.
+   * Use JobService.createAndEnqueueJob('orchestrated', { orchestratedVerify: {...} }) instead.
+   * The actual implementation is in scheduler.executeOrchestratedVerify().
    */
   async orchestratedVerify(request: OrchestratedVerifyRequest): Promise<any> {
-    return orchestratedVerify(request, this.resultStore);
+    throw new Error('Orchestrated verification must use JobService. See scheduler.executeOrchestratedVerify() for implementation.');
   }
 
   /**

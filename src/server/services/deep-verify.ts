@@ -1,6 +1,14 @@
 /**
  * Deep Verify Service
- * Handles deep verification and orchestrated verification logic
+ *
+ * NOTE: The actual deep and orchestrated verification implementations are in:
+ * - src/scheduler/scheduler.ts: executeDeepVerify() - uses AgentLoop
+ * - src/scheduler/scheduler.ts: executeOrchestratedVerify() - uses VerifyOrchestrator
+ *
+ * The API routes (src/server/routes/verify-routes.ts) create jobs that are
+ * processed by the scheduler, not by direct service calls.
+ *
+ * This file exports types and the matrixVerify implementation.
  */
 
 import { SiteConfig } from '../../types';
@@ -36,30 +44,6 @@ export interface MatrixVerifyRequest {
     viewports?: Array<{ name: string; width: number; height: number }>;
     locales?: string[];
   };
-}
-
-/**
- * Perform deep verification
- * TODO: Implement deep verification logic
- */
-export async function deepVerify(
-  request: DeepVerifyRequest,
-  resultStore: ResultStore
-): Promise<any> {
-  // Placeholder for future implementation
-  throw new Error('Deep verification not yet implemented');
-}
-
-/**
- * Perform orchestrated verification
- * TODO: Implement orchestrated verification logic
- */
-export async function orchestratedVerify(
-  request: OrchestratedVerifyRequest,
-  resultStore: ResultStore
-): Promise<any> {
-  // Placeholder for future implementation
-  throw new Error('Orchestrated verification not yet implemented');
 }
 
 /**

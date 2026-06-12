@@ -12,7 +12,7 @@ export function createTrendRoutes(storageService: StorageService): Router {
   /**
    * Extract string parameter from request params
    */
-  function extractParam(params: any, key: string): string {
+  function extractParam(params: Record<string, string | string[]>, key: string): string {
     const value = params[key];
     return Array.isArray(value) ? value[0] : value;
   }
