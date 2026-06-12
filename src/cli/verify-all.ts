@@ -2,9 +2,12 @@ import { VerifierPool } from '../verifier-pool';
 import { SiteConfig, TestResult } from '../types';
 import { ReportGenerator } from '../utils/report';
 import { HtmlReportGenerator } from '../utils/html-report';
+import { Logger } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+
+const logger = new Logger({ prefix: 'VerifyAll' });
 
 interface CLIArgs {
   sitesDir?: string;
@@ -51,7 +54,7 @@ async function loadAllConfigs(sitesDir: string): Promise<SiteConfig[]> {
         const config = JSON.parse(content);
         configs.push(config);
       } catch (error) {
-        console.error(`Error loading config from ${file}:`, error);
+        logger.error(`Error loading config from ${file}: ${error}`);
       }
     }
   }
@@ -70,27 +73,27 @@ async function main() {
     const defaultParallel = Math.min(os.cpus().length, 4);
     const parallel = args.parallel || defaultParallel;
 
-    console.log(`Loading configs from: ${sitesDir}`);
+    logger.info(`Loading configs from: ${sitesDir}`);
     const configs = await loadAllConfigs(sitesDir);
 
     if (configs.length === 0) {
-      console.error('No site configs found in directory');
+      logger.error('No site configs found in directory');
       process.exit(1);
     }
 
-    console.log(`Found ${configs.length} site(s) to verify`);
+    logger.info(`Found ${configs.length} site(s) to verify`);
     if (parallel > 1) {
-      console.log(`Running with parallelism: ${parallel}`);
+      logger.info(`Running with parallelism: ${parallel}`);
     }
-    console.log('');
+    logger.info('');
 
     const results = await pool.verifyAll(configs, { parallel });
 
     for (const result of results) {
       const status = result.passed ? '✓ PASSED' : '✗ FAILED';
-      console.log(`${result.siteName}: ${status} (${result.duration}ms)`);
+      logger.info(`${result.siteName}: ${status} (${result.duration}ms)`);
     }
-    console.log('');
+    logger.info('');
 
     // Generate report
     const reportGenerator = new ReportGenerator();
@@ -99,22 +102,23 @@ async function main() {
     // Save report
     reportGenerator.saveLatestReport(reportData);
     const jsonReportPath = reportGenerator.saveJSONReport(reportData);
-    console.log(`JSON report saved: ${jsonReportPath}`);
+    logger.info(`JSON report saved: ${jsonReportPath}`);
 
     const summaryPath = reportGenerator.saveSummary(reportData);
-    console.log(`Summary report saved: ${summaryPath}`);
+    logger.info(`Summary report saved: ${summaryPath}`);
 
     // Generate HTML report if output specified
     if (args.output) {
       const htmlPath = args.output.endsWith('.html') ? args.output : `${args.output}.html`;
       const htmlGenerator = new HtmlReportGenerator();
       htmlGenerator.saveHtmlReport(reportData, htmlPath);
-      console.log(`HTML report saved: ${htmlPath}`);
+      logger.info(`HTML report saved: ${htmlPath}`);
     }
 
     // Print summary
-    console.log('');
+    logger.info('');
     if (args.json) {
+      // JSON output - keep console.log for stdout
       console.log(JSON.stringify(reportData, null, 2));
     } else {
       reportGenerator.printSummary(reportData);
@@ -124,7 +128,7 @@ async function main() {
     process.exit(reportData.failedSites === 0 ? 0 : 1);
 
   } catch (error) {
-    console.error('Batch verification failed:', error);
+    logger.error(`Batch verification failed: ${error}`);
     process.exit(1);
   } finally {
     await pool.close();

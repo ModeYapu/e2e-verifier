@@ -637,10 +637,10 @@ async function main() {
       case '--project': options.projects = args[++i].split(','); break;
       case '--fix': options.fix = true; break;
       case '--dry-run':
-        console.log('Projects to test:');
+        logger.info('Projects to test:');
         for (const p of PROJECTS) {
           const config = fs.existsSync(p.siteConfig) ? '✅' : '❌ (will create)';
-          console.log(`  ${p.name}: ${p.siteConfig} ${config}`);
+          logger.info(`  ${p.name}: ${p.siteConfig} ${config}`);
         }
         return;
     }
@@ -650,16 +650,16 @@ async function main() {
   const report = await engine.run();
 
   // Print final summary
-  console.log('\n' + '═'.repeat(50));
-  console.log(`Result: ${report.result}`);
-  console.log(`Rounds: ${report.totalRounds}`);
-  console.log(`Remaining issues: ${report.remainingIssues.length}`);
+  logger.info('\n' + '═'.repeat(50));
+  logger.info(`Result: ${report.result}`);
+  logger.info(`Rounds: ${report.totalRounds}`);
+  logger.info(`Remaining issues: ${report.remainingIssues.length}`);
   
   // Exit code
   process.exit(report.result === 'all_passed' ? 0 : 1);
 }
 
 main().catch(err => {
-  console.error('Fatal error:', err);
+  logger.error(`Fatal error: ${err}`);
   process.exit(2);
 });

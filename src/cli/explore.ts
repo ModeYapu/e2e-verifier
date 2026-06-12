@@ -11,7 +11,7 @@ import { AutonomousExplorer } from '../explorer/autonomous-explorer';
 import { ExplorerReport } from '../explorer/explorer-report';
 import { ExploreConfig, ExploreResult, TestExecution } from '../explorer/types';
 import { SiteConfig, AuthConfig } from '../types';
-import { Logger, LogLevel } from '../utils/logger';
+import { Logger } from '../utils/logger';
 
 interface ExploreOptions {
   url?: string;
@@ -125,8 +125,8 @@ function parseArgs(): ExploreOptions {
         break;
       default:
         if (arg.startsWith('-')) {
-          console.error(`Unknown option: ${arg}`);
-          console.log('Use --help for usage information');
+          console.error(`Unknown option: ${arg}`);  // Keep for error output
+          logger.info('Use --help for usage information');
           process.exit(1);
         }
     }
@@ -136,6 +136,7 @@ function parseArgs(): ExploreOptions {
 }
 
 function printHelp(): void {
+  // Help text output - keep console.log for help
   console.log(`
 Usage: npm run explore -- [options]
 
@@ -207,7 +208,6 @@ async function main() {
 
   } catch (error) {
     logger.error(`Exploration failed: ${error}`);
-    console.error(error);
     process.exit(1);
   }
 }

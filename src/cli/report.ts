@@ -1,6 +1,9 @@
 import { ReportGenerator } from '../utils/report';
+import { Logger } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const logger = new Logger({ prefix: 'Report' });
 
 interface CLIArgs {
   input?: string;
@@ -57,28 +60,29 @@ async function main() {
     }
 
     if (!inputPath || !fs.existsSync(inputPath)) {
-      console.error('Error: No report file found');
+      console.error('Error: No report file found');  // Keep for error output
       console.error('Usage: npm run report -- --input <path-to-report>');
       console.error('   or: npm run report -- <path-to-report>');
       console.error('   or: npm run report (uses latest report)');
       process.exit(1);
     }
 
-    console.log(`Reading report from: ${inputPath}`);
+    logger.info(`Reading report from: ${inputPath}`);
     const content = fs.readFileSync(inputPath, 'utf-8');
     const reportData = JSON.parse(content);
 
     const reportGenerator = new ReportGenerator();
 
     if (args.json) {
+      // JSON output - keep console.log for stdout
       console.log(JSON.stringify(reportData, null, 2));
     } else if (args.summary) {
       const summary = reportGenerator.generateSummary(reportData);
-      console.log(summary);
-      
+      console.log(summary);  // Keep console.log for user output
+
       // Also save the summary
       const summaryPath = reportGenerator.saveSummary(reportData);
-      console.log(`\nSummary saved: ${summaryPath}`);
+      logger.info(`\nSummary saved: ${summaryPath}`);
     } else {
       // Default: print summary
       reportGenerator.printSummary(reportData);
@@ -87,7 +91,7 @@ async function main() {
     process.exit(0);
 
   } catch (error) {
-    console.error('Report generation failed:', error);
+    logger.error(`Report generation failed: ${error}`);
     process.exit(1);
   }
 }

@@ -1,6 +1,9 @@
 import { chromium, Browser, Page, BrowserContext } from '@playwright/test';
+import { Logger } from '../utils/logger';
 import * as path from 'path';
 import * as fs from 'fs';
+
+const logger = new Logger({ prefix: 'Screenshot' });
 
 interface CLIArgs {
   url?: string;
@@ -67,7 +70,7 @@ async function main() {
     const outputFile = args.output || generateFilename(url);
     const outputPath = path.join(outputDir, outputFile);
 
-    console.log(`Taking screenshot of: ${url}`);
+    logger.info(`Taking screenshot of: ${url}`);
 
     // Create output directory
     if (!fs.existsSync(outputDir)) {
@@ -94,7 +97,7 @@ async function main() {
         fullPage: args.fullPage || false
       });
 
-      console.log(`Screenshot saved: ${outputPath}`);
+      logger.info(`Screenshot saved: ${outputPath}`);
 
     } finally {
       await context.close();
@@ -104,7 +107,7 @@ async function main() {
     process.exit(0);
 
   } catch (error) {
-    console.error('Screenshot failed:', error);
+    logger.error(`Screenshot failed: ${error}`);
     process.exit(1);
   }
 }
