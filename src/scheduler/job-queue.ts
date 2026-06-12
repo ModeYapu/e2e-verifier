@@ -4,7 +4,7 @@
 
 import { EventEmitter } from 'events';
 import { JobStore } from './job-store';
-import { Job, JobStatus, JobPriority, JobConfig } from './types';
+import { Job, JobStatus, JobPriority, JobConfig, JobResult } from './types';
 
 /**
  * Job Queue class extending EventEmitter for job lifecycle events
@@ -69,7 +69,7 @@ export class JobQueue extends EventEmitter {
   /**
    * Mark a job as completed
    */
-  complete(jobId: string, result: any): void {
+  complete(jobId: string, result: JobResult): void {
     const job = this.jobStore.get(jobId);
     if (!job) return;
 

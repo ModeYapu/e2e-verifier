@@ -6,10 +6,10 @@ import { EventEmitter } from 'events';
 import { Browser } from '@playwright/test';
 import { JobQueue } from './job-queue';
 import { JobStore } from './job-store';
-import { Job, JobStatus } from './types';
+import { Job, JobStatus, JobResult } from './types';
 import { Verifier } from '../verifier';
 import { AgentLoop } from '../agent/agent-loop';
-import { VerifyOrchestrator } from '../orchestrator/verify-orchestrator';
+import { VerifyOrchestrator, OrchestratedResult } from '../orchestrator/verify-orchestrator';
 import { SiteConfig } from '../types';
 import { AgentConfig } from '../agent/types';
 import { MatrixRunner } from '../runner/matrix-runner';
@@ -17,7 +17,7 @@ import { DeviceMatrixConfig } from '../types';
 import { IntelligentOrchestrator, OrchestratorFactory } from '../intelligence/orchestrator';
 import { TestTarget } from '../intelligence/types';
 import { ResultStore } from '../storage/result-store';
-import { TestResult } from '../types';
+import { TestResult, MatrixResult } from '../types';
 import { BrowserPool } from '../browser/browser-pool';
 
 /**
@@ -194,7 +194,7 @@ export class Scheduler extends EventEmitter {
    */
   private async executeJob(job: Job, worker: WorkerState): Promise<void> {
     const startTime = Date.now();
-    let result: any;
+    let result: JobResult | undefined;
     let error: string | null = null;
 
     try {
@@ -236,7 +236,7 @@ export class Scheduler extends EventEmitter {
   /**
    * Execute job based on its type
    */
-  private async executeJobByType(job: Job, worker: WorkerState): Promise<any> {
+  private async executeJobByType(job: Job, worker: WorkerState): Promise<JobResult> {
     switch (job.type) {
       case 'fast':
         return await this.executeFastVerify(job);
@@ -495,25 +495,22 @@ export class Scheduler extends EventEmitter {
     // Save result if it's a TestResult
     if (job.result) {
       try {
+        const result = job.result;
         // Handle different result types
-        if (this.isTestResult(job.result)) {
-          this.resultStore.save(job.result);
-        } else if (this.isOrchestratedResult(job.result)) {
+        if (this.isTestResult(result)) {
+          this.resultStore.save(result);
+        } else if (this.isOrchestratedResult(result)) {
           // Save individual test results from orchestrated results
-          if (job.result.sites && Array.isArray(job.result.sites)) {
-            for (const siteResult of job.result.sites) {
-              if (siteResult.fastResult && this.isTestResult(siteResult.fastResult)) {
-                this.resultStore.save(siteResult.fastResult);
-              }
+          for (const siteResult of result.sites) {
+            if (siteResult.fastResult && this.isTestResult(siteResult.fastResult)) {
+              this.resultStore.save(siteResult.fastResult);
             }
           }
-        } else if (this.isMatrixResult(job.result)) {
+        } else if (this.isMatrixResult(result)) {
           // Save individual test results from matrix results
-          if (job.result.combinations && Array.isArray(job.result.combinations)) {
-            for (const combo of job.result.combinations) {
-              if (this.isTestResult(combo.result)) {
-                this.resultStore.save(combo.result);
-              }
+          for (const combo of result.combinations) {
+            if (this.isTestResult(combo.result)) {
+              this.resultStore.save(combo.result);
             }
           }
         }
@@ -526,34 +523,35 @@ export class Scheduler extends EventEmitter {
   /**
    * Check if result is a TestResult
    */
-  private isTestResult(result: any): result is TestResult {
-    return result &&
+  private isTestResult(result: unknown): result is TestResult {
+    return result !== null &&
       typeof result === 'object' &&
-      typeof result.siteName === 'string' &&
-      typeof result.url === 'string' &&
-      typeof result.passed === 'boolean' &&
-      typeof result.timestamp === 'string';
+      typeof (result as TestResult).siteName === 'string' &&
+      typeof (result as TestResult).url === 'string' &&
+      typeof (result as TestResult).passed === 'boolean' &&
+      typeof (result as TestResult).timestamp === 'string';
   }
 
   /**
    * Check if result is an OrchestratedResult
    */
-  private isOrchestratedResult(result: any): boolean {
-    return result &&
+  private isOrchestratedResult(result: unknown): result is OrchestratedResult {
+    return result !== null &&
       typeof result === 'object' &&
-      typeof result.timestamp === 'string' &&
-      Array.isArray(result.results);
+      typeof (result as OrchestratedResult).timestamp === 'string' &&
+      typeof (result as OrchestratedResult).summary === 'object' &&
+      Array.isArray((result as OrchestratedResult).sites);
   }
 
   /**
    * Check if result is a MatrixResult
    */
-  private isMatrixResult(result: any): boolean {
-    return result &&
+  private isMatrixResult(result: unknown): result is MatrixResult {
+    return result !== null &&
       typeof result === 'object' &&
-      typeof result.timestamp === 'string' &&
-      typeof result.siteName === 'string' &&
-      Array.isArray(result.combinations);
+      typeof (result as MatrixResult).timestamp === 'string' &&
+      typeof (result as MatrixResult).siteName === 'string' &&
+      Array.isArray((result as MatrixResult).combinations);
   }
 
   /**

@@ -2,6 +2,15 @@
  * Scheduler Types for Job Queue System
  */
 
+import type { TestResult, MatrixResult } from '../types';
+import type { AgentResult } from '../agent/types';
+import type { OrchestratedResult } from '../orchestrator/verify-orchestrator';
+
+/**
+ * Job result types - union of all possible job execution results
+ */
+export type JobResult = TestResult | AgentResult | OrchestratedResult | MatrixResult;
+
 /**
  * Job types supported by the scheduler
  */
@@ -119,7 +128,7 @@ export interface Job {
   status: JobStatus;
   priority: JobPriority;
   config: JobConfig;
-  result?: any; // TestResult | AgentResult | OrchestratedResult
+  result?: JobResult; // TestResult | AgentResult | OrchestratedResult
   error?: string;
   progress?: string;
   retryCount: number;

@@ -4,8 +4,19 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { Job, JobStatus, JobStats, JobFilter } from './types';
+import { Job, JobStatus, JobStats, JobFilter, JobResult } from './types';
 import { JsonStorage } from '../storage/json-storage';
+
+/**
+ * JSON-serializable representation of a Job
+ * Date fields are stored as ISO strings
+ */
+interface SerializedJob extends Omit<Job, 'createdAt' | 'startedAt' | 'completedAt' | 'result'> {
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  result?: Record<string, unknown>; // JobResult serialized to plain object
+}
 
 /**
  * Job Store class for managing persistent job storage
@@ -44,7 +55,7 @@ export class JobStore {
    */
   private loadJobs(): void {
     try {
-      const data = this.storage.get(this.filePath) as { jobs: Job[] } | null;
+      const data = this.storage.get(this.filePath) as { jobs: SerializedJob[] } | null;
 
       if (data && data.jobs && Array.isArray(data.jobs)) {
         for (const jobData of data.jobs) {
@@ -88,24 +99,28 @@ export class JobStore {
   /**
    * Serialize job for JSON storage
    */
-  private serializeJob(job: Job): any {
+  private serializeJob(job: Job): SerializedJob {
+    const { createdAt, startedAt, completedAt, result, ...rest } = job;
     return {
-      ...job,
-      createdAt: job.createdAt.toISOString(),
-      startedAt: job.startedAt?.toISOString(),
-      completedAt: job.completedAt?.toISOString()
+      ...rest,
+      createdAt: createdAt.toISOString(),
+      startedAt: startedAt?.toISOString(),
+      completedAt: completedAt?.toISOString(),
+      result: result ? result as unknown as Record<string, unknown> : undefined
     };
   }
 
   /**
    * Deserialize job from JSON storage
    */
-  private deserializeJob(data: any): Job {
+  private deserializeJob(data: SerializedJob): Job {
+    const { createdAt, startedAt, completedAt, result, ...rest } = data;
     return {
-      ...data,
-      createdAt: new Date(data.createdAt),
-      startedAt: data.startedAt ? new Date(data.startedAt) : undefined,
-      completedAt: data.completedAt ? new Date(data.completedAt) : undefined
+      ...rest,
+      createdAt: new Date(createdAt),
+      startedAt: startedAt ? new Date(startedAt) : undefined,
+      completedAt: completedAt ? new Date(completedAt) : undefined,
+      result: result as unknown as JobResult | undefined
     };
   }
 

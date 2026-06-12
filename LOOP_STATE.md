@@ -67,7 +67,19 @@
   - 更新 src/intelligence/evaluator.ts: 重导出模块，保持向后兼容
   - 无破坏性变更 - 所有导出仍从原路径可用
 - **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: 9ca291e
+
+### Round 8 — 2026-06-12
+- **Slice**: P3 (partial): `:any` 类型消灭 — scheduler/ 目录
+- **Changes**:
+  - 新增 src/scheduler/types.ts: JobResult 类型 (TestResult | AgentResult | OrchestratedResult | MatrixResult)
+  - 更新 src/scheduler/job-queue.ts: result: any → result: JobResult
+  - 更新 src/scheduler/job-store.ts: SerializedJob 接口，serialize/deserialize 使用具体类型
+  - 更新 src/scheduler/scheduler.ts: 类型守卫使用 unknown 而非 any，executeJobByType 返回 JobResult
+  - 共修复 8 处 `: any` 类型
+- **Verified**: jest 208/208 pass
 - **Commit**: <pending>
+- **注**: 其他文件 (webhook.ts, dashboard-routes.ts) 的 JobResult 联合类型访问问题待后续处理
 
 ## Current State
 
