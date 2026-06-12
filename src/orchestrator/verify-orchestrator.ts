@@ -9,6 +9,7 @@ import { AgentConfig, AgentResult } from '../agent/types';
 import { SiteConfig, TestResult } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 /**
  * Result from orchestrating verification for a single site
@@ -103,7 +104,7 @@ export class VerifyOrchestrator {
    * Run orchestrated verification for a single site
    */
   async verifySite(config: SiteConfig): Promise<SiteOrchestratedResult> {
-    console.log(`\n▶ ${config.name} (${config.url})`);
+    logger.info(`\n▶ ${config.name} (${config.url})`);
 
     // Step 1: Run fast verification
     let fastResult: TestResult;
@@ -129,7 +130,7 @@ export class VerifyOrchestrator {
     const errorCount = fastResult.errors.length;
     const durationSec = (fastResult.duration / 1000).toFixed(1);
 
-    console.log(`  Fast verify: ${fastPassed ? '✅ PASSED' : '⚠️ FAILED'} (${passedChecks} checks, ${failedChecks} failed, ${errorCount} errors, ${durationSec}s)`);
+    logger.info(`  Fast verify: ${fastPassed ? '✅ PASSED' : '⚠️ FAILED'} (${passedChecks} checks, ${failedChecks} failed, ${errorCount} errors, ${durationSec}s)`);
 
     // Step 2: Determine if deep verification is needed
     const deepNeeded = this.shouldDeepVerify(fastResult, this.strict);
@@ -138,7 +139,7 @@ export class VerifyOrchestrator {
 
     if (deepNeeded) {
       const task = this.generateTaskFromFailures(fastResult);
-      console.log(`  Deep verify: Running... (task: "${task.substring(0, 60)}...")`);
+      logger.info(`  Deep verify: Running... (task: "${task.substring(0, 60)}...")`);
 
       try {
         deepResult = await this.runDeepVerification(task, config.url);
@@ -147,9 +148,9 @@ export class VerifyOrchestrator {
         const tokenCount = deepResult.totalTokens || 0;
         const stepCount = deepResult.steps?.length || 0;
 
-        console.log(`  Deep verify: ${deepPassed ? '✅ PASSED' : '❌ FAILED'} (${stepCount} steps, ${tokenCount} tokens)`);
+        logger.info(`  Deep verify: ${deepPassed ? '✅ PASSED' : '❌ FAILED'} (${stepCount} steps, ${tokenCount} tokens)`);
       } catch (error) {
-        console.log(`  Deep verify: ❌ ERROR - ${error}`);
+        logger.info(`  Deep verify: ❌ ERROR - ${error}`);
         // Create a minimal AgentResult for error case
         deepResult = {
           task,
@@ -169,13 +170,13 @@ export class VerifyOrchestrator {
         };
       }
     } else {
-      console.log(`  Deep verify: SKIPPED (all fast checks passed)`);
+      logger.info(`  Deep verify: SKIPPED (all fast checks passed)`);
     }
 
     // Step 3: Determine overall pass status
     const overallPassed = fastPassed || (deepNeeded && deepPassed);
 
-    console.log(`  Overall: ${overallPassed ? '✅ PASSED' : '❌ FAILED'}${fastPassed ? '' : deepPassed ? ' (fixed by deep verify)' : ''}`);
+    logger.info(`  Overall: ${overallPassed ? '✅ PASSED' : '❌ FAILED'}${fastPassed ? '' : deepPassed ? ' (fixed by deep verify)' : ''}`);
 
     return {
       siteName: config.name,
