@@ -295,8 +295,39 @@
 - **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
 - 346 处 console.log/warn/error 待替换
 
+### Round 21 — 2026-06-12
+- **Slice**: P4-batch9 (continued): utils, middleware, projects, api, integrations, scheduler, browser, orchestrator
+- **Changes**:
+  - src/utils/screenshot.ts: 1× console.error → logger.error
+  - src/utils/report.ts: 2× console.log → logger.info
+  - src/middleware/error-handler.ts: 2× console.error → logger.error
+  - src/middleware/api-auth.ts: 1× console.error → logger.error
+  - src/projects/project-store.ts: 1× console.error → logger.error
+  - src/api/routes/experience-routes.ts: 7× console.error → logger.error
+  - src/integrations/webhook.ts: 6× console.log/error → logger
+  - src/integrations/github.ts: 7× console.log/warn/error → logger
+  - src/scheduler/job-store.ts: 5× console.log/error → logger
+  - src/scheduler/job-queue.ts: 11× console.log → logger.info
+  - src/scheduler/scheduler.ts: 24× console.log/error → logger
+  - src/browser/browser-pool.ts: 18× console.log/warn/error → logger
+  - src/orchestrator/verify-orchestrator.ts: 8× console.log → logger.info
+  - 共修复 93 处 console 调用
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: e5c239f, 4e9234f, a116194, 6956d08, a5e2684, 7dd1dea
+
+## Current State
+
+### Code Stats
+- 113 个 TypeScript 文件，~29K 行代码
+- **208 个自动化测试全通过**
+- **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
+- 253 处 console.log/warn/error 待替换 (主要在 CLI 工具 - 这些是用户输出，可接受)
+
+### P4 Complete ✅
+All non-CLI, non-template console calls have been replaced with structured logger.
+
 ### NEXT_SLICE
-**P4-batch8**: Replace console calls with logger in src/runner/ + src/engine/ directories
+**P5-batch1**: Apply error classification (src/utils/errors.ts: InfrastructureError|PageError|AssertionError|TimeoutError) to catch blocks in src/server/
 
 ## Site Configs
 

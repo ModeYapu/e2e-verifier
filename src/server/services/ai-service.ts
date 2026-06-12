@@ -7,6 +7,7 @@ import { ProviderFactory, AIProvider } from '../../ai/provider';
 import { getSelfHealingLocator } from '../../ai/self-healing';
 import { getSmartTestGenerator, TestGeneratorOptions } from '../../ai/test-generator';
 import { Job } from '../../scheduler/types';
+import { InfrastructureError, ValidationError } from '../../utils/errors';
 
 export interface GenerateTestsOptions extends TestGeneratorOptions {
   model?: string;
@@ -21,19 +22,24 @@ export class AIService {
    */
   async generateTests(url: string, options?: GenerateTestsOptions): Promise<any> {
     if (!url) {
-      throw new Error('url is required');
+      throw ValidationError.missingField('url');
     }
 
-    const generator = getSmartTestGenerator();
-    const generatedConfig = await generator.generateFromUrl(url, options);
+    try {
+      const generator = getSmartTestGenerator();
+      const generatedConfig = await generator.generateFromUrl(url, options);
 
-    // Optionally save to file
-    if (options?.saveToFile) {
-      const filePath = generator.saveToFile(generatedConfig);
-      generatedConfig.metadata['savedToFile'] = filePath;
+      // Optionally save to file
+      if (options?.saveToFile) {
+        const filePath = generator.saveToFile(generatedConfig);
+        generatedConfig.metadata['savedToFile'] = filePath;
+      }
+
+      return generatedConfig;
+    } catch (error) {
+      if (error instanceof ValidationError) throw error;
+      throw InfrastructureError.providerUnavailable('AI test generator');
     }
-
-    return generatedConfig;
   }
 
   /**
@@ -41,16 +47,17 @@ export class AIService {
    */
   async suggestFixes(job: Job): Promise<any> {
     if (job.status !== 'failed') {
-      throw new Error('Job must be failed to get fix suggestions');
+      throw ValidationError.invalidValue('job.status', job.status, 'failed');
     }
 
     const error = job.error || 'Unknown error';
     const siteName = job.config?.name || 'unknown';
     const siteUrl = job.config?.url || 'unknown';
 
-    // Use AI to analyze the failure and suggest fixes
-    const provider = ProviderFactory.createFromEnv();
-    const prompt = `
+    try {
+      // Use AI to analyze the failure and suggest fixes
+      const provider = ProviderFactory.createFromEnv();
+      const prompt = `
 I need help fixing a failed test. Here are the details:
 
 Site Name: ${siteName}
@@ -75,18 +82,22 @@ Respond in JSON format:
 }
 `;
 
-    const response = await provider.chat([
-      { role: 'user', content: prompt }
-    ]);
+      const response = await provider.chat([
+        { role: 'user', content: prompt }
+      ]);
 
-    const suggestions = JSON.parse(response);
+      const suggestions = JSON.parse(response);
 
-    return {
-      jobId: job.id,
-      error,
-      suggestions,
-      generatedAt: new Date().toISOString()
-    };
+      return {
+        jobId: job.id,
+        error,
+        suggestions,
+        generatedAt: new Date().toISOString()
+      };
+    } catch (err) {
+      if (err instanceof ValidationError) throw err;
+      throw InfrastructureError.providerUnavailable('AI suggestions service');
+    }
   }
 
   /**
