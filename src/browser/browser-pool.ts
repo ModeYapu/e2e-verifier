@@ -7,6 +7,7 @@
 
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import { EventEmitter } from 'events';
+import { logger } from '../utils/logger';
 
 /**
  * Browser pool configuration
@@ -75,7 +76,7 @@ export class BrowserPool extends EventEmitter {
     }
 
     try {
-      console.log('[BrowserPool] Initializing browser pool...');
+      logger.info('[BrowserPool] Initializing browser pool...');
       this.emit('initializing');
 
       // Launch initial browser instance
@@ -83,10 +84,10 @@ export class BrowserPool extends EventEmitter {
       this.browsers.push(browser);
 
       this.initialized = true;
-      console.log(`[BrowserPool] Browser pool initialized with ${this.config.maxInstances} max instances`);
+      logger.info(`[BrowserPool] Browser pool initialized with ${this.config.maxInstances} max instances`);
       this.emit('initialized');
     } catch (error) {
-      console.error('[BrowserPool] Failed to initialize browser pool:', error);
+      logger.error(`[BrowserPool] Failed to initialize browser pool: ${error}`);
       this.emit('error', error);
       throw error;
     }
@@ -104,18 +105,18 @@ export class BrowserPool extends EventEmitter {
         timeout: this.config.timeout,
       });
 
-      console.log('[BrowserPool] Launched new browser instance');
+      logger.info('[BrowserPool] Launched new browser instance');
       this.emit('browser-launched', browser);
 
       // Handle browser crashes
       browser.on('disconnected', () => {
-        console.warn('[BrowserPool] Browser disconnected, attempting to restart...');
+        logger.warn('[BrowserPool] Browser disconnected, attempting to restart...');
         this.handleBrowserDisconnect(browser);
       });
 
       return browser;
     } catch (error) {
-      console.error('[BrowserPool] Failed to launch browser:', error);
+      logger.error(`[BrowserPool] Failed to launch browser: ${error}`);
       throw error;
     }
   }
@@ -141,7 +142,7 @@ export class BrowserPool extends EventEmitter {
         const newBrowser = await this.launchBrowser();
         this.browsers.push(newBrowser);
       } catch (error) {
-        console.error('[BrowserPool] Failed to restart browser:', error);
+        logger.error(`[BrowserPool] Failed to restart browser: ${error}`);
       }
     }
   }
@@ -156,7 +157,7 @@ export class BrowserPool extends EventEmitter {
     const availablePage = this.pages.find(p => !p.inUse);
     if (availablePage) {
       availablePage.inUse = true;
-      console.log('[BrowserPool] Reusing existing page from pool');
+      logger.info('[BrowserPool] Reusing existing page from pool');
       this.emit('page-acquired', availablePage.page);
       return availablePage.page;
     }
@@ -180,11 +181,11 @@ export class BrowserPool extends EventEmitter {
         };
 
         this.pages.push(pooledPage);
-        console.log('[BrowserPool] Created new page with new browser instance');
+        logger.info('[BrowserPool] Created new page with new browser instance');
         this.emit('page-acquired', page);
         return page;
       } catch (error) {
-        console.error('[BrowserPool] Failed to create new page:', error);
+        logger.error(`[BrowserPool] Failed to create new page: ${error}`);
         throw error;
       }
     }
@@ -204,11 +205,11 @@ export class BrowserPool extends EventEmitter {
       };
 
       this.pages.push(pooledPage);
-      console.log('[BrowserPool] Created new page with existing browser');
+      logger.info('[BrowserPool] Created new page with existing browser');
       this.emit('page-acquired', page);
       return page;
     } catch (error) {
-      console.error('[BrowserPool] Failed to create new page:', error);
+      logger.error(`[BrowserPool] Failed to create new page: ${error}`);
       throw error;
     }
   }
@@ -219,12 +220,12 @@ export class BrowserPool extends EventEmitter {
   releasePage(page: Page): void {
     const pooledPage = this.pages.find(p => p.page === page);
     if (!pooledPage) {
-      console.warn('[BrowserPool] Attempted to release unknown page');
+      logger.warn('[BrowserPool] Attempted to release unknown page');
       return;
     }
 
     pooledPage.inUse = false;
-    console.log('[BrowserPool] Released page back to pool');
+    logger.info('[BrowserPool] Released page back to pool');
     this.emit('page-released', page);
   }
 
@@ -251,7 +252,7 @@ export class BrowserPool extends EventEmitter {
    * Close all browsers and clean up
    */
   async close(): Promise<void> {
-    console.log('[BrowserPool] Closing browser pool...');
+    logger.info('[BrowserPool] Closing browser pool...');
     this.emit('closing');
 
     // Close all pages and contexts
@@ -259,7 +260,7 @@ export class BrowserPool extends EventEmitter {
       try {
         await pooledPage.context.close();
       } catch (error) {
-        console.error('[BrowserPool] Error closing context:', error);
+        logger.error(`[BrowserPool] Error closing context: ${error}`);
       }
     }
     this.pages = [];
@@ -269,13 +270,13 @@ export class BrowserPool extends EventEmitter {
       try {
         await browser.close();
       } catch (error) {
-        console.error('[BrowserPool] Error closing browser:', error);
+        logger.error(`[BrowserPool] Error closing browser: ${error}`);
       }
     }
     this.browsers = [];
 
     this.initialized = false;
-    console.log('[BrowserPool] Browser pool closed');
+    logger.info('[BrowserPool] Browser pool closed');
     this.emit('closed');
   }
 
