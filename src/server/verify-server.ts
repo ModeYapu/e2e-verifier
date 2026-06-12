@@ -18,6 +18,7 @@ import { IntelligentOrchestrator } from '../intelligence/orchestrator';
 import { parseIntelligenceConfigFromEnv } from '../intelligence/config';
 import { LLMRegistry } from '../llm/llm-registry';
 import type { Job } from '../scheduler/types';
+import { logger } from '../utils/logger';
 
 // Import services
 import { VerifyService } from './services/verify-service';
@@ -146,8 +147,7 @@ export class VerifyServer {
 
     // Request logging
     this.app.use((req, res, next) => {
-      const timestamp = new Date().toISOString();
-      console.log(`[${timestamp}] ${req.method} ${req.path}`);
+      logger.info(`${req.method} ${req.path}`);
       next();
     });
 
@@ -232,54 +232,54 @@ export class VerifyServer {
     this.app.set('uptime', Date.now() - this.serverStartTime);
 
     // Initialize browser pool (singleton)
-    console.log(`[${new Date().toISOString()}] Initializing browser pool...`);
+    logger.info('Initializing browser pool...');
     BrowserPool.getInstance({
       headless: this.headless,
       maxInstances: 2, // Shared pool for all services
     });
-    console.log(`[${new Date().toISOString()}] Browser pool ready`);
+    logger.info('Browser pool ready');
 
     // Initialize intelligent orchestrator
-    console.log(`[${new Date().toISOString()}] Initializing intelligent orchestrator...`);
+    logger.info('Initializing intelligent orchestrator...');
     await this.intelligentOrchestrator.init();
-    console.log(`[${new Date().toISOString()}] Intelligent orchestrator ready`);
+    logger.info('Intelligent orchestrator ready');
 
     // Start scheduler
-    console.log(`[${new Date().toISOString()}] Starting job scheduler...`);
+    logger.info('Starting job scheduler...');
     await this.jobService.start();
-    console.log(`[${new Date().toISOString()}] Job scheduler started`);
+    logger.info('Job scheduler started');
 
     // Start HTTP server
     return new Promise((resolve, reject) => {
       this.server = this.app.listen(this.port, this.host, () => {
-        console.log(`[${new Date().toISOString()}] VerifyServer started`);
-        console.log(`[${new Date().toISOString()}] Listening on http://${this.host}:${this.port}`);
+        logger.info('VerifyServer started');
+        logger.info(`Listening on http://${this.host}:${this.port}`);
         if (this.shouldRequireApiAuth()) {
-          console.log(`[${new Date().toISOString()}] API auth: bearer token required`);
+          logger.info('API auth: bearer token required');
         } else {
-          console.log(`[${new Date().toISOString()}] API auth: disabled for local-only access`);
+          logger.info('API auth: disabled for local-only access');
         }
-        console.log(`[${new Date().toISOString()}] API endpoints:`);
-        console.log(`  - POST   /api/verify              Fast verification (sync)`);
-        console.log(`  - POST   /api/verify/deep         Deep verification (async)`);
-        console.log(`  - POST   /api/verify/orchestrated Orchestrated verification (async)`);
-        console.log(`  - POST   /api/verify/matrix       Matrix verification (sync)`);
-        console.log(`  - POST   /api/jobs                Create job`);
-        console.log(`  - GET    /api/jobs/list           List jobs`);
-        console.log(`  - GET    /api/jobs/:id/detail     Job details`);
-        console.log(`  - DELETE /api/jobs/:id/cancel     Cancel job`);
-        console.log(`  - POST   /api/jobs/:id/retry      Retry job`);
-        console.log(`  - POST   /api/jobs/batch          Batch create jobs`);
-        console.log(`  - GET    /api/jobs/:jobId         Poll job status (legacy)`);
-        console.log(`  - GET    /api/jobs                List all jobs (legacy)`);
-        console.log(`  - DELETE /api/jobs/:jobId         Cancel job (legacy)`);
-        console.log(`  - GET    /api/health              Health check`);
-        console.log(`  - GET    /api/stats               Server statistics`);
+        logger.info('API endpoints:');
+        logger.info('  - POST   /api/verify              Fast verification (sync)');
+        logger.info('  - POST   /api/verify/deep         Deep verification (async)');
+        logger.info('  - POST   /api/verify/orchestrated Orchestrated verification (async)');
+        logger.info('  - POST   /api/verify/matrix       Matrix verification (sync)');
+        logger.info('  - POST   /api/jobs                Create job');
+        logger.info('  - GET    /api/jobs/list           List jobs');
+        logger.info('  - GET    /api/jobs/:id/detail     Job details');
+        logger.info('  - DELETE /api/jobs/:id/cancel     Cancel job');
+        logger.info('  - POST   /api/jobs/:id/retry      Retry job');
+        logger.info('  - POST   /api/jobs/batch          Batch create jobs');
+        logger.info('  - GET    /api/jobs/:jobId         Poll job status (legacy)');
+        logger.info('  - GET    /api/jobs                List all jobs (legacy)');
+        logger.info('  - DELETE /api/jobs/:jobId         Cancel job (legacy)');
+        logger.info('  - GET    /api/health              Health check');
+        logger.info('  - GET    /api/stats               Server statistics');
         resolve();
       });
 
       this.server.on('error', (err: Error) => {
-        console.error(`[${new Date().toISOString()}] Server error:`, err);
+        logger.error(`Server error: ${err}`);
         reject(err);
       });
     });
@@ -289,35 +289,35 @@ export class VerifyServer {
    * Stop the server
    */
   async stop(): Promise<void> {
-    console.log(`[${new Date().toISOString()}] Stopping VerifyServer...`);
+    logger.info('Stopping VerifyServer...');
 
     // Stop scheduler first
-    console.log(`[${new Date().toISOString()}] Stopping job scheduler...`);
+    logger.info('Stopping job scheduler...');
     try {
       await this.jobService.stop();
-      console.log(`[${new Date().toISOString()}] Job scheduler stopped`);
+      logger.info('Job scheduler stopped');
     } catch (schedulerError) {
-      console.error(`[${new Date().toISOString()}] Error stopping scheduler:`, schedulerError);
+      logger.error(`Error stopping scheduler: ${schedulerError}`);
     }
 
     // Close browser pool
     try {
       await BrowserPool.getInstance().close();
-      console.log(`[${new Date().toISOString()}] Browser pool closed`);
+      logger.info('Browser pool closed');
     } catch (browserError) {
-      console.error(`[${new Date().toISOString()}] Error closing browser pool:`, browserError);
+      logger.error(`Error closing browser pool: ${browserError}`);
     }
 
     return new Promise<void>((resolve, reject) => {
       if (this.server) {
         this.server.close((err?: Error) => {
           if (err) {
-            console.error(`[${new Date().toISOString()}] Error closing server:`, err);
+            logger.error(`Error closing server: ${err}`);
             reject(err);
             return;
           }
 
-          console.log(`[${new Date().toISOString()}] VerifyServer stopped`);
+          logger.info('VerifyServer stopped');
           resolve();
         });
       } else {

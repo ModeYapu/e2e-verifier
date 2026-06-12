@@ -13,6 +13,7 @@
 
 import { SiteConfig } from '../../types';
 import type { ResultStore } from '../../storage/result-store';
+import { logger } from '../../utils/logger';
 
 // Define DeviceMatrixConfig locally since it's not exported from MatrixRunner
 interface DeviceMatrixConfig {
@@ -77,7 +78,7 @@ export async function matrixVerify(
       resultStore.save(combo.result);
     }
   } catch (saveError) {
-    console.error(`[${new Date().toISOString()}] Error saving matrix results:`, saveError);
+    logger.error(`Error saving matrix results: ${saveError}`);
   }
 
   return result;

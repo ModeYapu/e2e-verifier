@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { JobService } from '../services/job-service';
 import type { TestResult } from '../../types';
+import { logger } from '../../utils/logger';
 
 /**
  * Type guard to check if JobResult is a TestResult
@@ -65,7 +66,7 @@ export function createDashboardRoutes(jobService: JobService): Router {
         }))
       });
     } catch (error) {
-      console.error('Error getting dashboard overview:', error);
+      logger.error(`Error getting dashboard overview: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -133,7 +134,7 @@ export function createDashboardRoutes(jobService: JobService): Router {
         totalSites: sites.length
       });
     } catch (error) {
-      console.error('Error getting dashboard sites:', error);
+      logger.error(`Error getting dashboard sites: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -190,7 +191,7 @@ export function createDashboardRoutes(jobService: JobService): Router {
         }
       });
     } catch (error) {
-      console.error('Error getting dashboard trends:', error);
+      logger.error(`Error getting dashboard trends: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)

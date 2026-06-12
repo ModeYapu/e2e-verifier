@@ -15,6 +15,7 @@ import {
   createError
 } from '../../types/express';
 import { validateBody, validationSchemas } from '../../middleware/validate';
+import { logger } from '../../utils/logger';
 
 export function createVerifyRoutes(verifyService: VerifyService, jobService: JobService): Router {
   const router = Router();
@@ -30,7 +31,7 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
         throw createError('Missing required fields: url, name', 'VALIDATION_ERROR');
       }
 
-      console.log(`[${new Date().toISOString()}] Starting fast verification for: ${body.name} (${body.url})`);
+      logger.info(`Starting fast verification for: ${body.name} (${body.url})`);
 
       const result = await verifyService.fastVerify(body);
 
@@ -40,7 +41,7 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
         stats.totalVerifications++;
       }
 
-      console.log(`[${new Date().toISOString()}] Fast verification completed: ${result.passed ? 'PASSED' : 'FAILED'}`);
+      logger.info(`Fast verification completed: ${result.passed ? 'PASSED' : 'FAILED'}`);
 
       res.json({
         success: true,
@@ -73,7 +74,7 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
         }
       });
 
-      console.log(`[${new Date().toISOString()}] Created deep verification job: ${job.id}`);
+      logger.info(`Created deep verification job: ${job.id}`);
 
       // Return immediately with job ID
       res.status(202).json({
@@ -118,7 +119,7 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
         }
       });
 
-      console.log(`[${new Date().toISOString()}] Created orchestrated verification job: ${job.id}`);
+      logger.info(`Created orchestrated verification job: ${job.id}`);
 
       res.status(202).json({
         success: true,
@@ -133,7 +134,7 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
         stats.totalOrchestratedVerifications++;
       }
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Orchestrated verification setup error:`, error);
+      logger.error(`Orchestrated verification setup error: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -164,18 +165,18 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
         return;
       }
 
-      console.log(`[${new Date().toISOString()}] Starting matrix verification for: ${body.site.name} (${body.site.url})`);
+      logger.info(`Starting matrix verification for: ${body.site.name} (${body.site.url})`);
 
       const result = await verifyService.matrixVerify(body);
 
-      console.log(`[${new Date().toISOString()}] Matrix verification completed: ${result.summary.passed}/${result.summary.total} passed`);
+      logger.info(`Matrix verification completed: ${result.summary.passed}/${result.summary.total} passed`);
 
       res.json({
         success: true,
         data: result
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Matrix verification error:`, error);
+      logger.error(`Matrix verification error: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -198,7 +199,7 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
         return;
       }
 
-      console.log(`[${new Date().toISOString()}] Starting intelligent verification for: ${body.target.name || body.target.url}`);
+      logger.info(`Starting intelligent verification for: ${body.target.name || body.target.url}`);
 
       // If async mode requested, create a job (this would need job service integration)
       if (body.async) {
@@ -213,14 +214,14 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
       // Synchronous execution
       const result = await verifyService.intelligentVerify(body);
 
-      console.log(`[${new Date().toISOString()}] Intelligent verification completed: ${result.summary.passedScenarios}/${result.summary.totalScenarios} passed`);
+      logger.info(`Intelligent verification completed: ${result.summary.passedScenarios}/${result.summary.totalScenarios} passed`);
 
       res.json({
         success: true,
         data: result
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Intelligent verification error:`, error);
+      logger.error(`Intelligent verification error: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -251,20 +252,20 @@ export function createVerifyRoutes(verifyService: VerifyService, jobService: Job
         return;
       }
 
-      console.log(`[${new Date().toISOString()}] Starting multi-agent verification for: ${body.target.url}`);
-      console.log(`Mode: ${body.mode}, Roles: ${body.roles.join(', ')}`);
+      logger.info(`Starting multi-agent verification for: ${body.target.url}`);
+      logger.info(`Mode: ${body.mode}, Roles: ${body.roles.join(', ')}`);
 
       const result = await verifyService.multiAgentVerify(body);
 
-      console.log(`[${new Date().toISOString()}] Multi-agent verification completed: ${result.finalVerdict}`);
-      console.log(`Confidence: ${result.confidence}, Duration: ${result.duration}ms`);
+      logger.info(`Multi-agent verification completed: ${result.finalVerdict}`);
+      logger.info(`Confidence: ${result.confidence}, Duration: ${result.duration}ms`);
 
       res.json({
         success: true,
         data: result
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Multi-agent verification error:`, error);
+      logger.error(`Multi-agent verification error: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)

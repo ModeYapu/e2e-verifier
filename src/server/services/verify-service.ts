@@ -7,6 +7,7 @@ import { Browser } from '@playwright/test';
 import { TestResult } from '../../types';
 import { ResultStore } from '../../storage/result-store';
 import { BrowserPool } from '../../browser/browser-pool';
+import { logger } from '../../utils/logger';
 import { fastVerify, FastVerifyRequest } from './fast-verify';
 import {
   matrixVerify,
@@ -157,7 +158,7 @@ export class VerifyService {
     try {
       await this.browserPool.close();
     } catch (error) {
-      console.error('Error during cleanup:', error);
+      logger.error(`Error during cleanup: ${error}`);
     }
   }
 }

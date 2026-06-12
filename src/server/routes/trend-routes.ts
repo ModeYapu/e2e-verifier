@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { StorageService } from '../services/storage-service';
+import { logger } from '../../utils/logger';
 
 export function createTrendRoutes(storageService: StorageService): Router {
   const router = Router();
@@ -43,7 +44,7 @@ export function createTrendRoutes(storageService: StorageService): Router {
         data: trend
       });
     } catch (error) {
-      console.error('Error getting site trends:', error);
+      logger.error(`Error getting site trends: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -84,7 +85,7 @@ export function createTrendRoutes(storageService: StorageService): Router {
         data: regression
       });
     } catch (error) {
-      console.error('Error detecting regressions:', error);
+      logger.error(`Error detecting regressions: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -113,7 +114,7 @@ export function createTrendRoutes(storageService: StorageService): Router {
         data: profiles
       });
     } catch (error) {
-      console.error('Error getting all profiles:', error);
+      logger.error(`Error getting all profiles: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -147,7 +148,7 @@ export function createTrendRoutes(storageService: StorageService): Router {
         data: profile
       });
     } catch (error) {
-      console.error('Error getting site profile:', error);
+      logger.error(`Error getting site profile: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)

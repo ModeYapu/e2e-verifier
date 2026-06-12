@@ -187,8 +187,52 @@
 - **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
 - 547 处 console.log/warn/error 待替换
 
+### Round 16 — 2026-06-12
+- **Slice**: P4-batch2: Check console calls in src/explorer/ directory
+- **Finding**: All console calls are in code generation templates (test-generator.ts, explorer-tools.ts)
+  - These generate test scripts that use console.log for their output
+  - Should remain as-is - not the explorer code's actual logging
+  - explorer-core.ts, explorer-strategy.ts, explorer-report.ts have no console calls
+- **Action**: No changes needed - template-generated console calls are acceptable
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: (skipped - no changes needed)
+
+## Current State
+
+### Code Stats
+- 113 个 TypeScript 文件，~29K 行代码
+- **208 个自动化测试全通过**
+- **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
+- 547 处 console.log/warn/error 待替换
+
+### Round 17 — 2026-06-12
+- **Slice**: P4-batch3: Replace console calls with logger in src/server/ directory
+- **Changes**:
+  - src/server/routes/verify-routes.ts: 17× console.log/error → logger
+  - src/server/routes/report-routes.ts: 1× console.error → logger.error
+  - src/server/routes/trend-routes.ts: 4× console.error → logger.error
+  - src/server/routes/dashboard-routes.ts: 3× console.error → logger.error
+  - src/server/routes/ai-routes.ts: 5× console.error → logger.error
+  - src/server/routes/job-routes.ts: 8× console.log/error/warn → logger
+  - src/server/verify-server.ts: 32× console.log/error → logger
+  - src/server/services/fast-verify.ts: 1× console.error → logger.error
+  - src/server/services/intelligent-verify.ts: 1× console.error → logger.error
+  - src/server/services/deep-verify.ts: 1× console.error → logger.error
+  - src/server/services/verify-service.ts: 1× console.error → logger.error
+  - 共修复 74 处 console 调用
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: <pending>
+
+## Current State
+
+### Code Stats
+- 113 个 TypeScript 文件，~29K 行代码
+- **208 个自动化测试全通过**
+- **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
+- 473 处 console.log/warn/error 待替换
+
 ### NEXT_SLICE
-**P4-batch2**: Replace console.log/warn/error → logger in src/explorer/ directory (~40 occurrences)
+**P4-batch4**: Replace console.log/warn/error → logger in src/agent/ + src/ai/ directories
 
 ## Site Configs
 

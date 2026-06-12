@@ -8,6 +8,7 @@ import { JobService } from '../services/job-service';
 import { JobType, JobPriority, JobStatus } from '../../scheduler/types';
 import { CreateJobRequest, createError } from '../../types/express';
 import { validateBody, validationSchemas } from '../../middleware/validate';
+import { logger } from '../../utils/logger';
 
 // =====================================================
 // REQUEST/RESPONSE TYPES
@@ -161,7 +162,7 @@ export function createJobRoutes(jobService: JobService): Router {
         body.timeout
       );
 
-      console.log(`[${new Date().toISOString()}] Created ${body.type} job: ${job.id}`);
+      logger.info(`Created ${body.type} job: ${job.id}`);
 
       res.status(201).json({
         success: true,
@@ -224,7 +225,7 @@ export function createJobRoutes(jobService: JobService): Router {
         }))
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error listing jobs:`, error);
+      logger.error(`Error listing jobs: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -277,7 +278,7 @@ export function createJobRoutes(jobService: JobService): Router {
 
       res.json(response);
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error getting job detail:`, error);
+      logger.error(`Error getting job detail: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -307,7 +308,7 @@ export function createJobRoutes(jobService: JobService): Router {
         message: 'Job cancelled successfully'
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error cancelling job:`, error);
+      logger.error(`Error cancelling job: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -343,7 +344,7 @@ export function createJobRoutes(jobService: JobService): Router {
         }
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error retrying job:`, error);
+      logger.error(`Error retrying job: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -370,13 +371,13 @@ export function createJobRoutes(jobService: JobService): Router {
 
       for (const jobData of jobs) {
         if (!jobData.type || !jobData.config) {
-          console.warn(`[Batch] Skipping invalid job: ${JSON.stringify(jobData)}`);
+          logger.warn(`[Batch] Skipping invalid job: ${JSON.stringify(jobData)}`);
           continue;
         }
 
         const validTypes: JobType[] = ['fast', 'deep', 'orchestrated', 'matrix'];
         if (!validTypes.includes(jobData.type)) {
-          console.warn(`[Batch] Skipping job with invalid type: ${jobData.type}`);
+          logger.warn(`[Batch] Skipping job with invalid type: ${jobData.type}`);
           continue;
         }
 
@@ -391,7 +392,7 @@ export function createJobRoutes(jobService: JobService): Router {
         createdJobs.push(job.id);
       }
 
-      console.log(`[${new Date().toISOString()}] Created batch of ${createdJobs.length} jobs`);
+      logger.info(`Created batch of ${createdJobs.length} jobs`);
 
       res.status(201).json({
         success: true,
@@ -400,7 +401,7 @@ export function createJobRoutes(jobService: JobService): Router {
         message: `${createdJobs.length} jobs created and queued`
       });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error creating batch jobs:`, error);
+      logger.error(`Error creating batch jobs: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)

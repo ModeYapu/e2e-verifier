@@ -6,6 +6,7 @@
 import { SiteConfig, TestResult } from '../../types';
 import { Verifier } from '../../verifier';
 import { ResultStore } from '../../storage/result-store';
+import { logger } from '../../utils/logger';
 
 export interface FastVerifyRequest {
   url: string;
@@ -49,7 +50,7 @@ export async function fastVerify(
   try {
     resultStore.save(result);
   } catch (saveError) {
-    console.error(`[${new Date().toISOString()}] Error saving result:`, saveError);
+    logger.error(`Error saving result: ${saveError}`);
   }
 
   return result;

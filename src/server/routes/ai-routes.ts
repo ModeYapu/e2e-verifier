@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { AIService, GenerateTestsOptions } from '../services/ai-service';
 import { JobService } from '../services/job-service';
+import { logger } from '../../utils/logger';
 
 export function createAIRoutes(aiService: AIService, jobService: JobService): Router {
   const router = Router();
@@ -29,7 +30,7 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         data: generatedConfig
       });
     } catch (e: unknown) {
-      console.error('Error generating tests:', e);
+      logger.error(`Error generating tests: ${e}`);
       res.status(500).json({ error: (e as Error).message });
     }
   });
@@ -54,7 +55,7 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         data: suggestions
       });
     } catch (e: unknown) {
-      console.error('Error suggesting fixes:', e);
+      logger.error(`Error suggesting fixes: ${e}`);
       res.status(500).json({ error: (e as Error).message });
     }
   });
@@ -72,7 +73,7 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         count: providers.length
       });
     } catch (e: unknown) {
-      console.error('Error listing AI providers:', e);
+      logger.error(`Error listing AI providers: ${e}`);
       res.status(500).json({ error: (e as Error).message });
     }
   });
@@ -89,7 +90,7 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         data: stats
       });
     } catch (e: unknown) {
-      console.error('Error getting locator stats:', e);
+      logger.error(`Error getting locator stats: ${e}`);
       res.status(500).json({ error: (e as Error).message });
     }
   });
@@ -106,7 +107,7 @@ export function createAIRoutes(aiService: AIService, jobService: JobService): Ro
         message: 'Locator cache cleared successfully'
       });
     } catch (e: unknown) {
-      console.error('Error clearing locator cache:', e);
+      logger.error(`Error clearing locator cache: ${e}`);
       res.status(500).json({ error: (e as Error).message });
     }
   });

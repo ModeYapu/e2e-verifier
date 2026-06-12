@@ -9,6 +9,7 @@ import { IntelligentOrchestrator } from '../../intelligence/orchestrator';
 import { MultiAgentOrchestrator, MultiAgentConfig, OrchestrationMode } from '../../intelligence/multi-test-orchestrator';
 import { TestRoleType } from '../../intelligence/test-roles';
 import { ResultStore } from '../../storage/result-store';
+import { logger } from '../../utils/logger';
 
 export interface IntelligentVerifyRequest {
   target: {
@@ -162,7 +163,7 @@ export async function intelligentVerify(
       }
     }
   } catch (saveError) {
-    console.error(`[${new Date().toISOString()}] Error saving intelligent verification results:`, saveError);
+    logger.error(`Error saving intelligent verification results: ${saveError}`);
   }
 
   // Clean up orchestrator

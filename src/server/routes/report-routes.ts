@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { JobService } from '../services/job-service';
+import { logger } from '../../utils/logger';
 
 // =====================================================
 // RESPONSE TYPES
@@ -76,7 +77,7 @@ export function createReportRoutes(jobService: JobService): Router {
 
       res.json(response);
     } catch (error) {
-      console.error('Error getting report detail:', error);
+      logger.error(`Error getting report detail: ${error}`);
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error)
