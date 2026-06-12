@@ -5,6 +5,7 @@
 import { EventEmitter } from 'events';
 import { JobStore } from './job-store';
 import { Job, JobStatus, JobPriority, JobConfig, JobResult } from './types';
+import { logger } from '../utils/logger';
 
 /**
  * Job Queue class extending EventEmitter for job lifecycle events
@@ -25,7 +26,7 @@ export class JobQueue extends EventEmitter {
     job.status = 'pending';
     this.jobStore.save(job);
 
-    console.log(`[JobQueue] Enqueued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
+    logger.info(`[JobQueue] Enqueued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
   }
 
   /**
@@ -61,7 +62,7 @@ export class JobQueue extends EventEmitter {
     // Update status to queued
     this.jobStore.update(job.id, { status: 'queued' });
 
-    console.log(`[JobQueue] Dequeued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
+    logger.info(`[JobQueue] Dequeued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
 
     return job;
   }
@@ -82,7 +83,7 @@ export class JobQueue extends EventEmitter {
 
     if (updatedJob) {
       this.emit('job.completed', updatedJob);
-      console.log(`[JobQueue] Job ${jobId} completed successfully`);
+      logger.info(`[JobQueue] Job ${jobId} completed successfully`);
     }
   }
 
@@ -102,7 +103,7 @@ export class JobQueue extends EventEmitter {
 
     if (updatedJob) {
       this.emit('job.failed', updatedJob);
-      console.log(`[JobQueue] Job ${jobId} failed: ${error}`);
+      logger.info(`[JobQueue] Job ${jobId} failed: ${error}`);
     }
   }
 
@@ -115,7 +116,7 @@ export class JobQueue extends EventEmitter {
 
     // Can only cancel pending or queued jobs
     if (job.status !== 'pending' && job.status !== 'queued') {
-      console.log(`[JobQueue] Cannot cancel job ${jobId} with status ${job.status}`);
+      logger.info(`[JobQueue] Cannot cancel job ${jobId} with status ${job.status}`);
       return false;
     }
 
@@ -125,7 +126,7 @@ export class JobQueue extends EventEmitter {
       progress: 'Job cancelled by user'
     });
 
-    console.log(`[JobQueue] Job ${jobId} cancelled`);
+    logger.info(`[JobQueue] Job ${jobId} cancelled`);
     return true;
   }
 
@@ -162,13 +163,13 @@ export class JobQueue extends EventEmitter {
 
     // Can only retry failed jobs
     if (job.status !== 'failed') {
-      console.log(`[JobQueue] Cannot retry job ${jobId} with status ${job.status}`);
+      logger.info(`[JobQueue] Cannot retry job ${jobId} with status ${job.status}`);
       return null;
     }
 
     // Check retry limit
     if (job.retryCount >= job.maxRetries) {
-      console.log(`[JobQueue] Job ${jobId} has reached max retries (${job.maxRetries})`);
+      logger.info(`[JobQueue] Job ${jobId} has reached max retries (${job.maxRetries})`);
       return null;
     }
 
@@ -182,7 +183,7 @@ export class JobQueue extends EventEmitter {
     });
 
     if (updatedJob) {
-      console.log(`[JobQueue] Job ${jobId} queued for retry (attempt ${updatedJob.retryCount}/${updatedJob.maxRetries})`);
+      logger.info(`[JobQueue] Job ${jobId} queued for retry (attempt ${updatedJob.retryCount}/${updatedJob.maxRetries})`);
     }
 
     return updatedJob;

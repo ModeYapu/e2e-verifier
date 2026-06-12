@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Job, JobStatus, JobStats, JobFilter, JobResult } from './types';
 import { JsonStorage } from '../storage/json-storage';
+import { logger } from '../utils/logger';
 
 /**
  * JSON-serializable representation of a Job
@@ -70,12 +71,12 @@ export class JobStore {
 
           this.jobs.set(job.id, job);
         }
-        console.log(`[JobStore] Loaded ${this.jobs.size} jobs from ${this.filePath}`);
+        logger.info(`[JobStore] Loaded ${this.jobs.size} jobs from ${this.filePath}`);
       } else {
-        console.log(`[JobStore] No existing jobs found`);
+        logger.info(`[JobStore] No existing jobs found`);
       }
     } catch (error) {
-      console.error(`[JobStore] Error loading jobs: ${error}`);
+      logger.error(`[JobStore] Error loading jobs: ${error}`);
       // Start with empty store if file is corrupted
       this.jobs = new Map();
     }
@@ -91,7 +92,7 @@ export class JobStore {
 
       this.storage.set(this.filePath, data);
     } catch (error) {
-      console.error(`[JobStore] Error saving jobs: ${error}`);
+      logger.error(`[JobStore] Error saving jobs: ${error}`);
       throw error;
     }
   }
