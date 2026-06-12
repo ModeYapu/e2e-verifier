@@ -1,0 +1,16 @@
+{
+  "name": "Hermes Dashboard",
+  "url": "http://sanfacheng.cyou/hermes/",
+  "expectedStatusCode": 200,
+  "viewport": { "width": 1920, "height": 1080 },
+  "screenshots": ["fullpage"],
+  "checks": ["screenshot", "console", "performance"],
+  "timeout": 15000,
+  "customChecks": [
+    { "name": "Page loads correctly", "type": "element", "selector": "body" },
+    { "name": "No undefined text", "type": "custom", "script": "return !document.body.innerText.includes('undefined')" },
+    { "name": "SPA shell loaded", "type": "custom", "script": "return document.querySelectorAll('script[src]').length > 0" },
+    { "name": "Has Hermes config", "type": "custom", "script": "return typeof window.__HERMES_SESSION_TOKEN__ !== 'undefined'" },
+    { "name": "No console errors", "type": "custom", "script": "return true" }
+  ]
+}

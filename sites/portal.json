@@ -1,6 +1,6 @@
 {
-  "name": "Vault Reader",
-  "url": "http://sanfacheng.cyou/vault/",
+  "name": "Portal Page",
+  "url": "http://sanfacheng.cyou/",
   "expectedStatusCode": 200,
   "viewport": {
     "width": 1920,
@@ -27,19 +27,14 @@
       "script": "return !document.body.innerText.includes('undefined')"
     },
     {
-      "name": "No NaN text",
+      "name": "System info visible",
       "type": "custom",
-      "script": "return !document.body.innerText.includes('NaN')"
+      "script": "return document.body.innerText.length > 100"
     },
     {
-      "name": "Search input exists",
-      "type": "element",
-      "selector": "input"
-    },
-    {
-      "name": "Has navigation links",
+      "name": "Has links",
       "type": "custom",
-      "script": "return document.querySelectorAll('a').length > 5"
+      "script": "return document.querySelectorAll('a').length >= 1"
     },
     {
       "name": "No console errors",

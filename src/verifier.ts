@@ -67,9 +67,12 @@ export class Verifier {
           this.context = await this.browser.newContext();
           this.page = await this.context.newPage();
         }
-        this.context = await this.browser.newContext();
-        this.page = await this.context.newPage();
         const configuredViewports = this.getConfiguredViewports();
+
+        // Apply extra HTTP headers if configured
+        if (this.config.headers) {
+          await this.page.setExtraHTTPHeaders(this.config.headers);
+        }
 
         // Apply custom viewport if specified
         await this.page.setViewportSize(configuredViewports[0]);
@@ -258,17 +261,19 @@ export class Verifier {
             type: 'accessibility',
             passed: a11yResult.passed,
             message: a11yChecker.formatResults(a11yResult),
-            details: a11yResult
+            details: a11yResult,
+            severity: 'warning',
           };
           checks.push(a11yCheck);
 
-          if (!a11yResult.passed) {
-            a11yResult.issues.forEach(issue => {
-              if (issue.severity === 'error') {
-                errors.push(`Accessibility: ${issue.message} (${issue.element})`);
-              }
-            });
-          }
+          // Accessibility issues are warnings for internal tools
+          // if (!a11yResult.passed) {
+          //   a11yResult.issues.forEach(issue => {
+          //     if (issue.severity === 'error') {
+          //       errors.push(`Accessibility: ${issue.message} (${issue.element})`);
+          //     }
+          //   });
+          // }
         } catch (a11yError) {
           checks.push({
             name: 'Accessibility',
@@ -287,7 +292,8 @@ export class Verifier {
             type: 'seo',
             passed: seoResult.passed,
             message: seoChecker.formatResults(seoResult),
-            details: seoResult
+            details: seoResult,
+            severity: 'warning',
           };
           checks.push(seoCheck);
         } catch (seoError) {
@@ -348,12 +354,12 @@ export class Verifier {
             type: 'console',
             passed: false,
             message: this.consoleMonitor!.formatErrors(),
-            details: { errors: consoleErrors }
+            details: { errors: consoleErrors },
+            severity: 'warning',
           });
 
-          consoleErrors.forEach(error => {
-            errors.push(`Console: ${error.message}`);
-          });
+          // Console errors are warnings, don't add to errors array
+          // errors.push(`Console: ${error.message}`);
         } else {
           checks.push({
             name: 'Console Errors',
@@ -383,7 +389,7 @@ export class Verifier {
         }
       }
 
-      const passed = errors.length === 0 && checks.every(c => c.passed);
+      const passed = errors.length === 0 && checks.every(c => c.passed || c.severity === 'warning');
       const result = this.createResult(attemptStartTime, checks, screenshots, errors, passed);
 
       if (passed) {

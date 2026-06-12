@@ -57,6 +57,8 @@ export interface SiteConfig {
   performanceThresholds?: PerformanceThresholds;
   visualRegression?: VisualRegressionConfig;
   ignoreUrlPatterns?: string[];
+  /** Extra HTTP headers to set on every request */
+  headers?: Record<string, string>;
 }
 
 export interface PerformanceThresholds {
@@ -117,6 +119,8 @@ export interface CheckResult {
   passed: boolean;
   message: string;
   details?: any;
+  /** If 'warning', this check won't fail the overall result */
+  severity?: 'critical' | 'warning';
 }
 
 export interface ScreenshotResult {

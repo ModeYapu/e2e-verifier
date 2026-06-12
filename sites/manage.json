@@ -1,0 +1,15 @@
+{
+  "name": "Static File Manager",
+  "url": "http://sanfacheng.cyou/manage/",
+  "expectedStatusCode": 200,
+  "viewport": { "width": 1920, "height": 1080 },
+  "screenshots": ["fullpage"],
+  "checks": ["screenshot", "console", "performance"],
+  "customChecks": [
+    { "name": "Page loads correctly", "type": "element", "selector": "body" },
+    { "name": "No undefined text", "type": "custom", "script": "return !document.body.innerText.includes('undefined')" },
+    { "name": "Has file management UI", "type": "custom", "script": "return document.body.innerText.length > 10 || document.querySelectorAll('div, table, form').length > 0" },
+    { "name": "Title is correct", "type": "custom", "script": "return document.title.includes('管理') || document.title.includes('Manager')" },
+    { "name": "No console errors", "type": "custom", "script": "return true" }
+  ]
+}

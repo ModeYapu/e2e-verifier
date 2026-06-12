@@ -1,6 +1,6 @@
 {
-  "name": "Vault Reader",
-  "url": "http://sanfacheng.cyou/vault/",
+  "name": "Travel Planner",
+  "url": "http://sanfacheng.cyou/travel/",
   "expectedStatusCode": 200,
   "viewport": {
     "width": 1920,
@@ -27,19 +27,9 @@
       "script": "return !document.body.innerText.includes('undefined')"
     },
     {
-      "name": "No NaN text",
+      "name": "Has input or form elements",
       "type": "custom",
-      "script": "return !document.body.innerText.includes('NaN')"
-    },
-    {
-      "name": "Search input exists",
-      "type": "element",
-      "selector": "input"
-    },
-    {
-      "name": "Has navigation links",
-      "type": "custom",
-      "script": "return document.querySelectorAll('a').length > 5"
+      "script": "return document.querySelectorAll('input, textarea, select, button').length > 0"
     },
     {
       "name": "No console errors",

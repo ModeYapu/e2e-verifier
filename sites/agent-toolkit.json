@@ -1,6 +1,6 @@
 {
-  "name": "Vault Reader",
-  "url": "http://sanfacheng.cyou/vault/",
+  "name": "Agent Toolkit",
+  "url": "http://sanfacheng.cyou/agent-toolkit/",
   "expectedStatusCode": 200,
   "viewport": {
     "width": 1920,
@@ -27,19 +27,14 @@
       "script": "return !document.body.innerText.includes('undefined')"
     },
     {
-      "name": "No NaN text",
+      "name": "Agent cards rendered",
       "type": "custom",
-      "script": "return !document.body.innerText.includes('NaN')"
+      "script": "return document.querySelectorAll('.agent-card, [class*=\"agent\"]').length > 0 || document.querySelectorAll('canvas').length > 0"
     },
     {
-      "name": "Search input exists",
-      "type": "element",
-      "selector": "input"
-    },
-    {
-      "name": "Has navigation links",
+      "name": "Has login form or agent list",
       "type": "custom",
-      "script": "return document.querySelectorAll('a').length > 5"
+      "script": "return document.querySelectorAll('input').length > 0 || document.querySelectorAll('.agent-card').length > 0 || document.body.innerText.length > 500"
     },
     {
       "name": "No console errors",
