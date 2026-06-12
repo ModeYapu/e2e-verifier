@@ -4,6 +4,9 @@
  */
 
 import { VerifyServer } from '../server/verify-server';
+import { Logger } from '../utils/logger';
+
+const logger = new Logger({ prefix: 'VerifyServer' });
 
 interface CLIArgs {
   port: number;
@@ -104,20 +107,20 @@ Examples:
 async function main() {
   const args = parseArgs();
 
-  console.log('='.repeat(60));
-  console.log('e2e-verifier HTTP API Server');
-  console.log('='.repeat(60));
-  console.log(`Configuration:`);
-  console.log(`  Port: ${args.port}`);
-  console.log(`  Host: ${args.host}`);
-  console.log(`  Headless: ${args.headless}`);
-  console.log('='.repeat(60));
+  logger.info('='.repeat(60));
+  logger.info('e2e-verifier HTTP API Server');
+  logger.info('='.repeat(60));
+  logger.info(`Configuration:`);
+  logger.info(`  Port: ${args.port}`);
+  logger.info(`  Host: ${args.host}`);
+  logger.info(`  Headless: ${args.headless}`);
+  logger.info('='.repeat(60));
 
   const server = new VerifyServer(args.port, args.host, args.headless);
 
   // Handle graceful shutdown
   const shutdown = async (signal: string) => {
-    console.log(`\n${signal} received, shutting down gracefully...`);
+    logger.info(`\n${signal} received, shutting down gracefully...`);
     await server.stop();
     process.exit(0);
   };
@@ -128,7 +131,7 @@ async function main() {
   try {
     await server.start();
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error(`Failed to start server: ${error}`);
     process.exit(1);
   }
 }

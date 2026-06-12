@@ -4,8 +4,11 @@
  */
 import { AgentLoop } from '../agent/agent-loop';
 import { AgentConfig, ScriptAction, AgentStep } from '../agent/types';
+import { Logger } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const logger = new Logger({ prefix: 'VerifyCraft' });
 
 interface CLIArgs {
   url?: string;
@@ -95,7 +98,7 @@ async function main() {
     }
 
     if (!args.task) {
-      console.error('Error: Task description is required');
+      logger.error('Error: Task description is required');
       process.exit(1);
     }
 
@@ -113,11 +116,11 @@ async function main() {
       requestTimeout: 120000
     };
 
-    console.log('=== Script Crafting ===');
-    console.log(`Task: ${args.task}`);
-    console.log(`URL: ${args.url}`);
-    console.log(`Model: ${model}`);
-    console.log('');
+    logger.info('=== Script Crafting ===');
+    logger.info(`Task: ${args.task}`);
+    logger.info(`URL: ${args.url}`);
+    logger.info(`Model: ${model}`);
+    logger.info('');
 
     const agent = new AgentLoop(agentConfig);
     const result = await agent.run(
@@ -146,21 +149,21 @@ async function main() {
       const filepath = args.output || path.join(scriptsDir, filename);
 
       fs.writeFileSync(filepath, scriptContent, 'utf-8');
-      console.log(`\n✅ Script saved: ${filepath}`);
-      console.log(`\nRun it with: npx playwright test ${filepath}`);
+      logger.info(`\n✅ Script saved: ${filepath}`);
+      logger.info(`\nRun it with: npx playwright test ${filepath}`);
     } else {
-      console.log('\n❌ No script was generated.');
+      logger.info('\n❌ No script was generated.');
       if (result.steps.length > 0) {
-        console.log('Last step output:', result.steps[result.steps.length - 1].output);
+        logger.info(`Last step output: ${result.steps[result.steps.length - 1].output}`);
       }
     }
 
-    console.log(`\nSteps used: ${result.steps.length}`);
-    console.log(`Duration: ${(result.duration / 1000).toFixed(1)}s`);
-    console.log(`Tokens: ${result.totalTokens}`);
+    logger.info(`\nSteps used: ${result.steps.length}`);
+    logger.info(`Duration: ${(result.duration / 1000).toFixed(1)}s`);
+    logger.info(`Tokens: ${result.totalTokens}`);
 
   } catch (error) {
-    console.error('Script crafting failed:', error);
+    logger.error(`Script crafting failed: ${error}`);
     process.exit(1);
   }
 }

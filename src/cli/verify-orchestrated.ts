@@ -5,8 +5,11 @@
 
 import { VerifyOrchestrator, OrchestratedResult, SiteOrchestratedResult } from '../orchestrator/verify-orchestrator';
 import { SiteConfig, CheckResult } from '../types';
+import { Logger } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const logger = new Logger({ prefix: 'VerifyOrchestrated' });
 
 interface CLIArgs {
   config?: string;
@@ -77,11 +80,11 @@ async function loadConfigName(configPath: string): Promise<string> {
 }
 
 function printHeader(configName: string, model: string): void {
-  console.log('\n' + '='.repeat(40));
-  console.log(`VERIFICATION ORCHESTRATOR — ${configName}`);
-  console.log('='.repeat(40));
-  console.log(`Using deep model: ${model}`);
-  console.log('');
+  logger.info('\n' + '='.repeat(40));
+  logger.info(`VERIFICATION ORCHESTRATOR — ${configName}`);
+  logger.info('='.repeat(40));
+  logger.info(`Using deep model: ${model}`);
+  logger.info('');
 }
 
 function printSiteResult(result: SiteOrchestratedResult): void {
@@ -96,8 +99,8 @@ function printSiteResult(result: SiteOrchestratedResult): void {
     ? `✅ PASSED (${fastResult.checks.length} checks, 0 errors, ${durationSec}s)`
     : `⚠️ FAILED (${passedChecks} passed, ${failedChecks} failed, ${errorCount} errors, ${durationSec}s)`;
 
-  console.log(`▶ ${siteName} (${fastResult.url})`);
-  console.log(`  Fast verify: ${fastStatus}`);
+  logger.info(`▶ ${siteName} (${fastResult.url})`);
+  logger.info(`  Fast verify: ${fastStatus}`);
 
   if (deepNeeded) {
     if (deepResult) {
@@ -106,12 +109,12 @@ function printSiteResult(result: SiteOrchestratedResult): void {
       const deepStatus = deepResult.passed
         ? `✅ PASSED (${stepCount} steps, ${tokenCount} tokens)`
         : `❌ FAILED (${stepCount} steps, ${tokenCount} tokens)`;
-      console.log(`  Deep verify: ${deepStatus}`);
+      logger.info(`  Deep verify: ${deepStatus}`);
     } else {
-      console.log(`  Deep verify: ❌ ERROR`);
+      logger.info(`  Deep verify: ❌ ERROR`);
     }
   } else {
-    console.log(`  Deep verify: SKIPPED (all fast checks passed)`);
+    logger.info(`  Deep verify: SKIPPED (all fast checks passed)`);
   }
 
   const overallLabel = overallPassed
@@ -120,22 +123,23 @@ function printSiteResult(result: SiteOrchestratedResult): void {
       : '✅ PASSED (fixed by deep verify)'
     : '❌ FAILED';
 
-  console.log(`  Overall: ${overallLabel}`);
+  logger.info(`  Overall: ${overallLabel}`);
 }
 
 function printSummary(result: OrchestratedResult): void {
-  console.log('\n' + '='.repeat(40));
-  console.log('SUMMARY');
-  console.log('='.repeat(40));
-  console.log(`Total: ${result.summary.total}`);
-  console.log(`All passed: ${result.summary.allPassed}`);
-  console.log(`Needed deep verify: ${result.summary.neededDeep}`);
-  console.log(`Deep passed: ${result.summary.deepPassed}`);
-  console.log(`Deep failed: ${result.summary.deepFailed}`);
-  console.log('='.repeat(40));
+  logger.info('\n' + '='.repeat(40));
+  logger.info('SUMMARY');
+  logger.info('='.repeat(40));
+  logger.info(`Total: ${result.summary.total}`);
+  logger.info(`All passed: ${result.summary.allPassed}`);
+  logger.info(`Needed deep verify: ${result.summary.neededDeep}`);
+  logger.info(`Deep passed: ${result.summary.deepPassed}`);
+  logger.info(`Deep failed: ${result.summary.deepFailed}`);
+  logger.info('='.repeat(40));
 }
 
 function printJSONReport(result: OrchestratedResult): void {
+  // JSON output - keep console.log for stdout
   console.log('\n' + JSON.stringify(result, null, 2));
 }
 
@@ -148,7 +152,7 @@ async function saveReport(result: OrchestratedResult, outputPath: string): Promi
   }
 
   fs.writeFileSync(resolvedPath, JSON.stringify(result, null, 2), 'utf-8');
-  console.log(`Detailed report: ${resolvedPath}`);
+  logger.info(`Detailed report: ${resolvedPath}`);
 }
 
 async function main(): Promise<void> {
@@ -191,7 +195,7 @@ async function main(): Promise<void> {
       await saveReport(result, args.output);
     } else {
       const defaultPath = orchestrator.saveReport(result);
-      console.log(`Detailed report: ${defaultPath}`);
+      logger.info(`Detailed report: ${defaultPath}`);
     }
 
     // Print JSON if requested
@@ -204,7 +208,7 @@ async function main(): Promise<void> {
     process.exit(allPassed ? 0 : 1);
 
   } catch (error) {
-    console.error('Orchestrated verification failed:', error);
+    logger.error(`Orchestrated verification failed: ${error}`);
     process.exit(1);
   }
 }

@@ -2,8 +2,11 @@ import { VerifierPool } from '../verifier-pool';
 import { SiteConfig, TestResult } from '../types';
 import { ReportGenerator } from '../utils/report';
 import { HtmlReportGenerator } from '../utils/html-report';
+import { Logger } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const logger = new Logger({ prefix: 'Verify' });
 
 interface CLIArgs {
   config: string;
@@ -66,10 +69,10 @@ async function main() {
       process.exit(1);
     }
 
-    console.log(`Loading config from: ${args.config}`);
+    logger.info(`Loading config from: ${args.config}`);
     const configs = await loadConfig(args.config);
 
-    console.log(`Found ${configs.length} site(s) to verify\n`);
+    logger.info(`Found ${configs.length} site(s) to verify\n`);
 
     // Initialize shared browser
     await pool.init();
@@ -77,22 +80,22 @@ async function main() {
     const results: TestResult[] = [];
 
     for (const config of configs) {
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`Verifying site: ${config.name}`);
-      console.log(`URL: ${config.url}`);
-      console.log(`${'='.repeat(60)}`);
+      logger.info(`\n${'='.repeat(60)}`);
+      logger.info(`Verifying site: ${config.name}`);
+      logger.info(`URL: ${config.url}`);
+      logger.info(`${'='.repeat(60)}`);
 
       const result = await pool.verify(config);
       results.push(result);
 
-      console.log(`\nResult: ${result.passed ? '✅ PASSED' : '❌ FAILED'}`);
-      console.log(`Duration: ${result.duration}ms`);
-      console.log(`Checks: ${result.checks.length} (${result.checks.filter(c => c.passed).length} passed, ${result.checks.filter(c => !c.passed).length} failed)`);
+      logger.info(`\nResult: ${result.passed ? '✅ PASSED' : '❌ FAILED'}`);
+      logger.info(`Duration: ${result.duration}ms`);
+      logger.info(`Checks: ${result.checks.length} (${result.checks.filter(c => c.passed).length} passed, ${result.checks.filter(c => !c.passed).length} failed)`);
       if (result.errors.length > 0) {
-        console.log(`Errors: ${result.errors.length}`);
-        result.errors.slice(0, 5).forEach(e => console.log(`  - ${e}`));
+        logger.info(`Errors: ${result.errors.length}`);
+        result.errors.slice(0, 5).forEach(e => logger.info(`  - ${e}`));
       }
-      console.log('');
+      logger.info('');
     }
 
     // Generate report
@@ -102,18 +105,19 @@ async function main() {
     // Save report - wait for write to complete
     reportGenerator.saveLatestReport(reportData);
     const reportPath = reportGenerator.saveJSONReport(reportData);
-    console.log(`\nFull report saved: ${reportPath}`);
+    logger.info(`\nFull report saved: ${reportPath}`);
 
     // Generate HTML report if output specified
     if (args.output) {
       const htmlPath = args.output.endsWith('.html') ? args.output : `${args.output}.html`;
       const htmlGenerator = new HtmlReportGenerator();
       htmlGenerator.saveHtmlReport(reportData, htmlPath);
-      console.log(`HTML report saved: ${htmlPath}`);
+      logger.info(`HTML report saved: ${htmlPath}`);
     }
 
     // Print summary
     if (args.json) {
+      // JSON output - keep console.log for stdout
       console.log(JSON.stringify(reportData, null, 2));
     } else {
       reportGenerator.printSummary(reportData);
@@ -124,7 +128,7 @@ async function main() {
     process.exit(allPassed ? 0 : 1);
 
   } catch (error) {
-    console.error('Verification failed:', error);
+    logger.error(`Verification failed: ${error}`);
     process.exit(1);
   } finally {
     await pool.close();

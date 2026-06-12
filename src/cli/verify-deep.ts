@@ -6,8 +6,11 @@
 import { AgentLoop } from '../agent/agent-loop';
 import { AgentConfig, AgentResult } from '../agent/types';
 import { SiteConfig } from '../types';
+import { Logger } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const logger = new Logger({ prefix: 'VerifyDeep' });
 
 interface CLIArgs {
   config?: string;
@@ -167,22 +170,22 @@ async function runAgentVerification(args: CLIArgs): Promise<void> {
     requestTimeout: 120000
   };
 
-  console.log('=== Agent Deep Verification Configuration ===');
-  console.log(`Model: ${model}`);
-  console.log(`API Base: ${apiBase}`);
-  console.log(`Max Steps: ${agentConfig.maxSteps}`);
-  console.log(`Targets: ${targets.length}`);
-  console.log('');
+  logger.info('=== Agent Deep Verification Configuration ===');
+  logger.info(`Model: ${model}`);
+  logger.info(`API Base: ${apiBase}`);
+  logger.info(`Max Steps: ${agentConfig.maxSteps}`);
+  logger.info(`Targets: ${targets.length}`);
+  logger.info('');
 
   const results = [];
 
   // Run verification for each target
   for (const target of targets) {
-    console.log(`\n${'='.repeat(70)}`);
-    console.log(`Target: ${target.name}`);
-    console.log(`URL: ${target.url}`);
-    console.log(`Task: ${target.task}`);
-    console.log(`${'='.repeat(70)}\n`);
+    logger.info(`\n${'='.repeat(70)}`);
+    logger.info(`Target: ${target.name}`);
+    logger.info(`URL: ${target.url}`);
+    logger.info(`Task: ${target.task}`);
+    logger.info(`${'='.repeat(70)}\n`);
 
     try {
       const agent = new AgentLoop(agentConfig);
@@ -190,15 +193,15 @@ async function runAgentVerification(args: CLIArgs): Promise<void> {
       results.push(result);
 
       // Print immediate result summary
-      console.log(`\n${'='.repeat(70)}`);
-      console.log(`Result: ${result.passed ? '✅ PASSED' : '❌ FAILED'}`);
-      console.log(`Duration: ${result.duration}ms`);
-      console.log(`Steps: ${result.steps.length}`);
-      console.log(`Tokens: ${result.totalTokens}`);
-      console.log(`${'='.repeat(70)}\n`);
+      logger.info(`\n${'='.repeat(70)}`);
+      logger.info(`Result: ${result.passed ? '✅ PASSED' : '❌ FAILED'}`);
+      logger.info(`Duration: ${result.duration}ms`);
+      logger.info(`Steps: ${result.steps.length}`);
+      logger.info(`Tokens: ${result.totalTokens}`);
+      logger.info(`${'='.repeat(70)}\n`);
 
     } catch (error) {
-      console.error(`Verification failed for ${target.name}:`, error);
+      logger.error(`Verification failed for ${target.name}: ${error}`);
       results.push({
         task: target.task,
         url: target.url,
@@ -244,36 +247,37 @@ async function saveReport(results: Array<AgentResult | { error: string }>, outpu
   }
 
   fs.writeFileSync(resolvedPath, JSON.stringify(reportData, null, 2), 'utf-8');
-  console.log(`Report saved to: ${resolvedPath}`);
+  logger.info(`Report saved to: ${resolvedPath}`);
 }
 
 function printFinalSummary(results: Array<AgentResult | { error: string }>, json: boolean = false): void {
-  console.log(`\n${'='.repeat(70)}`);
-  console.log('FINAL SUMMARY');
-  console.log(`${'='.repeat(70)}`);
+  logger.info(`\n${'='.repeat(70)}`);
+  logger.info('FINAL SUMMARY');
+  logger.info(`${'='.repeat(70)}`);
 
   const passed = results.filter(r => 'passed' in r && r.passed).length;
   const failed = results.filter(r => 'passed' in r && !r.passed).length;
 
-  console.log(`Total: ${results.length}`);
-  console.log(`Passed: ${passed}`);
-  console.log(`Failed: ${failed}`);
+  logger.info(`Total: ${results.length}`);
+  logger.info(`Passed: ${passed}`);
+  logger.info(`Failed: ${failed}`);
 
   if (json) {
+    // JSON output - keep console.log for stdout
     console.log('\n' + JSON.stringify(results, null, 2));
   } else {
     for (const result of results) {
-      console.log(`\n${'passed' in result && result.passed ? '✅' : '❌'} ${'url' in result ? result.url : 'Unknown'}`);
-      console.log(`   Task: ${'task' in result ? result.task : 'Unknown'}`);
-      console.log(`   Steps: ${'steps' in result ? result.steps.length : 0}`);
-      console.log(`   Tokens: ${'totalTokens' in result ? result.totalTokens : 0}`);
+      logger.info(`\n${'passed' in result && result.passed ? '✅' : '❌'} ${'url' in result ? result.url : 'Unknown'}`);
+      logger.info(`   Task: ${'task' in result ? result.task : 'Unknown'}`);
+      logger.info(`   Steps: ${'steps' in result ? result.steps.length : 0}`);
+      logger.info(`   Tokens: ${'totalTokens' in result ? result.totalTokens : 0}`);
       if ('passed' in result && !result.passed && 'error' in result) {
-        console.log(`   Error: ${result.error}`);
+        logger.info(`   Error: ${result.error}`);
       }
     }
   }
 
-  console.log(`\n${'='.repeat(70)}`);
+  logger.info(`\n${'='.repeat(70)}`);
 }
 
 async function main() {
@@ -281,7 +285,7 @@ async function main() {
     const args = parseArgs();
     await runAgentVerification(args);
   } catch (error) {
-    console.error('Agent verification failed:', error);
+    logger.error(`Agent verification failed: ${error}`);
     process.exit(1);
   }
 }
