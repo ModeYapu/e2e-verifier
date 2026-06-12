@@ -32,6 +32,34 @@ interface PageAnalysis {
 }
 
 /**
+ * Options for test generation
+ */
+export interface TestGeneratorOptions {
+  expectedStatusCode?: number;
+  timeout?: number;
+  screenshots?: string[];
+  [key: string]: unknown;
+}
+
+/**
+ * Interactive element detected on the page
+ */
+interface InteractiveElement {
+  type: 'form' | 'button' | 'link' | 'input' | 'table';
+  selector: string;
+  id?: string;
+  action?: string;
+  method?: string;
+  text?: string;
+  buttonType?: string;
+  href?: string;
+  name?: string;
+  inputType?: string;
+  required?: boolean;
+  rows?: number;
+}
+
+/**
  * Generated test configuration
  */
 interface GeneratedConfig {
@@ -71,7 +99,7 @@ export class SmartTestGenerator {
   /**
    * Analyze URL and generate test configuration
    */
-  async generateFromUrl(url: string, options: any = {}): Promise<GeneratedConfig> {
+  async generateFromUrl(url: string, options: TestGeneratorOptions = {}): Promise<GeneratedConfig> {
     await this.initBrowser();
 
     console.log(`[SmartTestGenerator] Analyzing URL: ${url}`);
@@ -228,10 +256,10 @@ Respond in JSON format:
   /**
    * Get interactive elements from page
    */
-  private async getInteractiveElements(page: Page): Promise<any[]> {
+  private async getInteractiveElements(page: Page): Promise<InteractiveElement[]> {
     try {
       const elements = await page.evaluate(() => {
-        const interactive: any[] = [];
+        const interactive: InteractiveElement[] = [];
 
         // Find forms
         document.querySelectorAll('form').forEach(form => {
@@ -266,13 +294,13 @@ Respond in JSON format:
 
         // Find inputs
         document.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(input => {
-          const inputElem = input as any;
+          const inputElem = input as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
           interactive.push({
             type: 'input',
-            selector: inputElem.tagName.toLowerCase() + (inputElem.id ? `#${inputElem.id}` : ''),
+            selector: input.tagName.toLowerCase() + (input.id ? `#${input.id}` : ''),
             name: inputElem.name || '',
             inputType: inputElem.getAttribute('type') || 'text',
-            required: inputElem.required || false
+            required: inputElem.hasAttribute('required') || false
           });
         });
 
@@ -298,7 +326,7 @@ Respond in JSON format:
   /**
    * Generate site configuration from analysis
    */
-  private generateSiteConfig(analysis: PageAnalysis, options: any = {}): SiteConfig {
+  private generateSiteConfig(analysis: PageAnalysis, options: TestGeneratorOptions = {}): SiteConfig {
     return {
       name: analysis.suggestedSiteName,
       url: analysis.url,

@@ -84,7 +84,7 @@ export interface TestStep {
   /** Input value for search/type actions */
   input?: string;
   /** Additional parameters */
-  [key: string]: any;
+  [key: string]: unknown;
   /** Expected outcome */
   expect?: string;
 }

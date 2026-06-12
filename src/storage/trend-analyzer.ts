@@ -296,8 +296,11 @@ export class TrendAnalyzer {
       let envName = 'default';
       if (result.checks) {
         const viewportCheck = result.checks.find(c => c.type === 'responsive');
-        if (viewportCheck?.details?.viewports && Array.isArray(viewportCheck.details.viewports)) {
-          envName = `viewport-${viewportCheck.details.viewports[0] || 'default'}`;
+        if (viewportCheck?.details && typeof viewportCheck.details === 'object' && 'viewports' in viewportCheck.details) {
+          const details = viewportCheck.details as { viewports?: unknown[] };
+          if (details.viewports && Array.isArray(details.viewports) && details.viewports.length > 0) {
+            envName = `viewport-${details.viewports[0] || 'default'}`;
+          }
         }
       }
 

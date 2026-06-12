@@ -118,7 +118,7 @@ export interface CheckResult {
   type: string;
   passed: boolean;
   message: string;
-  details?: any;
+  details?: unknown;
   /** If 'warning', this check won't fail the overall result */
   severity?: 'critical' | 'warning';
 }

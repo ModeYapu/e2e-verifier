@@ -6,6 +6,7 @@
 import { ResultStore } from '../../storage/result-store';
 import { TrendAnalyzer } from '../../storage/trend-analyzer';
 import { QualityProfileCalculator } from '../../storage/quality-profile';
+import { TestResult } from '../../types';
 
 export class StorageService {
   private resultStore: ResultStore;
@@ -42,7 +43,7 @@ export class StorageService {
   /**
    * Save test result
    */
-  saveResult(result: any): void {
+  saveResult(result: TestResult): void {
     this.resultStore.save(result);
   }
 

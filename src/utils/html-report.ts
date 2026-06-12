@@ -910,7 +910,7 @@ export class HtmlReportGenerator {
       .replace(/'/g, '&#039;');
   }
 
-  private generateArtifactsHtml(artifacts: any[]): string {
+  private generateArtifactsHtml(artifacts: Array<{ path: string; type: string }>): string {
     const links = artifacts.map(a =>
       `<a class="artifact-link" href="${a.path}" target="_blank">${a.type}</a>`
     ).join('');

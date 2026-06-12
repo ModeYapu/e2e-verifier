@@ -305,7 +305,7 @@ export class FallbackProvider implements AIProvider {
     return this.primary.isAvailable() || this.secondary.isAvailable();
   }
 
-  async chat(messages: ChatMessage[], options?: any): Promise<string> {
+  async chat(messages: ChatMessage[], options?: AIProviderOptions): Promise<string> {
     try {
       if (this.primary.isAvailable()) {
         return await this.primary.chat(messages, options);
@@ -321,7 +321,7 @@ export class FallbackProvider implements AIProvider {
     return await this.secondary.chat(messages, options);
   }
 
-  async analyzeImage(imageUrl: string, prompt: string, options?: any): Promise<string> {
+  async analyzeImage(imageUrl: string, prompt: string, options?: AIProviderOptions): Promise<string> {
     try {
       if (this.primary.isAvailable()) {
         return await this.primary.analyzeImage(imageUrl, prompt, options);

@@ -5,10 +5,10 @@
 
 import { ProviderFactory, AIProvider } from '../../ai/provider';
 import { getSelfHealingLocator } from '../../ai/self-healing';
-import { getSmartTestGenerator } from '../../ai/test-generator';
+import { getSmartTestGenerator, TestGeneratorOptions } from '../../ai/test-generator';
 import { Job } from '../../scheduler/types';
 
-export interface GenerateTestsOptions {
+export interface GenerateTestsOptions extends TestGeneratorOptions {
   model?: string;
   maxTests?: number;
   saveToFile?: boolean;

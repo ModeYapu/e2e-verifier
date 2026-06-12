@@ -140,16 +140,38 @@
 - **Verified**: tsc clean, jest 208/208 pass
 - **Commit**: <pending>
 
+### Round 14 — 2026-06-12
+- **Slice**: P3-batch7: Fix final remaining :any types (11 occurrences)
+- **Changes**:
+  - src/engine/agent-planner.ts:587 - `let val: any` → `let val: unknown`
+  - src/engine/test-plan-parser.ts:87 - `[key: string]: any` → `[key: string]: unknown`
+  - src/server/services/storage-service.ts:45 - `result: any` → `result: TestResult`
+  - src/types/index.ts:121 - `details?: any` → `details?: unknown`
+  - src/ai/provider.ts:308,324 - `options?: any` → `options?: AIProviderOptions`
+  - src/ai/test-generator.ts: 新增 TestGeneratorOptions, InteractiveElement 接口
+  - src/ai/test-generator.ts:74 - `options: any` → `options: TestGeneratorOptions`
+  - src/ai/test-generator.ts:234 - `interactive: any[]` → `interactive: InteractiveElement[]`
+  - src/integrations/github.ts:188 - `result: any` → `result: unknown` + 类型守卫
+  - src/utils/html-report.ts:913 - `artifacts: any[]` → `artifacts: Array<{ path: string; type: string }>`
+  - src/cli/converge.ts:274 - `check.details?.error` → 类型守卫访问
+  - src/server/services/ai-service.ts - GenerateTestsOptions 扩展 TestGeneratorOptions
+  - src/storage/trend-analyzer.ts:299 - `details.viewports` → 类型守卫访问
+  - 共修复 11 处 `: any` 类型（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: <pending>
+
 ## Current State
 
 ### Code Stats
 - 113 个 TypeScript 文件，~29K 行代码
 - **208 个自动化测试全通过**
-- 12 个 `: any` 类型待替换 (从 35 减少 23)
+- **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
 - 553 处 console.log/warn/error 待替换
 
 ### NEXT_SLICE
-P3 (final): Fix remaining 12 :any types. Locations: types/index.ts (1), ai/ (4), server/services/storage-service.ts (1), engine/ (2), utils/html-report.ts (1), integrations/github.ts (1). Note: evaluator-core.ts:167 is a string literal (acceptable).
+**P4-batch1**: Replace console.log/warn/error → logger in src/checks/ directory (~30 occurrences)
+
+## Site Configs
 
 ## Site Configs
 - `travel-planner.json` — 3 sites, 31 checks

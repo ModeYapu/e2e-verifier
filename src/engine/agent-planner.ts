@@ -584,7 +584,7 @@ RULES:
       results.push({ step: 'api verify ' + ep, passed: false, details: 'status=' + nodeResp.status });
     } else if (expectedField) {
       // Navigate nested field like "data.0.app_id"
-      let val: any = nodeResp.data;
+      let val: unknown = nodeResp.data;
       for (const key of expectedField.split('.')) {
         val = val?.[isNaN(Number(key)) ? key : Number(key)];
       }

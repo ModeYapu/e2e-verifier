@@ -185,43 +185,47 @@ export class GitHubIntegration {
   /**
    * Format result details as markdown
    */
-  private formatResultDetails(result: any): string {
+  private formatResultDetails(result: unknown): string {
     let markdown = `### ✅ Results\n\n`;
 
     // Handle different result types
-    if (typeof result === 'object') {
+    if (typeof result === 'object' && result !== null) {
       // Fast verify results
       if ('passed' in result) {
-        const passed = result.passed ? '✅ Passed' : '❌ Failed';
+        const testResult = result as { passed: boolean; checks?: unknown; performanceMetrics?: unknown; screenshots?: unknown };
+        const passed = testResult.passed ? '✅ Passed' : '❌ Failed';
         markdown += `**Overall Status:** ${passed}\n\n`;
 
-        if (result.checks && Array.isArray(result.checks)) {
+        if (testResult.checks && Array.isArray(testResult.checks)) {
           markdown += `| Check | Status | Details |\n`;
           markdown += `|-------|--------|----------|\n`;
 
-          for (const check of result.checks) {
-            const checkStatus = check.passed ? '✅' : '❌';
-            const details = check.details || (check.passed ? 'Success' : 'Failed');
-            markdown += `| ${check.name} | ${checkStatus} | ${details} |\n`;
+          for (const check of testResult.checks) {
+            if (typeof check === 'object' && check !== null && 'name' in check && 'passed' in check) {
+              const checkObj = check as { name: string; passed: boolean; details?: unknown };
+              const checkStatus = checkObj.passed ? '✅' : '❌';
+              const details = checkObj.details || (checkObj.passed ? 'Success' : 'Failed');
+              markdown += `| ${checkObj.name} | ${checkStatus} | ${String(details)} |\n`;
+            }
           }
 
           markdown += `\n`;
         }
 
         // Add performance metrics if available
-        if (result.performanceMetrics) {
+        if (testResult.performanceMetrics && typeof testResult.performanceMetrics === 'object') {
+          const metrics = testResult.performanceMetrics as { loadTime?: number; domContentLoaded?: number; firstContentfulPaint?: number };
           markdown += `### 📊 Performance\n\n`;
           markdown += `| Metric | Value |\n`;
           markdown += `|--------|-------|\n`;
 
-          const metrics = result.performanceMetrics;
-          if (metrics.loadTime) {
+          if (metrics.loadTime !== undefined) {
             markdown += `| Load Time | ${Math.round(metrics.loadTime)}ms |\n`;
           }
-          if (metrics.domContentLoaded) {
+          if (metrics.domContentLoaded !== undefined) {
             markdown += `| DOM Content Loaded | ${Math.round(metrics.domContentLoaded)}ms |\n`;
           }
-          if (metrics.firstContentfulPaint) {
+          if (metrics.firstContentfulPaint !== undefined) {
             markdown += `| First Contentful Paint | ${Math.round(metrics.firstContentfulPaint)}ms |\n`;
           }
 
@@ -229,11 +233,12 @@ export class GitHubIntegration {
         }
 
         // Add screenshots if available
-        if (result.screenshots && Array.isArray(result.screenshots) && result.screenshots.length > 0) {
+        if (testResult.screenshots && Array.isArray(testResult.screenshots) && testResult.screenshots.length > 0) {
           markdown += `### 📸 Screenshots\n\n`;
-          for (const screenshot of result.screenshots) {
-            if (screenshot.path) {
-              markdown += `**${screenshot.name || 'Screenshot'}:** \`${screenshot.path}\`\n\n`;
+          for (const screenshot of testResult.screenshots) {
+            if (typeof screenshot === 'object' && screenshot !== null && 'path' in screenshot) {
+              const shot = screenshot as { path: string; name?: string };
+              markdown += `**${shot.name || 'Screenshot'}:** \`${shot.path}\`\n\n`;
             }
           }
         }
@@ -241,22 +246,26 @@ export class GitHubIntegration {
 
       // Matrix results
       if ('summary' in result && 'combinations' in result) {
-        const summary = result.summary;
-        markdown += `**Total Combinations:** ${summary.total}\n`;
-        markdown += `**Passed:** ${summary.passed} ✅\n`;
-        markdown += `**Failed:** ${summary.failed} ❌\n\n`;
+        const matrixResult = result as { summary: { total?: number; passed?: number; failed?: number }; combinations?: unknown };
+        const summary = matrixResult.summary;
+        markdown += `**Total Combinations:** ${summary.total || 0}\n`;
+        markdown += `**Passed:** ${summary.passed || 0} ✅\n`;
+        markdown += `**Failed:** ${summary.failed || 0} ❌\n\n`;
 
-        if (result.combinations && Array.isArray(result.combinations)) {
+        if (matrixResult.combinations && Array.isArray(matrixResult.combinations)) {
           markdown += `| Browser | Viewport | Locale | Status | Duration |\n`;
           markdown += `|---------|----------|--------|--------|----------|\n`;
 
-          for (const combo of result.combinations) {
-            const status = combo.passed ? '✅' : '❌';
-            const viewport = combo.viewport ? `${combo.viewport.width}x${combo.viewport.height}` : 'default';
-            const locale = combo.locale || 'default';
-            const duration = combo.duration ? `${Math.round(combo.duration)}ms` : 'N/A';
+          for (const combo of matrixResult.combinations) {
+            if (typeof combo === 'object' && combo !== null && 'passed' in combo) {
+              const comboObj = combo as { browser?: string; viewport?: { width: number; height: number }; locale?: string; passed?: boolean; duration?: number };
+              const status = comboObj.passed ? '✅' : '❌';
+              const viewport = comboObj.viewport ? `${comboObj.viewport.width}x${comboObj.viewport.height}` : 'default';
+              const locale = comboObj.locale || 'default';
+              const duration = comboObj.duration ? `${Math.round(comboObj.duration)}ms` : 'N/A';
 
-            markdown += `| ${combo.browser} | ${viewport} | ${locale} | ${status} | ${duration} |\n`;
+              markdown += `| ${comboObj.browser || 'unknown'} | ${viewport} | ${locale} | ${status} | ${duration} |\n`;
+            }
           }
 
           markdown += `\n`;
@@ -264,16 +273,19 @@ export class GitHubIntegration {
       }
 
       // Orchestrated results
-      if ('results' in result && Array.isArray(result.results)) {
+      if ('results' in result && Array.isArray((result as { results: unknown[] }).results)) {
+        const orchestratedResult = result as { results: Array<{ name?: string; passed?: boolean; totalChecks?: number; failedChecks?: number }> };
         markdown += `| Site | Status | Checks | Failed |\n`;
         markdown += `|------|--------|--------|--------|\n`;
 
-        for (const siteResult of result.results) {
-          const status = siteResult.passed ? '✅' : '❌';
-          const totalChecks = siteResult.totalChecks || 0;
-          const failedChecks = siteResult.failedChecks || 0;
+        for (const siteResult of orchestratedResult.results) {
+          if (typeof siteResult === 'object' && siteResult !== null) {
+            const status = siteResult.passed ? '✅' : '❌';
+            const totalChecks = siteResult.totalChecks || 0;
+            const failedChecks = siteResult.failedChecks || 0;
 
-          markdown += `| ${siteResult.name} | ${status} | ${totalChecks} | ${failedChecks} |\n`;
+            markdown += `| ${siteResult.name || 'unknown'} | ${status} | ${totalChecks} | ${failedChecks} |\n`;
+          }
         }
 
         markdown += `\n`;
@@ -281,14 +293,15 @@ export class GitHubIntegration {
 
       // Agent/deep verify results
       if ('finalAnswer' in result || 'steps' in result) {
+        const agentResult = result as { finalAnswer?: unknown; steps?: unknown };
         markdown += `### 🤖 Agent Execution\n\n`;
 
-        if (result.finalAnswer) {
-          markdown += `**Final Answer:**\n\n${result.finalAnswer}\n\n`;
+        if (agentResult.finalAnswer) {
+          markdown += `**Final Answer:**\n\n${String(agentResult.finalAnswer)}\n\n`;
         }
 
-        if (result.steps && Array.isArray(result.steps)) {
-          markdown += `**Steps Taken:** ${result.steps.length}\n\n`;
+        if (agentResult.steps && Array.isArray(agentResult.steps)) {
+          markdown += `**Steps Taken:** ${agentResult.steps.length}\n\n`;
         }
       }
     }

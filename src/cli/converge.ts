@@ -271,7 +271,7 @@ class ConvergenceEngine {
               failures.push({
                 page: result.siteName || result.url,
                 check: check.name,
-                reason: check.message || check.details?.error || 'Unknown',
+                reason: check.message || (typeof check.details === 'object' && check.details && 'error' in check.details ? (check.details as { error?: string }).error : undefined) || 'Unknown',
                 category: this.categorizeFailure(check.name, check.message || '')
               });
             }
