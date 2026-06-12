@@ -139,7 +139,9 @@ describe('VerifyService', () => {
 
       expect(result).toBeDefined();
       expect(Verifier).toHaveBeenCalled();
-      expect(mockResultStore.save).toHaveBeenCalledWith(mockResult);
+      // VerifyService uses its own internal ResultStore (mocked via jest.mock)
+      const internalStore = (verifyService as any).resultStore;
+      expect(internalStore.save).toHaveBeenCalledWith(mockResult);
     });
 
     test('should handle result save errors gracefully', async () => {
@@ -175,6 +177,14 @@ describe('VerifyService', () => {
       const result = await verifyService.fastVerify(request);
 
       expect(result).toBeDefined();
+      // fastVerify catches save errors internally and logs them
+      // The internal resultStore.save will throw since it's a jest.fn() (no implementation)
+      // Actually with mocked ResultStore, save is jest.fn() which doesn't throw
+      // We need to make the internal store's save throw
+      const internalStore = (verifyService as any).resultStore;
+      // Re-run with a throwing save
+      internalStore.save = jest.fn().mockImplementation(() => { throw new Error('Save failed'); });
+      await verifyService.fastVerify(request);
       expect(consoleErrorSpy).toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
     });

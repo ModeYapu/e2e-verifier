@@ -12,8 +12,7 @@
  */
 
 import { SiteConfig } from '../../types';
-import { MatrixRunner } from '../../runner/matrix-runner';
-import { ResultStore } from '../../storage/result-store';
+import type { ResultStore } from '../../storage/result-store';
 
 // Define DeviceMatrixConfig locally since it's not exported from MatrixRunner
 interface DeviceMatrixConfig {
@@ -53,6 +52,9 @@ export async function matrixVerify(
   request: MatrixVerifyRequest,
   resultStore: ResultStore
 ): Promise<any> {
+  // Lazy import to avoid pulling playwright into unit tests
+  const { MatrixRunner } = await import('../../runner/matrix-runner');
+
   // Validate matrix configuration
   const matrixConfig: DeviceMatrixConfig = {
     browsers: request.matrix.browsers,
