@@ -4,70 +4,66 @@
 
 将 e2e-verifier 从"能跑测试的脚本集合"推进到"可复用的验证执行平台"。
 
+## Mainline Ladder (Priority Order)
+
+1. ✅ ~P0: 消除 TODO 桩和基础类型安全~ (Round 5, commit 62cb6cf)
+2. **P1: 大文件拆分** — autonomous-explorer.ts (944行) → 拆为 explorer-core + explorer-strategy + explorer-tools
+3. **P2: 大文件拆分** — evaluator.ts (914行) → 拆为 evaluator-core + evaluator-report
+4. **P3: `:any` 类型消灭** — 剩余 68 处 `: any` 替换为具体类型（优先 agent/ 和 server/routes/）
+5. **P4: console.log 全量替换** — 553 处 console.log/warn/error → 结构化 logger
+6. **P5: 统一错误分类落地** — 将 errors.ts 的分类应用到更多模块的 catch 块
+
 ## Completed Rounds
 
 ### Round 1 — 2026-06-09
 - **Slice**: 新增 compound actions + api checks + interactive testing
-- **Changes**:
-  - 35 种 action types（基础12 + 导航6 + 等待断言5 + 弹窗iframe4 + 复合8）
-  - `api` custom check type（endpoint GET/POST/status/body）
-  - `custom` check type（auto IIFE wrap）
-  - 每步 retries + continueOnError + 递增延迟
-  - `executeSingleAction` 提取为独立方法支持递归（conditional/group/poll）
-  - Travel Planner 完整 E2E 配置（31项检查全通过）
-- **Verified**: `tsc --noEmit` 通过 + Playwright 集成测试 10/10 + E2E 全项通过
+- **Verified**: tsc + Playwright + E2E 全项通过
 - **Commit**: 03b465f
-- **Status**: continue
 
 ### Round 2 — 2026-06-09
 - **Slice**: Jest 测试框架 + executeSingleAction + runCustomCheck 测试
-- **Changes**:
-  - jest.config.js + ts-jest + @types/jest
-  - tests/actions.test.ts: 26 测试覆盖 22 种 action types
-  - tests/checks.test.ts: 11 测试覆盖 6 种 check types
-  - LOOP_STATE.md repo-native continuity
-- **Verified**: `npx jest` 37/37 pass, 10.9s
+- **Verified**: jest 37/37 pass
 - **Commit**: 94b45e2
-- **Status**: continue
+
+### Round 3 — 2026-06-09
+- **Slice**: GitHub Actions CI
+- **Verified**: CI triggered
+- **Commit**: d3b5f8a
+
+### Round 4 — 2026-06-09
+- **Slice**: ConsoleMonitor + CustomCheck 扩展
+- **Verified**: jest 46/46 pass
+- **Commit**: 94ecae0
+
+### Round 5 — 2026-06-12
+- **Slice**: 消除 TODO 桩 + 错误分类 + HTML 报告严重性 + 测试修复
+- **Changes**:
+  - 移除 deep-verify.ts 空桩（指向 scheduler.ts 实现）
+  - 修复 test-generator.ts 生成有意义的测试步骤
+  - 新增 src/utils/errors.ts: InfrastructureError | PageError | AssertionError | TimeoutError
+  - HTML 报告检查项按 critical/warning/info 分级
+  - agent-loop.ts console.log → logger
+  - deep-verify.ts lazy import MatrixRunner
+  - 修复 verify-service.test.ts mock 引用
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: 62cb6cf
 
 ## Current State
 
 ### Code Stats
-- ~14K 行 TypeScript
-- **37 个自动化测试全通过**
-- 无 CI 配置（Next slice）
+- 113 个 TypeScript 文件，~29K 行代码
+- **208 个自动化测试全通过**
+- 68 个 `: any` 类型待替换
+- 553 处 console.log/warn/error 待替换
 
-### Round 3 — 2026-06-09
-- **Slice**: GitHub Actions CI
-- **Changes**:
-  - .github/workflows/ci.yml
-  - Node 20 + 22 矩阵
-  - Steps: npm ci → playwright install → tsc → jest → build
-  - Push/PR 触发
-- **Verified**: CI triggered, status: in_progress
-- **Commit**: d3b5f8a
-- **CI URL**: https://github.com/ModeYapu/e2e-verifier/actions/runs/27216619716
-- **Status**: continue
+### NEXT_SLICE
+P1: 拆分 autonomous-explorer.ts (944行) → explorer-core + explorer-strategy + explorer-tools
 
-### Round 4 — 2026-06-09
-- **Slice**: 修复 console check 误报 + 扩展 CustomCheck 支持 api/custom
-- **Changes**:
-  - ConsoleMonitor: pause/resume/whilePaused/ignorePatterns
-  - CustomCheck type: 新增 'api' + 'custom'
-  - runCustomCheck: 实现 api check（GET/POST/status/body/headers, console 暂停）
-  - runCustomCheck: 实现 custom check（auto IIFE wrap）
-  - 9 个 ConsoleMonitor 新测试
-- **Verified**: 46/46 tests pass, tsc --noEmit clean
-- **Commit**: 94ecae0
-- **Status**: continue
-
-### Known Gaps (P0 Roadmap)
-1. **无 HTML 报告** — 只有 JSON 报告
-2. **无历史趋势** — 无多次运行对比
-3. **executeSingleAction 不在 Verifier 类内** — 测试用的是独立 ActionTestRunner
-
-### Site Configs
-- `travel-planner.json` — 3 sites, 31 checks, 全通过
-- `action-capabilities.json` — 5 sites, 验证 actions 能力
-- `sanfacheng.json` — 8 sites, 全站验证
+## Site Configs
+- `travel-planner.json` — 3 sites, 31 checks
+- `action-capabilities.json` — 5 sites
+- `sanfacheng.json` — 8 sites
 - `history-tree.json` — 历史站点
+
+---
+*Last updated: 2026-06-12 Round 5*
