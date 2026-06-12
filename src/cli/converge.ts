@@ -1,6 +1,6 @@
 /**
  * E2E Convergence Engine — 自动收敛测试循环
- * 
+ *
  * 用法: npm run converge -- [options]
  *   --project <name>   只跑指定项目
  *   --max-rounds <n>   最大轮次（默认 5）
@@ -12,6 +12,7 @@ import { Verifier } from '../verifier';
 import { VerifierPool } from '../verifier-pool';
 import { HtmlReportGenerator } from '../utils/html-report';
 import { Logger } from '../utils/logger';
+import { SiteConfig, TestResult, CustomCheck } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
@@ -246,7 +247,7 @@ class ConvergenceEngine {
     // Run verify
     let totalChecks = 0, passed = 0, failed = 0;
     const failures: FailureDetail[] = [];
-    let verifyData: any = null;
+    let verifyData: TestResult | null = null;
 
     try {
       const configContent = fs.readFileSync(configPath, 'utf-8');
@@ -395,7 +396,7 @@ class ConvergenceEngine {
       const config = JSON.parse(configContent);
       const sites = config.sites || [config];
       // Prefer site with auth (entry point after login), fallback to first site
-      const site = sites.find((s: any) => s.auth) || sites.find((s: any) => !s.url?.includes('login')) || sites[0];
+      const site = sites.find((s: SiteConfig) => s.auth) || sites.find((s: SiteConfig) => !s.url?.includes('login')) || sites[0];
 
       return {
         url: site.url,
@@ -453,8 +454,8 @@ class ConvergenceEngine {
     this.logger.info(`  Created default config: ${configPath}`);
   }
 
-  private getDefaultCustomChecks(projectName: string): any[] {
-    const checks: any[] = [
+  private getDefaultCustomChecks(projectName: string): CustomCheck[] {
+    const checks: CustomCheck[] = [
       { name: 'Page loads correctly', type: 'element', selector: 'body' },
       { name: 'No undefined text', type: 'custom', script: 'return !document.body.innerText.includes("undefined")' },
       { name: 'No NaN text', type: 'custom', script: 'return !document.body.innerText.includes("NaN")' },

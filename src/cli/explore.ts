@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AutonomousExplorer } from '../explorer/autonomous-explorer';
 import { ExplorerReport } from '../explorer/explorer-report';
-import { ExploreConfig } from '../explorer/types';
+import { ExploreConfig, ExploreResult, TestExecution } from '../explorer/types';
 import { SiteConfig, AuthConfig } from '../types';
 import { Logger, LogLevel } from '../utils/logger';
 
@@ -228,7 +228,7 @@ async function loadConfig(options: ExploreOptions): Promise<ExploreConfig> {
     // Support multi-site format { "sites": [...] }
     if (parsed.sites && Array.isArray(parsed.sites)) {
       // Use the first site with auth, or first site overall
-      const authSite = parsed.sites.find((s: any) => s.auth) || parsed.sites[0];
+      const authSite = parsed.sites.find((s: SiteConfig) => s.auth) || parsed.sites[0];
       siteConfig = authSite as SiteConfig;
       logger.info(`Multi-site config: using "${siteConfig.name}" as entry point`);
     } else {
@@ -286,7 +286,7 @@ async function loadConfig(options: ExploreOptions): Promise<ExploreConfig> {
   return config;
 }
 
-function printSummary(result: any): void {
+function printSummary(result: ExploreResult): void {
   console.log('\n' + '='.repeat(60));
   console.log('🔍 EXPLORATION SUMMARY');
   console.log('='.repeat(60));
@@ -318,7 +318,7 @@ function printSummary(result: any): void {
   console.log(`   Final script: ${result.finalScriptPath}`);
 
   // Show failed tests if any
-  const failedTests = result.executions.filter((e: any) => !e.passed);
+  const failedTests = result.executions.filter((e: TestExecution) => !e.passed);
   if (failedTests.length > 0) {
     console.log(`\n❌ Failed tests:`);
     for (const test of failedTests.slice(0, 5)) {

@@ -110,16 +110,28 @@
 - **Verified**: tsc clean, jest 208/208 pass
 - **Commit**: <pending>
 
+### Round 12 — 2026-06-12
+- **Slice**: P3 (continued): Fix :any types in cli/ directory
+- **Changes**:
+  - src/cli/verify-craft.ts: 使用 AgentStep 类型
+  - src/cli/verify-orchestrated.ts: 使用 SiteOrchestratedResult 和 CheckResult 类型
+  - src/cli/explore.ts: 使用 SiteConfig, ExploreResult, TestExecution 类型
+  - src/cli/converge.ts: 使用 TestResult, SiteConfig, CustomCheck 类型
+  - src/cli/verify-deep.ts: 使用 AgentResult 类型
+  - 共修复 13 处 `: any` 类型
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: <pending>
+
 ## Current State
 
 ### Code Stats
 - 113 个 TypeScript 文件，~29K 行代码
 - **208 个自动化测试全通过**
-- 48 个 `: any` 类型待替换 (从 58 减少 10)
+- 35 个 `: any` 类型待替换 (从 48 减少 13)
 - 553 处 console.log/warn/error 待替换
 
 ### NEXT_SLICE
-P3 (continued): Fix remaining 48 :any types. Next batch focus: cli/ directory (converge.ts, explore.ts, verify-deep.ts, verify-orchestrated.ts, verify-craft.ts) - ~16 occurrences
+P3 (continued): Fix remaining 35 :any types. Next batch focus: intelligence/ (orchestrator.ts, self-eval.ts), explorer/ (test-generator.ts, explorer-report.ts, page-analyzer.ts), verifier.ts - ~15 occurrences
 
 ## Site Configs
 - `travel-planner.json` — 3 sites, 31 checks

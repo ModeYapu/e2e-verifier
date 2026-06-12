@@ -3,8 +3,8 @@
  * Combines fast and deep verification with automatic task generation
  */
 
-import { VerifyOrchestrator, OrchestratedResult } from '../orchestrator/verify-orchestrator';
-import { SiteConfig } from '../types';
+import { VerifyOrchestrator, OrchestratedResult, SiteOrchestratedResult } from '../orchestrator/verify-orchestrator';
+import { SiteConfig, CheckResult } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -84,11 +84,11 @@ function printHeader(configName: string, model: string): void {
   console.log('');
 }
 
-function printSiteResult(result: any): void {
+function printSiteResult(result: SiteOrchestratedResult): void {
   const { siteName, fastResult, fastPassed, deepNeeded, deepResult, overallPassed } = result;
 
-  const passedChecks = fastResult.checks.filter((c: any) => c.passed).length;
-  const failedChecks = fastResult.checks.filter((c: any) => !c.passed).length;
+  const passedChecks = fastResult.checks.filter((c: CheckResult) => c.passed).length;
+  const failedChecks = fastResult.checks.filter((c: CheckResult) => !c.passed).length;
   const errorCount = fastResult.errors.length;
   const durationSec = (fastResult.duration / 1000).toFixed(1);
 

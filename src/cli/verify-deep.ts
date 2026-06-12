@@ -4,7 +4,7 @@
  */
 
 import { AgentLoop } from '../agent/agent-loop';
-import { AgentConfig } from '../agent/types';
+import { AgentConfig, AgentResult } from '../agent/types';
 import { SiteConfig } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -225,13 +225,13 @@ async function runAgentVerification(args: CLIArgs): Promise<void> {
   process.exit(allPassed ? 0 : 1);
 }
 
-async function saveReport(results: any[], outputPath: string): Promise<void> {
+async function saveReport(results: Array<AgentResult | { error: string }>, outputPath: string): Promise<void> {
   const reportData = {
     timestamp: new Date().toISOString(),
     summary: {
       total: results.length,
-      passed: results.filter(r => r.passed).length,
-      failed: results.filter(r => !r.passed).length
+      passed: results.filter(r => 'passed' in r && r.passed).length,
+      failed: results.filter(r => 'passed' in r && !r.passed).length
     },
     results: results
   };
@@ -247,13 +247,13 @@ async function saveReport(results: any[], outputPath: string): Promise<void> {
   console.log(`Report saved to: ${resolvedPath}`);
 }
 
-function printFinalSummary(results: any[], json: boolean = false): void {
+function printFinalSummary(results: Array<AgentResult | { error: string }>, json: boolean = false): void {
   console.log(`\n${'='.repeat(70)}`);
   console.log('FINAL SUMMARY');
   console.log(`${'='.repeat(70)}`);
 
-  const passed = results.filter(r => r.passed).length;
-  const failed = results.filter(r => !r.passed).length;
+  const passed = results.filter(r => 'passed' in r && r.passed).length;
+  const failed = results.filter(r => 'passed' in r && !r.passed).length;
 
   console.log(`Total: ${results.length}`);
   console.log(`Passed: ${passed}`);
@@ -263,11 +263,11 @@ function printFinalSummary(results: any[], json: boolean = false): void {
     console.log('\n' + JSON.stringify(results, null, 2));
   } else {
     for (const result of results) {
-      console.log(`\n${result.passed ? '✅' : '❌'} ${result.url}`);
-      console.log(`   Task: ${result.task}`);
-      console.log(`   Steps: ${result.steps.length}`);
-      console.log(`   Tokens: ${result.totalTokens}`);
-      if (!result.passed && result.error) {
+      console.log(`\n${'passed' in result && result.passed ? '✅' : '❌'} ${'url' in result ? result.url : 'Unknown'}`);
+      console.log(`   Task: ${'task' in result ? result.task : 'Unknown'}`);
+      console.log(`   Steps: ${'steps' in result ? result.steps.length : 0}`);
+      console.log(`   Tokens: ${'totalTokens' in result ? result.totalTokens : 0}`);
+      if ('passed' in result && !result.passed && 'error' in result) {
         console.log(`   Error: ${result.error}`);
       }
     }

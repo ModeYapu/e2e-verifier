@@ -3,7 +3,7 @@
  * Generates reusable Playwright scripts from natural language tasks
  */
 import { AgentLoop } from '../agent/agent-loop';
-import { AgentConfig, ScriptAction } from '../agent/types';
+import { AgentConfig, ScriptAction, AgentStep } from '../agent/types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -67,7 +67,7 @@ function getApiBase(model?: string): string {
   return process.env.LLM_API_BASE || 'https://api.openai.com/v1';
 }
 
-function extractFinalScript(steps: any[]): string {
+function extractFinalScript(steps: AgentStep[]): string {
   // Walk through steps to find the final script content
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
