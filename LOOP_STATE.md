@@ -375,6 +375,48 @@ All non-CLI, non-template console calls have been replaced with structured logge
 - ✅ P4: console.log 全量替换为 logger
 - ✅ P5: 统一错误分类落地 (关键模块)
 
+## Final Stats (2026-06-12)
+
+### Code Type Safety
+- `: any` type annotations (non-comment): **0** ✅
+- `<any>` type annotations: **16** (service return types, intentional)
+- TypeScript compilation: **CLEAN** ✅
+- Jest tests: **208/208 passing** ✅
+
+### Console Call Classification (140 total remaining)
+1. **Template strings for generated code** (~70):
+   - src/agent/agent-loop.ts, script-engine.ts
+   - src/ai/test-generator.ts
+   - src/explorer/explorer-tools.ts, test-generator.ts
+
+2. **User-facing CLI output** (~50):
+   - Help text (console.error for usage)
+   - JSON stdout (console.log for output)
+   - printSummary/printHelp functions
+
+3. **Logger implementation** (~5):
+   - src/utils/logger.ts (uses console.log/warn/error internally)
+
+4. **Test output** (~15):
+   - src/tests/logmonitor-live-webrtc.ts
+
+### P4 Implementation Details
+**Batch 1** (commit 04fd621):
+- src/cli/converge.ts
+- src/cli/explore.ts
+- src/cli/report.ts
+- src/cli/screenshot.ts
+- src/cli/verify-all.ts
+
+**Batch 2** (commit e7ecc6e):
+- src/cli/verify-craft.ts
+- src/cli/verify-deep.ts
+- src/cli/verify-orchestrated.ts
+- src/cli/verify-server.ts
+- src/cli/verify.ts
+
+All logging now uses `import { logger } from '../utils/logger'` with `logger.info/warn/error()`.
+
 ## Site Configs
 
 ## Site Configs
@@ -384,4 +426,4 @@ All non-CLI, non-template console calls have been replaced with structured logge
 - `history-tree.json` — 历史站点
 
 ---
-*Last updated: 2026-06-12 Round 5*
+*Last updated: 2026-06-12 P4 Final Batches*
