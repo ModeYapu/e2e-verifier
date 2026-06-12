@@ -231,8 +231,30 @@
 - **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
 - 473 处 console.log/warn/error 待替换
 
+### Round 18 — 2026-06-12
+- **Slice**: P4-batch4: Replace console calls with logger in src/agent/ + src/ai/
+- **Changes**:
+  - src/agent/self-reflection.ts: 15× console.log/error/warn → logger
+  - src/agent/script-engine.ts: 9× console.log/warn → logger (template-generated console.error remains)
+  - src/agent/llm-client.ts: 4× console.log/error/warn → logger
+  - src/ai/provider.ts: 2× console.warn → logger.warn
+  - src/ai/self-healing.ts: 14× console.log/error → logger
+  - src/ai/test-generator.ts: 8× SmartTestGenerator console.log/error → logger
+  - Template-generated console calls remain (agent-loop.ts, script-engine.ts:105,109, test-generator.ts:433,470,519,527)
+  - 共修复 52 处实际 logging console 调用
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: <pending>
+
+## Current State
+
+### Code Stats
+- 113 个 TypeScript 文件，~29K 行代码
+- **208 个自动化测试全通过**
+- **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
+- 421 处 console.log/warn/error 待替换
+
 ### NEXT_SLICE
-**P4-batch4**: Replace console.log/warn/error → logger in src/agent/ + src/ai/ directories
+**P4-batch5**: Replace console.log/warn/error → logger in remaining src/ files
 
 ## Site Configs
 

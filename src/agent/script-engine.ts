@@ -8,6 +8,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ScriptExecutionResult, SandboxOptions } from './types';
+import { logger } from '../utils/logger';
 
 const execFileAsync = promisify(execFile);
 
@@ -69,7 +70,7 @@ export class ScriptEngine {
     const wrappedScript = this.wrapScript(cleanedScript);
 
     fs.writeFileSync(filepath, wrappedScript, 'utf-8');
-    console.log(`Script written: ${filepath}`);
+    logger.info(`Script written: ${filepath}`);
     
     return filepath;
   }
@@ -121,7 +122,7 @@ export class ScriptEngine {
     const startTime = Date.now();
     const timeout = options?.timeout || 30000; // 30 seconds default
 
-    console.log(`Executing script: ${scriptPath}`);
+    logger.info(`Executing script: ${scriptPath}`);
 
     try {
       // Create temporary directory for this execution's artifacts
@@ -248,7 +249,7 @@ test('sandbox test', async ({ page }) => {
     const testFile = path.join(sandboxDir, 'sandbox-test.ts');
     fs.writeFileSync(testFile, testTemplate, 'utf-8');
 
-    console.log(`Sandbox created: ${sandboxDir}`);
+    logger.info(`Sandbox created: ${sandboxDir}`);
     return sandboxDir;
   }
 
@@ -260,7 +261,7 @@ test('sandbox test', async ({ page }) => {
     try {
       if (fs.existsSync(scriptPath)) {
         fs.unlinkSync(scriptPath);
-        console.log(`Cleaned up script: ${scriptPath}`);
+        logger.info(`Cleaned up script: ${scriptPath}`);
       }
 
       // Clean up associated report directory if it exists
@@ -269,10 +270,10 @@ test('sandbox test', async ({ page }) => {
       
       if (fs.existsSync(reportDir)) {
         fs.rmSync(reportDir, { recursive: true, force: true });
-        console.log(`Cleaned up report directory: ${reportDir}`);
+        logger.info(`Cleaned up report directory: ${reportDir}`);
       }
     } catch (error) {
-      console.warn(`Failed to clean up script ${scriptPath}:`, error);
+      logger.warn(`Failed to clean up script ${scriptPath}: ${error}`);
     }
   }
 
@@ -300,9 +301,9 @@ test('sandbox test', async ({ page }) => {
       if (age > maxAge) {
         try {
           fs.rmSync(fullPath, { recursive: true, force: true });
-          console.log(`Cleaned up old sandbox: ${entry.name}`);
+          logger.info(`Cleaned up old sandbox: ${entry.name}`);
         } catch (error) {
-          console.warn(`Failed to clean up sandbox ${entry.name}:`, error);
+          logger.warn(`Failed to clean up sandbox ${entry.name}: ${error}`);
         }
       }
     }
@@ -334,7 +335,7 @@ test('sandbox test', async ({ page }) => {
     const wrappedScript = this.wrapScript(script);
     fs.writeFileSync(filepath, wrappedScript, 'utf-8');
 
-    console.log(`Final script saved: ${filepath}`);
+    logger.info(`Final script saved: ${filepath}`);
     return filepath;
   }
 }

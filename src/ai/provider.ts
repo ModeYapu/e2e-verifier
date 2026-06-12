@@ -6,6 +6,7 @@
 import type { ChatMessage } from '../types/common';
 import { LLMRegistry } from '../llm/llm-registry';
 import { InfrastructureError, ValidationError } from '../utils/errors';
+import { logger } from '../utils/logger';
 
 /**
  * Options for AI provider operations
@@ -311,7 +312,7 @@ export class FallbackProvider implements AIProvider {
         return await this.primary.chat(messages, options);
       }
     } catch (error) {
-      console.warn(`Primary provider ${this.primary.getName()} failed, trying secondary:`, error);
+      logger.warn(`Primary provider ${this.primary.getName()} failed, trying secondary: ${error}`);
     }
 
     if (!this.secondary.isAvailable()) {
@@ -327,7 +328,7 @@ export class FallbackProvider implements AIProvider {
         return await this.primary.analyzeImage(imageUrl, prompt, options);
       }
     } catch (error) {
-      console.warn(`Primary provider ${this.primary.getName()} failed for image analysis, trying secondary:`, error);
+      logger.warn(`Primary provider ${this.primary.getName()} failed for image analysis, trying secondary: ${error}`);
     }
 
     if (!this.secondary.isAvailable()) {

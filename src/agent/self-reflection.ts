@@ -7,6 +7,7 @@ import { ScriptEngine } from './script-engine';
 import { ReflectionResult, ScriptExecutionResult } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 /**
  * Self-Reflection Gate to validate agent completion claims
@@ -25,9 +26,9 @@ export class SelfReflectionGate {
    * @returns Reflection result with pass/fail and evidence
    */
   async validate(script: string, url: string): Promise<ReflectionResult> {
-    console.log('\n=== Starting Self-Reflection Validation ===');
-    console.log(`Target URL: ${url}`);
-    console.log(`Script length: ${script.length} characters`);
+    logger.info('=== Starting Self-Reflection Validation ===');
+    logger.info(`Target URL: ${url}`);
+    logger.info(`Script length: ${script.length} characters`);
 
     const evidence: string[] = [];
     const screenshotAnalysis: ReflectionResult['screenshotAnalysis'] = {
@@ -49,13 +50,13 @@ export class SelfReflectionGate {
       const scriptPath = this.scriptEngine.writeScript(script, 'reflection-test');
       
       // Execute the script
-      console.log('Executing script for reflection...');
+      logger.info('Executing script for reflection...');
       const result = await this.scriptEngine.executeScript(scriptPath, {
         timeout: 30000
       });
 
       // Analyze execution results
-      console.log('Analyzing execution results...');
+      logger.info('Analyzing execution results...');
 
       // Check exit code and success status
       if (result.exitCode !== 0 || !result.success) {
@@ -100,7 +101,7 @@ export class SelfReflectionGate {
               screenshotAnalysis.errors.push(analysis.error);
             }
           } catch (error) {
-            console.warn(`Failed to analyze screenshot ${screenshotPath}:`, error);
+            logger.warn(`Failed to analyze screenshot ${screenshotPath}: ${error}`);
           }
         }
 
@@ -117,10 +118,10 @@ export class SelfReflectionGate {
       // Determine if validation passed
       const passed = this.determinePassStatus(result, evidence, consoleAnalysis);
 
-      console.log(`=== Reflection Result: ${passed ? 'PASSED' : 'FAILED'} ===`);
-      console.log(`Evidence collected: ${evidence.length} items`);
-      console.log(`Screenshots: ${screenshotAnalysis.totalScreenshots}`);
-      console.log(`Console errors: ${consoleAnalysis.totalErrors}`);
+      logger.info(`=== Reflection Result: ${passed ? 'PASSED' : 'FAILED'} ===`);
+      logger.info(`Evidence collected: ${evidence.length} items`);
+      logger.info(`Screenshots: ${screenshotAnalysis.totalScreenshots}`);
+      logger.info(`Console errors: ${consoleAnalysis.totalErrors}`);
 
       return {
         passed,
@@ -132,7 +133,7 @@ export class SelfReflectionGate {
 
     } catch (error) {
       const errorMessage = `Reflection validation error: ${error}`;
-      console.error(errorMessage);
+      logger.error(errorMessage);
       
       return {
         passed: false,
@@ -213,7 +214,7 @@ export class SelfReflectionGate {
 
     // Should have captured screenshots (visual evidence)
     if (result.screenshots.length === 0) {
-      console.warn('No screenshots captured - weak evidence');
+      logger.warn('No screenshots captured - weak evidence');
       // Don't fail completely, but flag as weak
     }
 
@@ -274,7 +275,7 @@ export class SelfReflectionGate {
       // Very basic structural validation
       return true;
     } catch (error) {
-      console.error('Quick validation failed:', error);
+      logger.error(`Quick validation failed: ${error}`);
       return false;
     }
   }

@@ -5,6 +5,7 @@
 
 import { AgentConfig, LLMResponse, ScriptActionType } from './types';
 import type { ChatMessage } from '../types/common';
+import { logger } from '../utils/logger';
 
 /**
  * OpenAI-compatible API response structure
@@ -81,15 +82,15 @@ export class LLMClient {
         const response = await this.makeRequest(systemPrompt, messageHistory, timeout);
         const parsed = this.parseResponse(response);
         
-        console.log(`LLM request succeeded (attempt ${attempt + 1}/${retries})`);
+        logger.info(`LLM request succeeded (attempt ${attempt + 1}/${retries})`);
         return parsed;
       } catch (error) {
         lastError = error as Error;
-        console.error(`LLM request failed (attempt ${attempt + 1}/${retries}):`, error);
+        logger.error(`LLM request failed (attempt ${attempt + 1}/${retries}): ${error}`);
 
         if (attempt < retries - 1) {
           const delay = retryDelay * Math.pow(2, attempt); // Exponential backoff
-          console.log(`Retrying in ${delay}ms...`);
+          logger.info(`Retrying in ${delay}ms...`);
           await this.sleep(delay);
         }
       }
@@ -199,7 +200,7 @@ export class LLMClient {
     const normalizedType = type.toLowerCase().replace(/[^a-z_]/g, '_') as ScriptActionType;
 
     if (!validTypes.includes(normalizedType)) {
-      console.warn(`Unknown action type "${type}", defaulting to "execute_script"`);
+      logger.warn(`Unknown action type "${type}", defaulting to "execute_script"`);
       return 'execute_script';
     }
 

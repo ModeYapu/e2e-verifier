@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { chromium, Browser, Page, ElementHandle } from '@playwright/test';
 import { AIProvider, ProviderFactory } from './provider';
+import { logger } from '../utils/logger';
 
 /**
  * Locator mapping for caching
@@ -61,10 +62,10 @@ export class SelfHealingLocator {
           this.cache.set(key, mapping);
         }
 
-        console.log(`[SelfHealingLocator] Loaded ${mappings.length} locator mappings from cache`);
+        logger.info(`[SelfHealingLocator] Loaded ${mappings.length} locator mappings from cache`);
       }
     } catch (error) {
-      console.error('[SelfHealingLocator] Error loading cache:', error);
+      logger.error(`[SelfHealingLocator] Error loading cache: ${error}`);
     }
   }
 
@@ -85,9 +86,9 @@ export class SelfHealingLocator {
       };
 
       fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2));
-      console.log(`[SelfHealingLocator] Saved ${mappings.length} locator mappings to cache`);
+      logger.info(`[SelfHealingLocator] Saved ${mappings.length} locator mappings to cache`);
     } catch (error) {
-      console.error('[SelfHealingLocator] Error saving cache:', error);
+      logger.error(`[SelfHealingLocator] Error saving cache: ${error}`);
     }
   }
 
@@ -111,7 +112,7 @@ export class SelfHealingLocator {
         return element;
       }
     } catch (error) {
-      console.log(`[SelfHealingLocator] Original selector failed: ${selector}`);
+      logger.info(`[SelfHealingLocator] Original selector failed: ${selector}`);
     }
 
     // Try to find cached mapping
@@ -120,7 +121,7 @@ export class SelfHealingLocator {
     const cachedMapping = this.cache.get(cacheKey);
 
     if (cachedMapping) {
-      console.log(`[SelfHealingLocator] Trying cached selector: ${cachedMapping.newSelector}`);
+      logger.info(`[SelfHealingLocator] Trying cached selector: ${cachedMapping.newSelector}`);
       try {
         const element = await page.waitForSelector(cachedMapping.newSelector, { timeout: 1000 });
         if (element) {
@@ -130,12 +131,12 @@ export class SelfHealingLocator {
           return element;
         }
       } catch (error) {
-        console.log(`[SelfHealingLocator] Cached selector also failed: ${cachedMapping.newSelector}`);
+        logger.info(`[SelfHealingLocator] Cached selector also failed: ${cachedMapping.newSelector}`);
       }
     }
 
     // Use AI to find new selector
-    console.log(`[SelfHealingLocator] Using AI to find new selector for: ${selector}`);
+    logger.info(`[SelfHealingLocator] Using AI to find new selector for: ${selector}`);
     const analysis = await this.analyzePageAndFindSelector(page, selector);
 
     if (analysis.suggestedSelector) {
@@ -154,11 +155,11 @@ export class SelfHealingLocator {
           this.cache.set(cacheKey, mapping);
           this.saveCache();
 
-          console.log(`[SelfHealingLocator] AI found working selector: ${analysis.suggestedSelector}`);
+          logger.info(`[SelfHealingLocator] AI found working selector: ${analysis.suggestedSelector}`);
           return element;
         }
       } catch (error) {
-        console.log(`[SelfHealingLocator] AI suggested selector also failed: ${analysis.suggestedSelector}`);
+        logger.info(`[SelfHealingLocator] AI suggested selector also failed: ${analysis.suggestedSelector}`);
       }
     }
 
@@ -179,11 +180,11 @@ export class SelfHealingLocator {
           this.cache.set(cacheKey, mapping);
           this.saveCache();
 
-          console.log(`[SelfHealingLocator] Alternative selector worked: ${altSelector}`);
+          logger.info(`[SelfHealingLocator] Alternative selector worked: ${altSelector}`);
           return element;
         }
       } catch (error) {
-        console.log(`[SelfHealingLocator] Alternative selector failed: ${altSelector}`);
+        logger.info(`[SelfHealingLocator] Alternative selector failed: ${altSelector}`);
       }
     }
 
@@ -249,7 +250,7 @@ Respond in JSON format:
         alternativeSelectors: analysis.alternativeSelectors || []
       };
     } catch (error) {
-      console.error('[SelfHealingLocator] Error analyzing page:', error);
+      logger.error(`[SelfHealingLocator] Error analyzing page: ${error}`);
 
       // Return fallback analysis
       return {
@@ -295,7 +296,7 @@ Respond in JSON format:
 
       return structure;
     } catch (error) {
-      console.error('[SelfHealingLocator] Error getting page structure:', error);
+      logger.error(`[SelfHealingLocator] Error getting page structure: ${error}`);
       return 'Unable to retrieve page structure';
     }
   }
@@ -346,7 +347,7 @@ Respond in JSON format:
   clearCache(): void {
     this.cache.clear();
     this.saveCache();
-    console.log('[SelfHealingLocator] Cache cleared');
+    logger.info('[SelfHealingLocator] Cache cleared');
   }
 
   /**

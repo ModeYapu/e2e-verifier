@@ -7,6 +7,7 @@ import * as path from 'path';
 import { chromium, Browser, Page } from '@playwright/test';
 import { AIProvider, ProviderFactory } from './provider';
 import { SiteConfig } from '../types';
+import { logger } from '../utils/logger';
 
 /**
  * Feature detection result
@@ -102,20 +103,20 @@ export class SmartTestGenerator {
   async generateFromUrl(url: string, options: TestGeneratorOptions = {}): Promise<GeneratedConfig> {
     await this.initBrowser();
 
-    console.log(`[SmartTestGenerator] Analyzing URL: ${url}`);
+    logger.info(`[SmartTestGenerator] Analyzing URL: ${url}`);
 
     // Navigate to URL
     try {
       await this.page!.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
     } catch (error) {
-      console.error(`[SmartTestGenerator] Error navigating to URL:`, error);
+      logger.error(`[SmartTestGenerator] Error navigating to URL: ${error}`);
       throw new Error(`Failed to navigate to URL: ${url}`);
     }
 
     // Analyze page structure
     const analysis = await this.analyzePage(this.page!, url);
 
-    console.log(`[SmartTestGenerator] Detected ${analysis.features.length} features`);
+    logger.info(`[SmartTestGenerator] Detected ${analysis.features.length} features`);
 
     // Generate site configuration
     const siteConfig = this.generateSiteConfig(analysis, options);
@@ -207,7 +208,7 @@ Respond in JSON format:
         testScenarios: aiAnalysis.testScenarios || []
       };
     } catch (error) {
-      console.error('[SmartTestGenerator] Error analyzing page:', error);
+      logger.error(`[SmartTestGenerator] Error analyzing page: ${error}`);
 
       // Return fallback analysis
       return this.getFallbackAnalysis(page, url);
@@ -248,7 +249,7 @@ Respond in JSON format:
 
       return structure;
     } catch (error) {
-      console.error('[SmartTestGenerator] Error getting page structure:', error);
+      logger.error(`[SmartTestGenerator] Error getting page structure: ${error}`);
       return 'Unable to retrieve page structure';
     }
   }
@@ -318,7 +319,7 @@ Respond in JSON format:
 
       return elements;
     } catch (error) {
-      console.error('[SmartTestGenerator] Error getting interactive elements:', error);
+      logger.error(`[SmartTestGenerator] Error getting interactive elements: ${error}`);
       return [];
     }
   }
@@ -657,7 +658,7 @@ ${assertions}
     }
 
     fs.writeFileSync(configPath, JSON.stringify(generatedConfig.siteConfig, null, 2));
-    console.log(`[SmartTestGenerator] Saved site config to: ${configPath}`);
+    logger.info(`[SmartTestGenerator] Saved site config to: ${configPath}`);
 
     // Save custom scripts
     if (generatedConfig.customScripts.length > 0) {
@@ -669,7 +670,7 @@ ${assertions}
       generatedConfig.customScripts.forEach((script, index) => {
         const scriptPath = path.join(scriptsDir, `${siteName}-scenario-${index + 1}.test.ts`);
         fs.writeFileSync(scriptPath, script);
-        console.log(`[SmartTestGenerator] Saved script to: ${scriptPath}`);
+        logger.info(`[SmartTestGenerator] Saved script to: ${scriptPath}`);
       });
     }
 
