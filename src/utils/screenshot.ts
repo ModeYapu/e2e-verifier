@@ -1,6 +1,7 @@
 import { Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from './logger';
 
 export interface ScreenshotOptions {
   name: string;
@@ -87,7 +88,7 @@ export class ScreenshotUtil {
             timestamp: new Date().toISOString()
           });
         } catch (error) {
-          console.error(`Error taking screenshot "${config.name}":`, error);
+          logger.error(`Error taking screenshot "${config.name}": ${error}`);
         }
       }
     }

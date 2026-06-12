@@ -5,6 +5,7 @@
 import * as path from 'path';
 import { Project, Member, CreateProjectRequest, UpdateProjectRequest } from './types';
 import { JsonStorage } from '../storage/json-storage';
+import { logger } from '../utils/logger';
 
 const PROJECTS_FILE = 'projects';
 const STORAGE_DIR = path.join(process.cwd(), 'data');
@@ -21,7 +22,7 @@ function loadProjects(): Project[] {
     const projects = storage.get(PROJECTS_FILE) as Project[] | null;
     return projects || [];
   } catch (e) {
-    console.error('Failed to load projects:', e);
+    logger.error(`Failed to load projects: ${e}`);
     return [];
   }
 }

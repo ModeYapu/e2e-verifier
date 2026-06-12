@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ReportData, TestResult, UnifiedResult, ExecutionStatus, Artifact, Evidence, UnifiedReportData } from '../types';
 import { HtmlReportGenerator } from './html-report';
+import { logger } from './logger';
 
 export class ReportGenerator {
   private htmlGenerator: HtmlReportGenerator;
@@ -126,7 +127,7 @@ export class ReportGenerator {
   }
 
   printSummary(reportData: ReportData): void {
-    console.log(this.generateSummary(reportData));
+    logger.info(this.generateSummary(reportData));
   }
 
   // ============================================================
@@ -287,7 +288,7 @@ export class ReportGenerator {
 
     lines.push('='.repeat(60));
 
-    console.log(lines.join('\n'));
+    logger.info(lines.join('\n'));
   }
 
   private formatStatus(status: ExecutionStatus): string {

@@ -272,8 +272,31 @@
 - **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
 - 390 处 console.log/warn/error 待替换 (主要在 CLI 工具和其他模块)
 
+### Round 20 — 2026-06-12
+- **Slice**: P4-batch6 + P4-batch7: Replace console calls with logger in src/explorer/ + src/intelligence/
+- **Changes**:
+  - src/explorer/: No changes needed - all console calls are in template-generated code
+  - src/intelligence/context-manager.ts: 3× console.error/warn → logger
+  - src/intelligence/dom-filter.ts: 1× console.error → logger.error
+  - src/intelligence/experience-planner.ts: 8× console.log → logger.info
+  - src/intelligence/experience-store.ts: 4× console.log/error → logger
+  - src/intelligence/multi-strategy-evaluator.ts: 9× console.log/error → logger
+  - src/intelligence/multi-test-orchestrator.ts: 2× console.log/warn → logger
+  - src/intelligence/orchestrator.ts: 17× console.log/error → logger
+  - 共修复 44 处 console 调用
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: cde3de0
+
+## Current State
+
+### Code Stats
+- 113 个 TypeScript 文件，~29K 行代码
+- **208 个自动化测试全通过**
+- **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
+- 346 处 console.log/warn/error 待替换
+
 ### NEXT_SLICE
-**P4-batch5 (continued)**: Replace console calls in remaining files (CLI tools have many console outputs, some acceptable)
+**P4-batch8**: Replace console calls with logger in src/runner/ + src/engine/ directories
 
 ## Site Configs
 

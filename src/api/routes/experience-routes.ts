@@ -6,6 +6,7 @@
 
 import express, { Request, Response } from 'express';
 import { IntelligentOrchestrator } from '../../intelligence/orchestrator';
+import { logger } from '../../utils/logger';
 
 const router = express.Router();
 
@@ -42,7 +43,7 @@ router.get('/experiences', (req: Request, res: Response) => {
       count: experiences.length,
     });
   } catch (error) {
-    console.error('Error querying experiences:', error);
+    logger.error(`Error querying experiences: ${error}`);
     res.status(500).json({ error: 'Failed to query experiences' });
   }
 });
@@ -70,7 +71,7 @@ router.get('/experiences/stats', (req: Request, res: Response) => {
 
     res.json(stats);
   } catch (error) {
-    console.error('Error getting experience statistics:', error);
+    logger.error(`Error getting experience statistics: ${error}`);
     res.status(500).json({ error: 'Failed to get experience statistics' });
   }
 });
@@ -114,7 +115,7 @@ router.get('/experiences/similar', (req: Request, res: Response) => {
       count: similarExperiences.length,
     });
   } catch (error) {
-    console.error('Error querying similar experiences:', error);
+    logger.error(`Error querying similar experiences: ${error}`);
     res.status(500).json({ error: 'Failed to query similar experiences' });
   }
 });
@@ -142,7 +143,7 @@ router.get('/experiences/suggestions', async (req: Request, res: Response) => {
 
     res.json(suggestions);
   } catch (error) {
-    console.error('Error getting improvement suggestions:', error);
+    logger.error(`Error getting improvement suggestions: ${error}`);
     res.status(500).json({ error: 'Failed to get improvement suggestions' });
   }
 });
@@ -183,7 +184,7 @@ router.get('/experiences/strategies', (req: Request, res: Response) => {
       count: strategies.length,
     });
   } catch (error) {
-    console.error('Error getting strategy information:', error);
+    logger.error(`Error getting strategy information: ${error}`);
     res.status(500).json({ error: 'Failed to get strategy information' });
   }
 });
@@ -213,7 +214,7 @@ router.delete('/experiences', (req: Request, res: Response) => {
       count: experienceStore.getCount(),
     });
   } catch (error) {
-    console.error('Error clearing experiences:', error);
+    logger.error(`Error clearing experiences: ${error}`);
     res.status(500).json({ error: 'Failed to clear experiences' });
   }
 });

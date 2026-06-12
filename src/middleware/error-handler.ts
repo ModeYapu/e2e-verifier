@@ -4,6 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger';
 
 export interface ErrorResponse {
   error: string;
@@ -40,9 +41,9 @@ export function errorHandler(
   next: NextFunction
 ): void {
   // Log error with context
-  console.error(`[Error Handler] ${new Date().toISOString()} - ${req.method} ${req.path}:`, err.message);
+  logger.error(`[Error Handler] ${new Date().toISOString()} - ${req.method} ${req.path}: ${err.message}`);
   if (err.stack) {
-    console.error(err.stack);
+    logger.error(err.stack);
   }
 
   // Determine error code

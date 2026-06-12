@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 export interface ApiKey {
   id: string;
@@ -23,7 +24,7 @@ function loadKeys(): ApiKey[] {
       return JSON.parse(fs.readFileSync(KEYS_FILE, 'utf-8'));
     }
   } catch (e) {
-    console.error('Failed to load API keys:', e);
+    logger.error(`Failed to load API keys: ${e}`);
   }
   return [];
 }
