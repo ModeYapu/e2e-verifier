@@ -326,7 +326,27 @@
 ### P4 Complete ✅
 All non-CLI, non-template console calls have been replaced with structured logger.
 
+### Round 22 — 2026-06-12
+- **Slice**: P5-batch1 (partial): Apply error classification to src/server/services/ai-service
+- **Changes**:
+  - Added error classification imports (InfrastructureError, ValidationError)
+  - generateTests: ValidationError.missingField for url validation
+  - generateTests: InfrastructureError.providerUnavailable for AI provider failures
+  - suggestFixes: ValidationError.invalidValue for job status validation
+  - suggestFixes: InfrastructureError.providerUnavailable for AI provider failures
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: 8ce4221
+
+## Current State
+
+### Code Stats
+- 113 个 TypeScript 文件，~29K 行代码
+- **208 个自动化测试全通过**
+- **0 个有害 `: any` 类型**（仅剩 1 处字符串字面量 "fix: any (optional)"，可接受）
+- 253 处 console.log/warn/error 待替换 (主要在 CLI 工具 - 这些是用户输出，可接受)
+
 ### NEXT_SLICE
+**P5-batch2**: Apply error classification to catch blocks in src/agent/ + src/ai/
 **P5-batch1**: Apply error classification (src/utils/errors.ts: InfrastructureError|PageError|AssertionError|TimeoutError) to catch blocks in src/server/
 
 ## Site Configs

@@ -6,6 +6,7 @@
 import { AgentConfig, LLMResponse, ScriptActionType } from './types';
 import type { ChatMessage } from '../types/common';
 import { logger } from '../utils/logger';
+import { InfrastructureError } from '../utils/errors';
 
 /**
  * OpenAI-compatible API response structure
@@ -96,7 +97,7 @@ export class LLMClient {
       }
     }
 
-    throw new Error(`LLM request failed after ${retries} attempts: ${lastError?.message}`);
+    throw InfrastructureError.providerUnavailable(`LLM request failed after ${retries} attempts: ${lastError?.message}`);
   }
 
   /**

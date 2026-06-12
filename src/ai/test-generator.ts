@@ -8,6 +8,7 @@ import { chromium, Browser, Page } from '@playwright/test';
 import { AIProvider, ProviderFactory } from './provider';
 import { SiteConfig } from '../types';
 import { logger } from '../utils/logger';
+import { PageError, InfrastructureError } from '../utils/errors';
 
 /**
  * Feature detection result
@@ -110,7 +111,7 @@ export class SmartTestGenerator {
       await this.page!.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
     } catch (error) {
       logger.error(`[SmartTestGenerator] Error navigating to URL: ${error}`);
-      throw new Error(`Failed to navigate to URL: ${url}`);
+      throw PageError.navigationFailed(url, error instanceof Error ? error.message : String(error));
     }
 
     // Analyze page structure
