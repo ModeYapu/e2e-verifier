@@ -459,6 +459,8 @@ export class HtmlReportGenerator {
     }
     .step-item.passed { border-left-color: #3fb950; }
     .step-item.failed { border-left-color: #f85149; }
+    .step-item.warning { border-left-color: #d29922; }
+    .step-item.info { border-left-color: #58a6ff; }
     .step-name { font-size: 13px; }
     .step-status {
       font-size: 11px;
@@ -468,6 +470,49 @@ export class HtmlReportGenerator {
     }
     .step-status.passed { background: #238636; color: #fff; }
     .step-status.failed { background: #da3633; color: #fff; }
+    .step-status.warning { background: #966600; color: #fff; }
+    .step-status.info { background: #1f6feb; color: #fff; }
+
+    .severity-badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .severity-badge.critical { background: #da3633; color: #fff; }
+    .severity-badge.warning { background: #d29922; color: #fff; }
+    .severity-badge.info { background: #1f6feb; color: #fff; }
+
+    .root-cause-box {
+      background: #1c1e24;
+      border-left: 3px solid #f85149;
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+    .root-cause-title {
+      color: #f85149;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .root-cause-message {
+      color: #c9d1d9;
+      line-height: 1.4;
+    }
+    .root-cause-category {
+      display: inline-block;
+      background: #21262d;
+      color: #8b949e;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
 
     .evidence-section {
       background: #1c1e24;
@@ -805,25 +850,64 @@ export class HtmlReportGenerator {
     const durationPct = Math.min((durationMs / maxDuration) * 100, 100);
     const durationClass = durationMs < 3000 ? 'fast' : durationMs < 10000 ? 'medium' : 'slow';
 
+    // Determine severity from status
+    const severity = this.getSeverityFromStatus(result.status);
+    const severityBadge = severity !== 'info' ? `<span class="severity-badge ${severity}">${severity}</span>` : '';
+
     // Find screenshot artifacts for inline display
     const screenshots = result.artifacts.filter(a => a.type === 'screenshot');
     const screenshotHtml = screenshots.map(a =>
       `<img class="screenshot-inline" src="${a.path}" alt="${a.type}" onerror="this.style.display='none'">`
     ).join('');
 
+    // Generate root cause box if present
+    let rootCauseHtml = '';
+    if (result.rootCause) {
+      rootCauseHtml = `
+        <div class="root-cause-box">
+          <div class="root-cause-title">🔴 Root Cause</div>
+          <div class="root-cause-message">${this.escapeHtml(result.rootCause.message)}</div>
+          <div class="root-cause-category">${result.rootCause.category}</div>
+        </div>
+      `;
+    }
+
     return `
       <div class="step-item ${statusClass}">
         <div class="step-name">
           ${stepId}
           <span class="step-status ${statusClass}">${result.status}</span>
+          ${severityBadge}
           ${durationMs > 0 ? `<span style="color:#8b949e;font-size:11px;margin-left:8px">${durationMs}ms</span>` : ''}
         </div>
         ${durationMs > 0 ? `<div class="duration-bar"><div class="duration-fill ${durationClass}" style="width:${durationPct}%"></div></div>` : ''}
         ${screenshotHtml}
         ${result.artifacts.length > 0 ? this.generateArtifactsHtml(result.artifacts) : ''}
-        ${result.rootCause ? `<div style="color:#f85149;font-size:12px;margin-top:4px">[${result.rootCause.category}] ${result.rootCause.message}</div>` : ''}
+        ${rootCauseHtml}
       </div>
     `;
+  }
+
+  private getSeverityFromStatus(status: string): string {
+    switch (status) {
+      case 'assertion_failed':
+      case 'infra_failed':
+        return 'critical';
+      case 'flaky':
+      case 'blocked':
+        return 'warning';
+      default:
+        return 'info';
+    }
+  }
+
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   private generateArtifactsHtml(artifacts: any[]): string {
