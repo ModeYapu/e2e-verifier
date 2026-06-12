@@ -19,6 +19,7 @@ import {
 } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Logger } from '../utils/logger';
 
 /**
  * Error from child_process.exec with additional properties
@@ -121,6 +122,7 @@ export class AgentLoop {
   private contextManager: ContextManager;
   private state: AgentLoopState;
   private startTime: number = 0;
+  private logger: Logger;
 
   constructor(config: AgentConfig) {
     this.config = config;
@@ -129,6 +131,7 @@ export class AgentLoop {
     this.reflectionGate = new SelfReflectionGate(this.scriptEngine);
     this.contextCompactor = new ContextCompactor(DEFAULT_COMPACTOR_CONFIG);
     this.contextManager = new ContextManager();
+    this.logger = new Logger({ prefix: 'AgentLoop' });
 
     this.state = {
       currentStep: 0,
@@ -145,11 +148,11 @@ export class AgentLoop {
    * @returns Complete agent result with all steps and final script
    */
   async run(task: string, url: string): Promise<AgentResult> {
-    console.log('=== Starting Agent Deep Verification ===');
-    console.log(`Task: ${task}`);
-    console.log(`URL: ${url}`);
-    console.log(`Model: ${this.config.model}`);
-    console.log(`Max Steps: ${this.config.maxSteps}`);
+    this.logger.info('=== Starting Agent Deep Verification ===');
+    this.logger.info(`Task: ${task}`);
+    this.logger.info(`URL: ${url}`);
+    this.logger.info(`Model: ${this.config.model}`);
+    this.logger.info(`Max Steps: ${this.config.maxSteps}`);
 
     this.startTime = Date.now();
     this.state = {
@@ -170,13 +173,13 @@ export class AgentLoop {
     while (!this.state.isDone && this.state.currentStep < this.config.maxSteps) {
       this.state.currentStep++;
 
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`Step ${this.state.currentStep}/${this.config.maxSteps}`);
-      console.log(`${'='.repeat(60)}`);
+      this.logger.info(`${'='.repeat(60)}`);
+      this.logger.info(`Step ${this.state.currentStep}/${this.config.maxSteps}`);
+      this.logger.info(`${'='.repeat(60)}`);
 
       // Check if context needs compaction
       if (this.contextCompactor.shouldCompactBySteps(this.state.currentStep)) {
-        console.log('Compacting context window...');
+        this.logger.warn('Compacting context window...');
         this.compactContext(steps);
       }
 
@@ -192,19 +195,19 @@ export class AgentLoop {
 
       // Check if agent is done
       if (this.state.lastAction?.done) {
-        console.log('Agent claims task is complete. Running self-reflection...');
+        this.logger.info('Agent claims task is complete. Running self-reflection...');
         const reflectionResult = await this.runSelfReflection(this.state.lastAction.content, url);
-        
+
         if (reflectionResult.passed) {
-          console.log('✅ Self-reflection PASSED. Task is truly complete.');
+          this.logger.info('✅ Self-reflection PASSED. Task is truly complete.');
           this.state.isDone = true;
           finalScript = this.state.lastAction.content;
-          
+
           // Add reflection result to final step
           steps[steps.length - 1].output += `\n\n[REFLECTION]: ${reflectionResult.evidence.join('; ')}`;
         } else {
-          console.log('❌ Self-reflection FAILED. Agent will retry.');
-          console.log(`Failure reason: ${reflectionResult.failureReason}`);
+          this.logger.error('❌ Self-reflection FAILED. Agent will retry.');
+          this.logger.error(`Failure reason: ${reflectionResult.failureReason}`);
           
           // Add reflection failure to context and continue
           const reflectionMessage = `Self-reflection failed: ${reflectionResult.failureReason}. Please fix the issues and try again.`;
@@ -216,7 +219,7 @@ export class AgentLoop {
 
       // Safety check for infinite loops
       if (this.state.currentStep >= this.config.maxSteps) {
-        console.log(`⚠️ Reached maximum step limit (${this.config.maxSteps})`);
+        this.logger.warn(`⚠️ Reached maximum step limit (${this.config.maxSteps})`);
         if (!this.state.isDone) {
           steps.push({
             step: this.state.currentStep + 1,
@@ -231,13 +234,13 @@ export class AgentLoop {
 
     const duration = Date.now() - this.startTime;
 
-    console.log(`\n${'='.repeat(60)}`);
-    console.log('Agent Execution Complete');
-    console.log(`Total Steps: ${steps.length}`);
-    console.log(`Duration: ${duration}ms`);
-    console.log(`Total Tokens: ${this.state.totalTokens}`);
-    console.log(`Result: ${this.state.isDone ? '✅ PASSED' : '❌ INCOMPLETE'}`);
-    console.log(`${'='.repeat(60)}`);
+    this.logger.info(`${'='.repeat(60)}`);
+    this.logger.info('Agent Execution Complete');
+    this.logger.info(`Total Steps: ${steps.length}`);
+    this.logger.info(`Duration: ${duration}ms`);
+    this.logger.info(`Total Tokens: ${this.state.totalTokens}`);
+    this.logger.info(`Result: ${this.state.isDone ? '✅ PASSED' : '❌ INCOMPLETE'}`);
+    this.logger.info(`${'='.repeat(60)}`);
 
     return {
       task,
@@ -292,7 +295,7 @@ export class AgentLoop {
 
     } catch (error) {
       const errorMessage = `Step execution failed: ${error}`;
-      console.error(errorMessage);
+      this.logger.error(errorMessage);
 
       return {
         step: this.state.currentStep,
@@ -309,7 +312,7 @@ export class AgentLoop {
    * Execute a specific action
    */
   private async executeAction(action: ScriptAction, url: string): Promise<string> {
-    console.log(`Executing action: ${action.type}`);
+    this.logger.debug(`Executing action: ${action.type}`);
 
     switch (action.type) {
       case 'write_script':
@@ -369,7 +372,7 @@ export class AgentLoop {
         }
       }
 
-      console.log(`Executing script: ${scriptPath}`);
+      this.logger.debug(`Executing script: ${scriptPath}`);
       const result = await this.scriptEngine.executeScript(scriptPath);
 
       let output = `Exit code: ${result.exitCode}\n`;
@@ -394,7 +397,7 @@ export class AgentLoop {
    * Execute a shell command directly and return output
    */
   private async executeShellCommand(command: string): Promise<string> {
-    console.log(`Executing shell command: ${command}`);
+    this.logger.debug(`Executing shell command: ${command}`);
     try {
       const { exec } = require('child_process');
       const { promisify } = require('util');
@@ -424,7 +427,7 @@ export class AgentLoop {
    * Handle reflect action
    */
   private async handleReflect(content: string, url: string): Promise<string> {
-    console.log('Agent performing self-reflection...');
+    this.logger.info('Agent performing self-reflection...');
     
     try {
       const reflectionResult = await this.reflectionGate.validate(content, url);
@@ -498,7 +501,7 @@ export class AgentLoop {
       { role: 'user', content: summaryMessage }
     ];
 
-    console.log('Context compacted successfully with ContextManager');
+    this.logger.info('Context compacted successfully with ContextManager');
   }
 
   /**
