@@ -48,6 +48,17 @@
 - **Verified**: tsc clean, jest 208/208 pass
 - **Commit**: 62cb6cf
 
+### Round 6 — 2026-06-12
+- **Slice**: P1: 拆分 autonomous-explorer.ts (945行) → 3 modules
+- **Changes**:
+  - 新增 src/explorer/explorer-core.ts: 主类 AutonomousExplorer + 浏览器资源管理
+  - 新增 src/explorer/explorer-strategy.ts: 4阶段编排 (Discovery, Planning, Testing, Reporting)
+  - 新增 src/explorer/explorer-tools.ts: 工具函数 (脚本生成、合并、认证、SiteMap)
+  - 更新 src/explorer/autonomous-explorer.ts: 重导出模块，保持向后兼容
+  - 无破坏性变更 - AutonomousExplorer 类仍从原路径导出
+- **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: <pending>
+
 ## Current State
 
 ### Code Stats
@@ -57,7 +68,7 @@
 - 553 处 console.log/warn/error 待替换
 
 ### NEXT_SLICE
-P1: 拆分 autonomous-explorer.ts (944行) → explorer-core + explorer-strategy + explorer-tools
+P2: 拆分 evaluator.ts (914行) → evaluator-core + evaluator-report
 
 ## Site Configs
 - `travel-planner.json` — 3 sites, 31 checks
