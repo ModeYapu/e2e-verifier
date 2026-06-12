@@ -87,6 +87,15 @@
   - 修复 src/server/routes/dashboard-routes.ts: 添加 isTestResult 类型守卫，安全访问 passed 属性
   - 解决 TypeScript 编译错误（webhook.ts line 195, dashboard-routes.ts lines 103/107/157）
 - **Verified**: tsc clean, jest 208/208 pass
+- **Commit**: b005b8e
+
+### Round 10 — 2026-06-12
+- **Slice**: P3 (continued): Fix :any types in checks/performance.ts
+- **Changes**:
+  - 新增 PerformanceEntryWithStart, PerformanceResourceEntryWithTransfer 接口
+  - 替换 :any 为具体 Performance API 类型
+  - 共修复 3 处 `: any` 类型
+- **Verified**: tsc clean, jest 208/208 pass
 - **Commit**: <pending>
 
 ## Current State

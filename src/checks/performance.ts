@@ -1,6 +1,15 @@
 import { Page } from '@playwright/test';
 import { PerformanceMetrics, PerformanceThresholds } from '../types';
 
+// Types for Performance API entries that may not be fully covered by lib
+interface PerformanceEntryWithStart extends PerformanceEntry {
+  startTime: number;
+}
+
+interface PerformanceResourceEntryWithTransfer extends PerformanceResourceTiming {
+  transferSize: number;
+}
+
 const DEFAULT_THRESHOLDS: Required<PerformanceThresholds> = {
   fcp: 3000,
   lcp: 4000,
@@ -17,8 +26,8 @@ export class PerformanceChecker {
     try {
       // Get performance navigation timing
       const navigationTiming = await this.page.evaluate(() => {
-        const entries = performance.getEntriesByType('navigation');
-        const timing = entries[0] as any;
+        const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+        const timing = entries[0];
         return timing ? {
           domContentLoaded: timing.domContentLoadedEventEnd - timing.domContentLoadedEventStart,
           loadTime: timing.loadEventEnd - timing.loadEventStart,
@@ -30,9 +39,8 @@ export class PerformanceChecker {
 
       // Get Web Vitals (First Contentful Paint)
       const paintTiming = await this.page.evaluate(() => {
-        const entries = performance.getEntriesByType('paint');
-        const paints = entries as any[];
-        const fcp = paints.find((p: any) => p.name === 'first-contentful-paint');
+        const entries = performance.getEntriesByType('paint') as PerformanceEntryWithStart[];
+        const fcp = entries.find((p) => p.name === 'first-contentful-paint');
         return fcp ? fcp.startTime : undefined;
       });
       metrics.fcp = paintTiming;
@@ -42,8 +50,8 @@ export class PerformanceChecker {
 
       // Calculate page weight (transfer size)
       const pageWeight = await this.page.evaluate(() => {
-        const entries = performance.getEntriesByType('resource') as any[];
-        return entries.reduce((total: number, entry: any) => total + (entry.transferSize || 0), 0);
+        const entries = performance.getEntriesByType('resource') as PerformanceResourceEntryWithTransfer[];
+        return entries.reduce((total: number, entry) => total + (entry.transferSize || 0), 0);
       });
       metrics.pageWeight = pageWeight;
 
@@ -58,11 +66,12 @@ export class PerformanceChecker {
     try {
       return await this.page.evaluate(() => {
         return new Promise<number | undefined>((resolve) => {
-          new (window as any).PerformanceObserver((list: any) => {
-            const entries = list.getEntries();
+          const observer = new PerformanceObserver((list) => {
+            const entries = list.getEntries() as PerformanceEntryWithStart[];
             const lastEntry = entries[entries.length - 1];
             resolve(lastEntry ? lastEntry.startTime : undefined);
-          }).observe({ entryTypes: ['largest-contentful-paint'] });
+          });
+          observer.observe({ entryTypes: ['largest-contentful-paint'] });
 
           // Timeout after 5 seconds
           setTimeout(() => resolve(undefined), 5000);
