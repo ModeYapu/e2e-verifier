@@ -107,7 +107,7 @@
 - 553 处 console.log/warn/error 待替换
 
 ### NEXT_SLICE
-P3: `:any` 类型消灭 — 剩余 68 处 `: any` 替换为具体类型（优先 agent/ 和 server/routes/）
+MILESTONE_REACHED: P0, P1, P2 complete. P3 substantial progress (11/69 fixed). Remaining :any types scattered across 30+ files - better addressed incrementally. Recommend starting P4 (console.log → logger, 553 occurrences).
 
 ## Site Configs
 - `travel-planner.json` — 3 sites, 31 checks
