@@ -119,7 +119,7 @@ async function main() {
     logger.info('');
     if (args.json) {
       // JSON output - keep console.log for stdout
-      console.log(JSON.stringify(reportData, null, 2));
+      logger.info(JSON.stringify(reportData, null, 2));
     } else {
       reportGenerator.printSummary(reportData);
     }

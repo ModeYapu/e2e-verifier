@@ -46,33 +46,33 @@ export class Logger {
     return `${this.color(timestamp, 'dim')} ${prefix}${message}`;
   }
 
-  debug(message: string): void {
+  debug(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.DEBUG) {
-      console.log(this.format('DEBUG', message));
+      console.log(this.format('DEBUG', message), ...args);
     }
   }
 
-  info(message: string): void {
+  info(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.INFO) {
-      console.log(this.format('INFO', message));
+      console.log(this.format('INFO', message), ...args);
     }
   }
 
-  warn(message: string): void {
+  warn(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.WARN) {
-      console.warn(this.format('WARN', this.color(message, 'yellow')));
+      console.warn(this.format('WARN', this.color(message, 'yellow')), ...args);
     }
   }
 
-  error(message: string): void {
+  error(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.ERROR) {
-      console.error(this.format('ERROR', this.color(message, 'red')));
+      console.error(this.format('ERROR', this.color(message, 'red')), ...args);
     }
   }
 
-  success(message: string): void {
+  success(message: string, ...args: unknown[]): void {
     if (this.level <= LogLevel.INFO) {
-      console.log(this.format('SUCCESS', this.color(message, 'green')));
+      console.log(this.format('SUCCESS', this.color(message, 'green')), ...args);
     }
   }
 

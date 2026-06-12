@@ -86,14 +86,14 @@ async function main() {
     const args = parseArgs();
 
     if (!args.url) {
-      console.error('Error: URL is required');
-      console.error('Usage: npm run verify:craft -- --url <url> --task <task description>');
-      console.error('Options:');
-      console.error('  --url, -u       Target URL');
-      console.error('  --task, -t      Task description in natural language');
-      console.error('  --model, -m     LLM model (default: gpt-4)');
-      console.error('  --output, -o    Output file path');
-      console.error('  --name, -n      Script name');
+      logger.error('Error: URL is required');
+      logger.error('Usage: npm run verify:craft -- --url <url> --task <task description>');
+      logger.error('Options:');
+      logger.error('  --url, -u       Target URL');
+      logger.error('  --task, -t      Task description in natural language');
+      logger.error('  --model, -m     LLM model (default: gpt-4)');
+      logger.error('  --output, -o    Output file path');
+      logger.error('  --name, -n      Script name');
       process.exit(1);
     }
 

@@ -53,15 +53,15 @@ async function main() {
     const args = parseArgs();
 
     if (!args.url) {
-      console.error('Error: URL is required');
-      console.error('Usage: npm run screenshot -- --url <url>');
-      console.error('   or: npm run screenshot -- <url>');
-      console.error('');
-      console.error('Options:');
-      console.error('  --output, -o      Output file path');
-      console.error('  --width, -w       Viewport width (default: 1920)');
-      console.error('  --height, -h      Viewport height (default: 1080)');
-      console.error('  --full-page, -f   Capture full page');
+      logger.error('Error: URL is required');
+      logger.error('Usage: npm run screenshot -- --url <url>');
+      logger.error('   or: npm run screenshot -- <url>');
+      logger.error('');
+      logger.error('Options:');
+      logger.error('  --output, -o      Output file path');
+      logger.error('  --width, -w       Viewport width (default: 1920)');
+      logger.error('  --height, -h      Viewport height (default: 1080)');
+      logger.error('  --full-page, -f   Capture full page');
       process.exit(1);
     }
 

@@ -59,7 +59,7 @@ function parseArgs(): CLIArgs {
 }
 
 function printHelp(): void {
-  console.log(`
+  logger.info(`
 e2e-verifier HTTP API Server
 
 Usage:

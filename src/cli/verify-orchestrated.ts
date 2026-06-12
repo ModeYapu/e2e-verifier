@@ -140,7 +140,7 @@ function printSummary(result: OrchestratedResult): void {
 
 function printJSONReport(result: OrchestratedResult): void {
   // JSON output - keep console.log for stdout
-  console.log('\n' + JSON.stringify(result, null, 2));
+  logger.info('\n' + JSON.stringify(result, null, 2));
 }
 
 async function saveReport(result: OrchestratedResult, outputPath: string): Promise<void> {
@@ -160,9 +160,9 @@ async function main(): Promise<void> {
     const args = parseArgs();
 
     if (!args.config) {
-      console.error('Error: Config file path is required');
-      console.error('Usage: npm run verify:orchestrated -- --config <path-to-config>');
-      console.error('   or: npm run verify:orchestrated -- <path-to-config>');
+      logger.error('Error: Config file path is required');
+      logger.error('Usage: npm run verify:orchestrated -- --config <path-to-config>');
+      logger.error('   or: npm run verify:orchestrated -- <path-to-config>');
       process.exit(1);
     }
 

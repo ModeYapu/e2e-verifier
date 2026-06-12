@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 /**
  * Explorer Tools - Utility functions for autonomous exploration
  * Script generation, merging, and helper utilities
@@ -52,12 +53,12 @@ async function runAllTests(baseUrl: string) {
   const page = await browser.newPage();
 
   try {
-    console.log('Starting E2E test suite...');
+    logger.info('Starting E2E test suite...');
 
 ${testFunctions.map((_, i) => `    await test${i + 1}(page);
-    console.log('Test ${i + 1} completed');`).join('\n')}
+    logger.info('Test ${i + 1} completed');`).join('\n')}
 
-    console.log('All tests completed');
+    logger.info('All tests completed');
   } finally {
     await browser.close();
   }
@@ -259,16 +260,16 @@ export function generateHeuristicScript(
     // Check page title is not empty
     const title = await page.title();
     if (!title || title.trim() === '') {
-      console.log('FAIL: Page title is empty');
+      logger.info('FAIL: Page title is empty');
       process.exit(1);
     }
-    console.log('INFO: Title = ' + title);`);
+    logger.info('INFO: Title = ' + title);`);
     // Check no redirect to login
     assertions.push(`
     // Check not redirected to login
     const currentUrl = page.url();
     if (currentUrl.includes('login')) {
-      console.log('FAIL: Redirected to login page');
+      logger.info('FAIL: Redirected to login page');
       process.exit(1);
     }`);
   }
@@ -287,20 +288,20 @@ export function generateHeuristicScript(
     }
     const tableCount = await page.locator('.el-table:not(.el-table .el-table), table:not(.el-table table)').count();
     if (${tableIdx} >= tableCount) {
-      console.log('INFO: Table ${tableIdx + 1} does not exist on page (only ' + tableCount + ' tables found)');
-      console.log('PASS: Table ${tableIdx + 1} has data rows');
+      logger.info('INFO: Table ${tableIdx + 1} does not exist on page (only ' + tableCount + ' tables found)');
+      logger.info('PASS: Table ${tableIdx + 1} has data rows');
     } else {
       const rows = await page.locator('.el-table__body-wrapper tbody tr, table tbody tr').nth(${tableIdx}).count();
       const emptyBlock = await page.locator('.el-table__empty-text, .el-table__empty-block').count();
       if (rows === 0 && emptyBlock === 0) {
-        console.log('FAIL: Table ${tableIdx + 1} has no rows and no empty state');
+        logger.info('FAIL: Table ${tableIdx + 1} has no rows and no empty state');
         process.exit(1);
       }
       if (rows === 0) {
-        console.log('INFO: Table ${tableIdx + 1} is empty (shows empty state) - this is acceptable');
-        console.log('PASS: Table ${tableIdx + 1} has data rows');
+        logger.info('INFO: Table ${tableIdx + 1} is empty (shows empty state) - this is acceptable');
+        logger.info('PASS: Table ${tableIdx + 1} has data rows');
       } else {
-        console.log('INFO: Table ${tableIdx + 1} has ' + rows + ' rows');
+        logger.info('INFO: Table ${tableIdx + 1} has ' + rows + ' rows');
       }
     }`);
       // Check headers
@@ -313,7 +314,7 @@ export function generateHeuristicScript(
       const expectedHeaders = [${headerChecks}];
       for (const h of expectedHeaders) {
         if (!headerStr.includes(h)) {
-          console.log('WARN: Missing header: ' + h);
+          logger.info('WARN: Missing header: ' + h);
         }
       }
     }`);
@@ -331,17 +332,17 @@ export function generateHeuristicScript(
     const formEl = page.locator('form, .el-form').nth(${formIdx});
     const inputCount = await formEl.locator('input, select, textarea').count();
     if (inputCount === 0) {
-      console.log('FAIL: Form ${formIdx + 1} has no input fields');
+      logger.info('FAIL: Form ${formIdx + 1} has no input fields');
       process.exit(1);
     }
-    console.log('INFO: Form ${formIdx + 1} has ' + inputCount + ' input fields');`);
+    logger.info('INFO: Form ${formIdx + 1} has ' + inputCount + ' input fields');`);
       // Check submit button
       assertions.push(`
     // Check form has submit/save button
     const submitBtn = formEl.locator('button[type=submit], button:has-text("保存"), button:has-text("提交"), button:has-text("确定")');
     const hasSubmit = await submitBtn.count();
     if (hasSubmit === 0) {
-      console.log('WARN: Form ${formIdx + 1} has no submit button');
+      logger.info('WARN: Form ${formIdx + 1} has no submit button');
     }`);
     }
   }
@@ -355,9 +356,9 @@ export function generateHeuristicScript(
     const inputs = await page.locator('input, select, textarea').count();
     const links = await page.locator('a').count();
     const total = buttons + inputs + links;
-    console.log('INFO: Buttons=' + buttons + ' Inputs=' + inputs + ' Links=' + links + ' Total=' + total);
+    logger.info('INFO: Buttons=' + buttons + ' Inputs=' + inputs + ' Links=' + links + ' Total=' + total);
     if (total < ${Math.max(1, Math.floor(count * 0.5))}) {
-      console.log('FAIL: Expected at least ${Math.max(1, Math.floor(count * 0.5))} interactive elements, found ' + total);
+      logger.info('FAIL: Expected at least ${Math.max(1, Math.floor(count * 0.5))} interactive elements, found ' + total);
       process.exit(1);
     }`);
   }
@@ -372,7 +373,7 @@ export function generateHeuristicScript(
       const disabled = await btn.isDisabled();
       if (disabled) disabledCount++;
     }
-    console.log('INFO: ' + buttons.length + ' buttons found, ' + disabledCount + ' disabled');`);
+    logger.info('INFO: ' + buttons.length + ' buttons found, ' + disabledCount + ' disabled');`);
   }
 
   // 6. Table displays data correctly
@@ -383,9 +384,9 @@ export function generateHeuristicScript(
       assertions.push(`
     // Check table has expected number of rows
     const rows = await page.locator('.el-table__body-wrapper tbody tr, table tbody tr').count();
-    console.log('INFO: Found ' + rows + ' rows (expected ${expectedRows})');
+    logger.info('INFO: Found ' + rows + ' rows (expected ${expectedRows})');
     if (rows < 1) {
-      console.log('FAIL: Expected ${expectedRows} rows but found ' + rows);
+      logger.info('FAIL: Expected ${expectedRows} rows but found ' + rows);
       process.exit(1);
     }`);
     }
@@ -396,7 +397,7 @@ export function generateHeuristicScript(
     assertions.push(`
     // Check form exists and is submittable
     const forms = await page.locator('form, .el-form').count();
-    console.log('INFO: Found ' + forms + ' forms');`);
+    logger.info('INFO: Found ' + forms + ' forms');`);
   }
 
   // 8. No undefined/NaN (always check)
@@ -409,7 +410,7 @@ export function generateHeuristicScript(
     if (bodyText.includes('NaN')) problems.push('NaN');
     if (bodyText.includes('null')) problems.push('null');
     if (problems.length > 0) {
-      console.log('FAIL: Page contains ' + problems.join(', '));
+      logger.info('FAIL: Page contains ' + problems.join(', '));
       process.exit(1);
     }`);
   }
@@ -420,13 +421,13 @@ export function generateHeuristicScript(
     // Generic check: page loaded and has content
     const bodyText = await page.evaluate(() => document.body.innerText);
     if (!bodyText || bodyText.trim().length < 10) {
-      console.log('FAIL: Page appears empty');
+      logger.info('FAIL: Page appears empty');
       process.exit(1);
     }`);
   }
 
   // Final PASS marker
-  assertions.push(`\n    console.log('PASS: ${escapedName}');`);
+  assertions.push(`\n    logger.info('PASS: ${escapedName}');`);
 
   const assertionsCode = assertions.join('\n');
 
@@ -439,14 +440,14 @@ async function main() {
 ${loginPreamble}
     // --- Navigate to target page ---
     await page.goto(\`${url}\`, { waitUntil: 'networkidle', timeout: 15000 });
-    console.log('Testing: ${escapedName}');
+    logger.info('Testing: ${escapedName}');
 ${assertionsCode}
   } finally {
     await browser.close();
   }
 }
 
-main().catch(e => { console.error('FAIL:', e.message); process.exit(1); });
+main().catch(e => { logger.error('FAIL:', e.message); process.exit(1); });
 `;
 }
 

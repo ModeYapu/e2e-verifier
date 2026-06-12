@@ -63,9 +63,9 @@ async function main() {
     const args = parseArgs();
 
     if (!args.config) {
-      console.error('Error: Config file path is required');
-      console.error('Usage: npm run verify -- --config <path-to-config>');
-      console.error('   or: npm run verify -- <path-to-config>');
+      logger.error('Error: Config file path is required');
+      logger.error('Usage: npm run verify -- --config <path-to-config>');
+      logger.error('   or: npm run verify -- <path-to-config>');
       process.exit(1);
     }
 
@@ -118,7 +118,7 @@ async function main() {
     // Print summary
     if (args.json) {
       // JSON output - keep console.log for stdout
-      console.log(JSON.stringify(reportData, null, 2));
+      logger.info(JSON.stringify(reportData, null, 2));
     } else {
       reportGenerator.printSummary(reportData);
     }

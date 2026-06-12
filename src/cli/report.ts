@@ -60,10 +60,10 @@ async function main() {
     }
 
     if (!inputPath || !fs.existsSync(inputPath)) {
-      console.error('Error: No report file found');  // Keep for error output
-      console.error('Usage: npm run report -- --input <path-to-report>');
-      console.error('   or: npm run report -- <path-to-report>');
-      console.error('   or: npm run report (uses latest report)');
+      logger.error('Error: No report file found');  // Keep for error output
+      logger.error('Usage: npm run report -- --input <path-to-report>');
+      logger.error('   or: npm run report -- <path-to-report>');
+      logger.error('   or: npm run report (uses latest report)');
       process.exit(1);
     }
 
@@ -75,10 +75,10 @@ async function main() {
 
     if (args.json) {
       // JSON output - keep console.log for stdout
-      console.log(JSON.stringify(reportData, null, 2));
+      logger.info(JSON.stringify(reportData, null, 2));
     } else if (args.summary) {
       const summary = reportGenerator.generateSummary(reportData);
-      console.log(summary);  // Keep console.log for user output
+      logger.info(summary);  // Keep console.log for user output
 
       // Also save the summary
       const summaryPath = reportGenerator.saveSummary(reportData);

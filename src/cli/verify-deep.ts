@@ -264,7 +264,7 @@ function printFinalSummary(results: Array<AgentResult | { error: string }>, json
 
   if (json) {
     // JSON output - keep console.log for stdout
-    console.log('\n' + JSON.stringify(results, null, 2));
+    logger.info('\n' + JSON.stringify(results, null, 2));
   } else {
     for (const result of results) {
       logger.info(`\n${'passed' in result && result.passed ? '✅' : '❌'} ${'url' in result ? result.url : 'Unknown'}`);

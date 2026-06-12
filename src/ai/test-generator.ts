@@ -431,7 +431,7 @@ ${assertions}
   for (const elem of criticalElements) {
     const element = await page.locator(elem.selector).first();
     await expect(element).toBeVisible({ timeout: 5000 }).catch(() => {
-      console.log(\`Warning: Element not found - \${elem.selector}\`);
+      logger.info(\`Warning: Element not found - \${elem.selector}\`);
     });
   }
 `;
@@ -468,7 +468,7 @@ ${assertions}
     if (await link.isVisible() && await link.isEnabled()) {
       const href = await link.getAttribute('href');
       if (href && !href.startsWith('#')) {
-        console.log(\`Testing navigation to: \${href}\`);
+        logger.info(\`Testing navigation to: \${href}\`);
         // Note: Actual navigation would require proper teardown
         await expect(link).toHaveAttribute('href');
       }
@@ -517,7 +517,7 @@ ${assertions}
     if (scenarioLower.includes('access') || scenarioLower.includes('a11y') || scenarioLower.includes('wcag')) {
       steps += `  // Basic accessibility checks
   await page.locator('h1, h2, h3, [role="heading"]').first().isVisible().then(isVisible => {
-    if (!isVisible) console.warn('No heading found on page');
+    if (!isVisible) logger.warn('No heading found on page');
   });
 
   // Check images have alt attributes
@@ -525,7 +525,7 @@ ${assertions}
   for (const img of images) {
     const alt = await img.getAttribute('alt');
     if (alt === null) {
-      console.warn('Image missing alt attribute:', await img.getAttribute('src'));
+      logger.warn('Image missing alt attribute:', await img.getAttribute('src'));
     }
   }
 `;

@@ -87,10 +87,10 @@ const DEFAULT_SYSTEM_PROMPT = [
   '    await page.waitForLoadState("networkidle");',
   '',
   '    const title = await page.title();',
-  '    console.log("Title:", title);',
+  '    logger.info("Title:", title);',
   '',
   '    const el = await page.$("selector");',
-  '    console.log("Element exists:", !!el);',
+  '    logger.info("Element exists:", !!el);',
   '',
   '    await page.screenshot({ path: "evidence.png" });',
   '  } finally {',
@@ -105,7 +105,7 @@ const DEFAULT_SYSTEM_PROMPT = [
   '- NEVER use test(), expect(), or Playwright test runner DSL.',
   '- ALWAYS use chromium.launch() + standalone script pattern shown above.',
   '- Use page.$() / page.$$() for element queries, page.title() for title.',
-  '- Use console.log() for output (the agent reads stdout).',
+  '- Use logger.info() for output (the agent reads stdout).',
   '',
   'Remember: The goal is to create robust, verifiable tests that prove the website works correctly.'
 ].join('\n');

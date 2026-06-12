@@ -125,7 +125,7 @@ function parseArgs(): ExploreOptions {
         break;
       default:
         if (arg.startsWith('-')) {
-          console.error(`Unknown option: ${arg}`);  // Keep for error output
+          logger.error(`Unknown option: ${arg}`);  // Keep for error output
           logger.info('Use --help for usage information');
           process.exit(1);
         }
@@ -137,7 +137,7 @@ function parseArgs(): ExploreOptions {
 
 function printHelp(): void {
   // Help text output - keep console.log for help
-  console.log(`
+  logger.info(`
 Usage: npm run explore -- [options]
 
 Autonomous E2E exploration mode - discover and test a website automatically
@@ -193,7 +193,7 @@ async function main() {
 
     // Output results
     if (options.json) {
-      console.log(JSON.stringify({
+      logger.info(JSON.stringify({
         summary: result.summary,
         finalScript: result.finalScriptPath
       }, null, 2));
@@ -287,64 +287,64 @@ async function loadConfig(options: ExploreOptions): Promise<ExploreConfig> {
 }
 
 function printSummary(result: ExploreResult): void {
-  console.log('\n' + '='.repeat(60));
-  console.log('🔍 EXPLORATION SUMMARY');
-  console.log('='.repeat(60));
+  logger.info('\n' + '='.repeat(60));
+  logger.info('🔍 EXPLORATION SUMMARY');
+  logger.info('='.repeat(60));
 
-  console.log(`\n📊 Discovery:`);
-  console.log(`   Pages explored: ${result.summary.pagesExplored}`);
-  console.log(`   Screenshots: ${result.summary.screenshotsTaken}`);
+  logger.info(`\n📊 Discovery:`);
+  logger.info(`   Pages explored: ${result.summary.pagesExplored}`);
+  logger.info(`   Screenshots: ${result.summary.screenshotsTaken}`);
 
-  console.log(`\n🧪 Testing:`);
-  console.log(`   Tests planned: ${result.summary.testsPlanned}`);
-  console.log(`   Tests passed: ${result.summary.testsPassed}`);
-  console.log(`   Tests failed: ${result.summary.testsFailed}`);
+  logger.info(`\n🧪 Testing:`);
+  logger.info(`   Tests planned: ${result.summary.testsPlanned}`);
+  logger.info(`   Tests passed: ${result.summary.testsPassed}`);
+  logger.info(`   Tests failed: ${result.summary.testsFailed}`);
 
   const passRate = result.summary.testsPlanned > 0
     ? ((result.summary.testsPassed / result.summary.testsPlanned) * 100).toFixed(1)
     : '0.0';
-  console.log(`   Pass rate: ${passRate}%`);
+  logger.info(`   Pass rate: ${passRate}%`);
 
-  console.log(`\n⏱️ Duration:`);
-  console.log(`   Total: ${Math.round(result.summary.duration / 1000)}s`);
+  logger.info(`\n⏱️ Duration:`);
+  logger.info(`   Total: ${Math.round(result.summary.duration / 1000)}s`);
 
   if (result.summary.totalTokens > 0) {
-    console.log(`\n🤖 LLM:`);
-    console.log(`   Tokens used: ${result.summary.totalTokens}`);
+    logger.info(`\n🤖 LLM:`);
+    logger.info(`   Tokens used: ${result.summary.totalTokens}`);
   }
 
-  console.log(`\n📁 Output:`);
-  console.log(`   Directory: ${result.config.outputDir}`);
-  console.log(`   Final script: ${result.finalScriptPath}`);
+  logger.info(`\n📁 Output:`);
+  logger.info(`   Directory: ${result.config.outputDir}`);
+  logger.info(`   Final script: ${result.finalScriptPath}`);
 
   // Show failed tests if any
   const failedTests = result.executions.filter((e: TestExecution) => !e.passed);
   if (failedTests.length > 0) {
-    console.log(`\n❌ Failed tests:`);
+    logger.info(`\n❌ Failed tests:`);
     for (const test of failedTests.slice(0, 5)) {
-      console.log(`   - ${test.testCase.name}`);
+      logger.info(`   - ${test.testCase.name}`);
       if (test.error) {
-        console.log(`     Error: ${test.error.substring(0, 100)}${test.error.length > 100 ? '...' : ''}`);
+        logger.info(`     Error: ${test.error.substring(0, 100)}${test.error.length > 100 ? '...' : ''}`);
       }
     }
     if (failedTests.length > 5) {
-      console.log(`   ... and ${failedTests.length - 5} more`);
+      logger.info(`   ... and ${failedTests.length - 5} more`);
     }
   }
 
-  console.log('\n' + '='.repeat(60));
+  logger.info('\n' + '='.repeat(60));
 
   if (result.summary.testsFailed === 0) {
-    console.log('✅ All tests passed!');
+    logger.info('✅ All tests passed!');
   } else {
-    console.log(`⚠️  ${result.summary.testsFailed} test(s) failed`);
+    logger.info(`⚠️  ${result.summary.testsFailed} test(s) failed`);
   }
 
-  console.log('='.repeat(60) + '\n');
+  logger.info('='.repeat(60) + '\n');
 }
 
 // Run
 main().catch(error => {
-  console.error('Fatal error:', error);
+  logger.error('Fatal error:', error);
   process.exit(1);
 });

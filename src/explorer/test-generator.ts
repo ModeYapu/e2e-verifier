@@ -216,14 +216,14 @@ async function runAllTests(baseUrl: string) {
   const page = await browser.newPage();
 
   try {
-    console.log('Starting comprehensive E2E test suite...');
+    logger.info('Starting comprehensive E2E test suite...');
 
 ${testFunctions.map((_, i) => `    await test${i + 1}(page);
-    console.log('Test ${i + 1} completed');`).join('\n')}
+    logger.info('Test ${i + 1} completed');`).join('\n')}
 
-    console.log('All tests completed successfully');
+    logger.info('All tests completed successfully');
   } catch (error) {
-    console.error('Test suite failed:', error);
+    logger.error('Test suite failed:', error);
     throw error;
   } finally {
     await browser.close();
@@ -478,7 +478,7 @@ ${indentedBody}
   await form.locator('${submitSelector}').click();
 
 ${auth.successUrlPattern ? `  await page.waitForURL(new RegExp('${auth.successUrlPattern}'));` : `  await page.waitForTimeout(3000);`}
-  console.log('Login successful');`;
+  logger.info('Login successful');`;
   }
 
   /**
@@ -658,13 +658,13 @@ async function main() {
 
   try {
     // Test: ${testCase.name}
-    console.log('Starting test: ${testCase.name}');
+    logger.info('Starting test: ${testCase.name}');
 
 ${steps.map(s => '    ' + s).join('\n')}
 
-    console.log('Test completed successfully');
+    logger.info('Test completed successfully');
   } catch (error) {
-    console.error('Test failed:', error);
+    logger.error('Test failed:', error);
     throw error;
   } finally {
     await browser.close();
