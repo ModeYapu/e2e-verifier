@@ -357,4 +357,95 @@ export class ResultStore {
       logger.error(`[ResultStore] Error during cleanup: ${error}`);
     }
   }
+
+  /**
+   * Get release directory path
+   */
+  private getReleaseDir(siteName: string): string {
+    const releaseDir = path.join(this.dataDir, 'releases', this.sanitizeSiteName(siteName));
+    if (!fs.existsSync(releaseDir)) {
+      fs.mkdirSync(releaseDir, { recursive: true });
+    }
+    return releaseDir;
+  }
+
+  /**
+   * Save a result with release tag
+   */
+  saveWithRelease(result: TestResult, release: string): void {
+    // Save normally
+    this.save(result);
+
+    // Also save in release-specific location
+    const releaseDir = this.getReleaseDir(result.siteName);
+    const releaseFile = path.join(releaseDir, `${this.sanitizeSiteName(release)}.json`);
+
+    try {
+      let releaseResults: TestResult[] = [];
+      if (fs.existsSync(releaseFile)) {
+        const content = fs.readFileSync(releaseFile, 'utf-8');
+        const data = JSON.parse(content);
+        releaseResults = data.results || [];
+      }
+
+      // Add result with release metadata
+      const resultWithRelease = {
+        ...result,
+        release
+      };
+      releaseResults.push(resultWithRelease);
+
+      const content = JSON.stringify({
+        release,
+        results: releaseResults,
+        lastUpdated: new Date().toISOString()
+      }, null, 2);
+
+      fs.writeFileSync(releaseFile, content, 'utf-8');
+      logger.info(`[ResultStore] Saved result for ${result.siteName} (release: ${release})`);
+    } catch (error) {
+      logger.error(`[ResultStore] Error saving release result: ${error}`);
+    }
+  }
+
+  /**
+   * Get results by release tag
+   */
+  getByRelease(siteName: string, release: string): TestResult[] {
+    const releaseDir = this.getReleaseDir(siteName);
+    const releaseFile = path.join(releaseDir, `${this.sanitizeSiteName(release)}.json`);
+
+    try {
+      if (fs.existsSync(releaseFile)) {
+        const content = fs.readFileSync(releaseFile, 'utf-8');
+        const data = JSON.parse(content);
+        return data.results || [];
+      }
+      return [];
+    } catch (error) {
+      logger.error(`[ResultStore] Error loading release results: ${error}`);
+      return [];
+    }
+  }
+
+  /**
+   * Get all available releases for a site
+   */
+  getAvailableReleases(siteName: string): string[] {
+    const releaseDir = this.getReleaseDir(siteName);
+
+    try {
+      if (!fs.existsSync(releaseDir)) {
+        return [];
+      }
+
+      const files = fs.readdirSync(releaseDir);
+      return files
+        .filter(f => f.endsWith('.json'))
+        .map(f => f.replace('.json', ''));
+    } catch (error) {
+      logger.error(`[ResultStore] Error reading releases: ${error}`);
+      return [];
+    }
+  }
 }

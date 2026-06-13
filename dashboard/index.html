@@ -522,6 +522,30 @@
           <span>⚙️</span>
           <span>Settings</span>
         </div>
+        <div
+          class="menu-item"
+          :class="{ active: currentPage === 'ci-trigger' }"
+          @click="navigateTo('ci-trigger')"
+        >
+          <span>🚀</span>
+          <span>CI Trigger</span>
+        </div>
+        <div
+          class="menu-item"
+          :class="{ active: currentPage === 'release-compare' }"
+          @click="navigateTo('release-compare')"
+        >
+          <span>🔄</span>
+          <span>Compare Releases</span>
+        </div>
+        <div
+          class="menu-item"
+          :class="{ active: currentPage === 'scheduler' }"
+          @click="navigateTo('scheduler')"
+        >
+          <span>📅</span>
+          <span>Scheduler</span>
+        </div>
       </nav>
     </aside>
 
@@ -805,6 +829,258 @@
             </button>
           </div>
         </div>
+
+        <!-- CI/CD Trigger Page -->
+        <div v-if="currentPage === 'ci-trigger'" v-loading="loading.ciTrigger">
+          <div class="form-section">
+            <div class="form-section-title">CI/CD Trigger</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Site</label>
+                <select v-model="ciTrigger.site" class="form-input">
+                  <option value="">Select a site</option>
+                  <option v-for="site in sites" :key="site.name" :value="site.name">
+                    {{ site.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Release Tag</label>
+                <input v-model="ciTrigger.release" type="text" class="form-input" placeholder="e.g., v1.2.3">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Priority</label>
+                <select v-model="ciTrigger.priority" class="form-input">
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-primary" @click="triggerVerification" :disabled="!ciTrigger.site || !ciTrigger.release">
+                Trigger Verification
+              </button>
+              <button class="btn btn-secondary" @click="checkGate" :disabled="!ciTrigger.site || !ciTrigger.release">
+                Check Gate
+              </button>
+            </div>
+          </div>
+
+          <!-- Trigger Result -->
+          <div v-if="ciTriggerResult" class="form-section">
+            <div class="form-section-title">Result</div>
+            <div style="padding: 16px; background: #f5f7fa; border-radius: 4px;">
+              <div style="margin-bottom: 8px;">
+                <strong>Job ID:</strong> {{ ciTriggerResult.job_id || 'N/A' }}
+              </div>
+              <div style="margin-bottom: 8px;">
+                <strong>Status:</strong>
+                <span class="status-tag" :class="ciTriggerResult.status">{{ ciTriggerResult.status }}</span>
+              </div>
+              <div v-if="ciTriggerResult.status === 'pass' || ciTriggerResult.status === 'fail'">
+                <div style="margin-bottom: 8px;">
+                  <strong>Quality Score:</strong>
+                  <span :style="{ color: ciTriggerResult.score >= 80 ? '#67c23a' : '#f56c6c' }">
+                    {{ ciTriggerResult.score }}%
+                  </span>
+                </div>
+                <div v-if="ciTriggerResult.checks && ciTriggerResult.checks.length > 0">
+                  <strong>Checks:</strong>
+                  <div style="margin-top: 8px; max-height: 200px; overflow-y: auto;">
+                    <div v-for="check in ciTriggerResult.checks" :key="check.name" style="padding: 4px 0; border-bottom: 1px solid #ebeef5;">
+                      <span :style="{ color: check.passed ? '#67c23a' : '#f56c6c' }">
+                        {{ check.passed ? '✓' : '✗' }}
+                      </span>
+                      <span style="margin-left: 8px;">{{ check.name }}</span>
+                      <span style="margin-left: 8px; color: #909399; font-size: 12px;">{{ check.message }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Release Comparison Page -->
+        <div v-if="currentPage === 'release-compare'" v-loading="loading.releaseCompare">
+          <div class="form-section">
+            <div class="form-section-title">Release Comparison</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Site</label>
+                <select v-model="releaseCompare.site" class="form-input" @change="loadReleases">
+                  <option value="">Select a site</option>
+                  <option v-for="site in sites" :key="site.name" :value="site.name">
+                    {{ site.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Release A (Baseline)</label>
+                <select v-model="releaseCompare.releaseA" class="form-input">
+                  <option value="">Select release A</option>
+                  <option v-for="release in availableReleases" :key="release" :value="release">
+                    {{ release }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Release B (Current)</label>
+                <select v-model="releaseCompare.releaseB" class="form-input">
+                  <option value="">Select release B</option>
+                  <option v-for="release in availableReleases" :key="release" :value="release">
+                    {{ release }}
+                  </option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary" @click="compareReleases" :disabled="!releaseCompare.site || !releaseCompare.releaseA || !releaseCompare.releaseB">
+              Compare Releases
+            </button>
+          </div>
+
+          <!-- Comparison Result -->
+          <div v-if="comparisonResult" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px;">
+            <div class="stat-card">
+              <div class="stat-label">Pass Rate A</div>
+              <div class="stat-value">{{ comparisonResult.summary.passRateA }}%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Pass Rate B</div>
+              <div class="stat-value">{{ comparisonResult.summary.passRateB }}%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Pass Rate Change</div>
+              <div class="stat-value" :style="{ color: comparisonResult.summary.passRateChange >= 0 ? '#67c23a' : '#f56c6c' }">
+                {{ comparisonResult.summary.passRateChange >= 0 ? '+' : '' }}{{ comparisonResult.summary.passRateChange }}%
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Duration Change</div>
+              <div class="stat-value" :style="{ color: comparisonResult.summary.durationChange <= 0 ? '#67c23a' : '#f56c6c' }">
+                {{ comparisonResult.summary.durationChange >= 0 ? '+' : '' }}{{ comparisonResult.summary.durationChange }}ms
+              </div>
+            </div>
+          </div>
+
+          <!-- New Failures -->
+          <div v-if="comparisonResult && comparisonResult.newFailures.length > 0" class="data-table" style="margin-bottom: 20px;">
+            <div class="table-header">
+              <div class="table-title">New Failures ({{ comparisonResult.newFailures.length }})</div>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tbody>
+                <tr v-for="failure in comparisonResult.newFailures" :key="failure.name" style="border-bottom: 1px solid #ebeef5;">
+                  <td style="padding: 12px 20px; color: #f56c6c;">{{ failure.name }}</td>
+                  <td style="padding: 12px 20px;">{{ failure.message }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Fixed -->
+          <div v-if="comparisonResult && comparisonResult.fixed.length > 0" class="data-table" style="margin-bottom: 20px;">
+            <div class="table-header">
+              <div class="table-title">Fixed Issues ({{ comparisonResult.fixed.length }})</div>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tbody>
+                <tr v-for="fixed in comparisonResult.fixed" :key="fixed.name" style="border-bottom: 1px solid #ebeef5;">
+                  <td style="padding: 12px 20px; color: #67c23a;">{{ fixed.name }}</td>
+                  <td style="padding: 12px 20px;">{{ fixed.message }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Regressions -->
+          <div v-if="comparisonResult && comparisonResult.regressions.length > 0" class="data-table" style="margin-bottom: 20px;">
+            <div class="table-header">
+              <div class="table-title">Ongoing Regressions ({{ comparisonResult.regressions.length }})</div>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tbody>
+                <tr v-for="regression in comparisonResult.regressions" :key="regression.name" style="border-bottom: 1px solid #ebeef5;">
+                  <td style="padding: 12px 20px; color: #e6a23c;">{{ regression.name }}</td>
+                  <td style="padding: 12px 20px;">{{ regression.message }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="comparisonResult && comparisonResult.newFailures.length === 0 && comparisonResult.fixed.length === 0 && comparisonResult.regressions.length === 0" class="empty-state">
+            No differences found between releases
+          </div>
+        </div>
+
+        <!-- Scheduler Config Page -->
+        <div v-if="currentPage === 'scheduler'" v-loading="loading.scheduler">
+          <div class="data-table">
+            <div class="table-header">
+              <div class="table-title">Smart Scheduler Recommendations</div>
+              <button class="btn btn-secondary" @click="loadSchedulerRecommendations">🔄 Refresh</button>
+            </div>
+            <div v-if="schedulerRecommendations.length === 0" class="empty-state">
+              No recommendations available
+            </div>
+            <table v-else style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #f5f7fa;">
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Site</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Frequency</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Mode</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Change Rate</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Pass Rate</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Release Window</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="rec in schedulerRecommendations"
+                  :key="rec.siteName"
+                  style="border-bottom: 1px solid #ebeef5;"
+                >
+                  <td style="padding: 12px 20px; font-size: 14px; color: #303133;">{{ rec.siteName }}</td>
+                  <td style="padding: 12px 20px;">
+                    <span
+                      class="status-tag"
+                      :class="{
+                        'completed': rec.frequency === 'weekly',
+                        'running': rec.frequency === 'daily',
+                        'pending': rec.frequency === 'hourly'
+                      }"
+                    >{{ rec.frequency }}</span>
+                  </td>
+                  <td style="padding: 12px 20px;">
+                    <span
+                      class="status-tag"
+                      :class="rec.verifyMode === 'fast' ? 'completed' : 'running'"
+                    >{{ rec.verifyMode }}</span>
+                  </td>
+                  <td style="padding: 12px 20px;">
+                    <span :style="{ color: rec.changeRate === 'high' ? '#f56c6c' : rec.changeRate === 'low' ? '#67c23a' : '#e6a23c' }">
+                      {{ rec.changeRate }}
+                    </span>
+                  </td>
+                  <td style="padding: 12px 20px;">
+                    <span :style="{ color: rec.passRate >= 80 ? '#67c23a' : rec.passRate >= 50 ? '#e6a23c' : '#f56c6c' }">
+                      {{ rec.passRate }}%
+                    </span>
+                  </td>
+                  <td style="padding: 12px 20px;">
+                    <span class="status-tag" :class="rec.inReleaseWindow ? 'running' : 'completed'">
+                      {{ rec.inReleaseWindow ? 'Yes' : 'No' }}
+                    </span>
+                  </td>
+                  <td style="padding: 12px 20px; font-size: 12px; color: #909399; max-width: 300px;">
+                    {{ rec.reason }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -936,7 +1212,7 @@
         const currentPage = ref('dashboard');
         const sidebarOpen = ref(false);
         const healthStatus = ref({ text: 'Checking...', class: '' });
-        const loading = ref({ dashboard: false, jobs: false, sites: false, trends: false, settings: false });
+        const loading = ref({ dashboard: false, jobs: false, sites: false, trends: false, settings: false, ciTrigger: false, releaseCompare: false, scheduler: false });
 
         // Dashboard stats
         const stats = ref({ totalSites: 0, todayVerifications: 0, passRate: 0, activeJobs: 0 });
@@ -965,6 +1241,18 @@
         const newKeyCreated = ref(null);
         const newWebhook = ref({ url: '', secret: '', eventsInput: '' });
 
+        // CI Trigger
+        const ciTrigger = ref({ site: '', release: '', priority: 'normal' });
+        const ciTriggerResult = ref(null);
+
+        // Release Compare
+        const releaseCompare = ref({ site: '', releaseA: '', releaseB: '' });
+        const availableReleases = ref([]);
+        const comparisonResult = ref(null);
+
+        // Scheduler
+        const schedulerRecommendations = ref([]);
+
         // Auto-refresh interval
         let refreshInterval = null;
 
@@ -975,7 +1263,10 @@
             jobs: 'Job Queue',
             sites: 'Site Management',
             trends: 'Trends & Analytics',
-            settings: 'Settings'
+            settings: 'Settings',
+            'ci-trigger': 'CI/CD Trigger',
+            'release-compare': 'Release Comparison',
+            scheduler: 'Smart Scheduler'
           };
           return titles[currentPage.value] || 'E2E Verifier';
         });
@@ -1176,6 +1467,9 @@
             case 'sites': loadSites(); break;
             case 'trends': loadTrends(); break;
             case 'settings': loadSettings(); break;
+            case 'ci-trigger': loadSites(); break;
+            case 'release-compare': loadSites(); break;
+            case 'scheduler': loadSchedulerRecommendations(); break;
           }
         };
 
@@ -1274,6 +1568,75 @@
           }
         };
 
+        // CI Trigger functions
+        const triggerVerification = async () => {
+          try {
+            const data = await apiFetch('/api/ci/trigger', {
+              method: 'POST',
+              body: JSON.stringify(ciTrigger.value)
+            });
+            ciTriggerResult.value = data;
+            ElementPlus.ElMessage.success('Verification job triggered');
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to trigger verification');
+          }
+        };
+
+        const checkGate = async () => {
+          try {
+            const data = await apiFetch('/api/ci/gate', {
+              method: 'POST',
+              body: JSON.stringify({
+                site: ciTrigger.value.site,
+                release: ciTrigger.value.release
+              })
+            });
+            ciTriggerResult.value = data;
+            const status = data.status === 'pass' ? 'success' : 'warning';
+            ElementPlus.ElMessage[status](`Quality gate: ${data.status.toUpperCase()} (${data.score}%)`);
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to check quality gate');
+          }
+        };
+
+        // Release Compare functions
+        const loadReleases = async () => {
+          if (!releaseCompare.value.site) return;
+          try {
+            const data = await apiFetch(`/api/releases/${encodeURIComponent(releaseCompare.value.site)}`);
+            availableReleases.value = data.data?.releases || [];
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to load releases');
+          }
+        };
+
+        const compareReleases = async () => {
+          try {
+            const params = new URLSearchParams({
+              site: releaseCompare.value.site,
+              release_a: releaseCompare.value.releaseA,
+              release_b: releaseCompare.value.releaseB
+            });
+            const data = await apiFetch(`/api/results/compare?${params}`);
+            comparisonResult.value = data.data;
+            ElementPlus.ElMessage.success('Release comparison completed');
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to compare releases');
+          }
+        };
+
+        // Scheduler functions
+        const loadSchedulerRecommendations = async () => {
+          loading.value.scheduler = true;
+          try {
+            const data = await apiFetch('/api/scheduler/recommendations');
+            schedulerRecommendations.value = data.data?.recommendations || [];
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to load scheduler recommendations');
+          }
+          loading.value.scheduler = false;
+        };
+
         // Utility functions
         const formatTime = (date) => {
           if (!date) return '';
@@ -1321,6 +1684,9 @@
           if (newPage === 'trends') {
             setTimeout(() => loadTrends(), 100);
           }
+          if (newPage === 'release-compare') {
+            setTimeout(() => loadSites(), 100);
+          }
         });
 
         return {
@@ -1345,10 +1711,17 @@
           newWebhook,
           pageTitle,
           filteredSites,
+          ciTrigger,
+          ciTriggerResult,
+          releaseCompare,
+          availableReleases,
+          comparisonResult,
+          schedulerRecommendations,
           navigateTo,
           loadJobs,
           loadSites,
           loadTrends,
+          loadSchedulerRecommendations,
           showJobDetail,
           cancelJob,
           getJobProgress,
@@ -1357,6 +1730,10 @@
           revokeKey,
           createWebhook,
           deleteWebhook,
+          triggerVerification,
+          checkGate,
+          loadReleases,
+          compareReleases,
           formatTime,
           formatDate,
           truncateUrl

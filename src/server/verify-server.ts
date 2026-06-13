@@ -43,6 +43,9 @@ import { createAIRoutes } from './routes/ai-routes';
 import { createDashboardRoutes } from './routes/dashboard-routes';
 import { createTrendRoutes } from './routes/trend-routes';
 import { createReportRoutes } from './routes/report-routes';
+import { createCIRoutes } from './routes/ci-routes';
+import { createComparisonRoutes } from './routes/comparison-routes';
+import { createSchedulerRoutes } from './routes/scheduler-routes';
 import { errorHandler } from '../middleware/error-handler';
 import { validateConfig } from '../config/execution-config';
 import { rateLimiter } from '../middleware/rate-limiter';
@@ -216,6 +219,9 @@ export class VerifyServer {
     this.app.use('/api', createDashboardRoutes(this.jobService));
     this.app.use('/api', createTrendRoutes(this.storageService));
     this.app.use('/api', createReportRoutes(this.jobService));
+    this.app.use('/api', createCIRoutes(this.verifyService, this.jobService, this.storageService));
+    this.app.use('/api', createComparisonRoutes(this.storageService));
+    this.app.use('/api', createSchedulerRoutes(this.storageService));
 
     // Experience store routes (already separated)
     this.app.use('/api', experienceRoutes);
