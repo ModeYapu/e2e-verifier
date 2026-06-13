@@ -1,30 +1,30 @@
 {
   "schemaVersion": 2,
-  "roundId": "R010",
+  "roundId": "R011",
   "slice": {
-    "description": "CI/CD integration + smart scheduling + release comparison",
+    "description": "AI repair advisor + batch site management + notification system",
     "sourceFiles": [
-      "src/server/routes/ci-routes.ts",
-      "src/server/routes/comparison-routes.ts",
-      "src/server/routes/scheduler-routes.ts",
-      "src/server/services/scheduler-service.ts",
-      "src/server/services/scheduler-service.test.ts",
-      "src/storage/release-comparator.ts",
-      "src/storage/release-comparator.test.ts",
-      "src/storage/result-store.ts",
+      "src/services/repair-advisor.ts",
+      "src/server/routes/repair-routes.ts",
+      "src/server/routes/batch-routes.ts",
+      "src/services/notifier.ts",
+      "src/server/routes/notification-routes.ts",
       "src/server/verify-server.ts",
-      "dashboard/index.html"
+      "dashboard/index.html",
+      "tests/repair-advisor.test.ts",
+      "tests/batch-routes.test.ts",
+      "tests/notifier.test.ts"
     ],
     "acceptanceCriteria": [
       "npm run build exit 0",
       "npm test exit 0 — 所有测试全绿",
-      "POST /api/ci/trigger — CI pipeline 触发验证",
-      "POST /api/ci/gate — 发布门禁检查",
-      "GET /api/ci/result/:job_id — 查询 CI 任务结果",
-      "SmartScheduler getRecommendedFrequency() — 智能调度建议",
-      "ReleaseComparator compareReleases() — 版本对比",
-      "GET /api/results/compare — 版本对比 API",
-      "Dashboard 增加 CI/CD 触发、版本对比、调度配置页面"
+      "GET /api/results/:jobId/repair-suggestions — AI 修复建议",
+      "POST /api/batch/verify — 批量触发验证",
+      "POST /api/batch/schedule — 批量定时验证",
+      "GET /api/batch/status/:batchId — 批量状态",
+      "POST /api/notifications/config — 通知配置",
+      "GET /api/notifications/history — 通知历史",
+      "Dashboard 增加批量操作、通知配置、修复建议面板"
     ],
     "maxCoreFiles": 10,
     "maxInterfaceFiles": 3,
@@ -32,19 +32,19 @@
   },
   "parallelMode": false,
   "phase": "completed",
-  "startedAt": "2026-06-13T17:46:00+08:00",
+  "startedAt": "2026-06-13T18:05:00+08:00",
   "filesChanged": [
-    "R010_TASK.md",
+    "R011_TASK.md",
     "dashboard/index.html",
-    "src/server/routes/ci-routes.ts",
-    "src/server/routes/comparison-routes.ts",
-    "src/server/routes/scheduler-routes.ts",
-    "src/server/services/scheduler-service.test.ts",
-    "src/server/services/scheduler-service.ts",
+    "src/server/routes/batch-routes.ts",
+    "src/server/routes/notification-routes.ts",
+    "src/server/routes/repair-routes.ts",
     "src/server/verify-server.ts",
-    "src/storage/release-comparator.test.ts",
-    "src/storage/release-comparator.ts",
-    "src/storage/result-store.ts"
+    "src/services/notifier.ts",
+    "src/services/repair-advisor.ts",
+    "tests/batch-routes.test.ts",
+    "tests/notifier.test.ts",
+    "tests/repair-advisor.test.ts"
   ],
   "verifyBuildCmd": "npm run build",
   "verifySliceCmd": "npm test",
@@ -52,6 +52,6 @@
   "regressionInterval": 2,
   "verifyBuildPassed": true,
   "verifySlicePassed": true,
-  "completedAt": "2026-06-13T17:55:00+08:00",
-  "commitSha": "77d4e34"
+  "completedAt": "2026-06-13T18:19:00+08:00",
+  "commitSha": "c7c555b"
 }
