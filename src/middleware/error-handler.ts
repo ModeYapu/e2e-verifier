@@ -1,28 +1,32 @@
 /**
  * Express Error Handler Middleware
- * Provides centralized error handling for Express routes
+ * Provides centralized error handling for Express routes using AppError
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
+import { AppError, isAppError, fromUnknown, ErrorCode } from '../utils/errors';
 
-export interface ErrorResponse {
-  error: string;
+/**
+ * Legacy error with code and details (for backward compatibility)
+ * @deprecated Use AppError instead
+ */
+export interface LegacyError extends Error {
   code: string;
   details?: unknown;
-  timestamp: string;
-  path?: string;
 }
 
 /**
  * Create a standardized error object
+ * @deprecated Use AppError instead. Kept for backward compatibility with existing routes.
  */
 export function createError(
   message: string,
-  code: string = 'INTERNAL_ERROR',
+  code: string = ErrorCode.INTERNAL_ERROR,
   details?: unknown
-): Error & { code: string; details?: unknown } {
-  const error = new Error(message) as Error & { code: string; details?: unknown };
+): LegacyError {
+  const error = new Error(message) as LegacyError;
+  error.name = 'LegacyError';
   error.code = code;
   if (details) {
     error.details = details;
@@ -31,51 +35,58 @@ export function createError(
 }
 
 /**
+ * Standardized API error response format
+ */
+export interface ApiResponseError {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    timestamp: string;
+    details?: unknown;
+    stack?: string;
+  };
+}
+
+/**
  * Express error handler middleware
- * Catches all errors from routes and returns consistent error responses
+ * Catches all errors from routes and returns standardized JSON responses
  */
 export function errorHandler(
-  err: Error & { code?: string; details?: unknown },
+  err: unknown,
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
+  // Convert unknown error to AppError if needed
+  const appError = isAppError(err) ? err : fromUnknown(err);
+
   // Log error with context
-  logger.error(`[Error Handler] ${new Date().toISOString()} - ${req.method} ${req.path}: ${err.message}`);
-  if (err.stack) {
-    logger.error(err.stack);
+  logger.error(`[Error Handler] ${new Date().toISOString()} - ${req.method} ${req.path}: ${appError.message}`);
+  if (appError.stack) {
+    logger.error(appError.stack);
   }
 
-  // Determine error code
-  const code = err.code || 'INTERNAL_ERROR';
-
-  // Determine HTTP status code based on error type
-  let statusCode = 500;
-  if (code === 'VALIDATION_ERROR') {
-    statusCode = 400;
-  } else if (code === 'NOT_FOUND') {
-    statusCode = 404;
-  } else if (code === 'UNAUTHORIZED') {
-    statusCode = 401;
-  } else if (code === 'FORBIDDEN') {
-    statusCode = 403;
-  } else if (code === 'CONFLICT') {
-    statusCode = 409;
-  }
-
-  // Create error response
-  const errorResponse: ErrorResponse = {
-    error: err.message || 'An unexpected error occurred',
-    code: code,
-    timestamp: new Date().toISOString(),
-    path: req.path,
+  // Build standardized error response
+  const errorResponse: ApiResponseError = {
+    success: false,
+    error: {
+      code: appError.code,
+      message: appError.message,
+      timestamp: appError.timestamp,
+    },
   };
 
-  // Include details in development mode
-  if (process.env.NODE_ENV === 'development' && err.details) {
-    errorResponse.details = err.details;
+  // Include details if present
+  if (appError.details !== undefined) {
+    errorResponse.error.details = appError.details;
   }
 
-  // Send error response
-  res.status(statusCode).json(errorResponse);
+  // Include stack trace in development mode for debugging
+  if (process.env.NODE_ENV === 'development' && appError.stack) {
+    errorResponse.error.stack = appError.stack;
+  }
+
+  // Send error response with appropriate status code
+  res.status(appError.statusCode).json(errorResponse);
 }
