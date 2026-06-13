@@ -1,10 +1,10 @@
 {
   "projectName": "e2e-verifier",
-  "totalRounds": 11,
-  "avgScore": 90.0,
-  "scoreTrend": [85, 92, 88, 95, 90, 100, 87, 92, 90, 95, 88],
-  "totalLinesAdded": 0,
-  "totalLinesDeleted": 0,
-  "reviewFindings": { "high": 1, "medium": 4, "low": 8, "resolved": 12 },
-  "lastUpdated": "2026-06-13T20:40:00Z"
+  "totalRounds": 12,
+  "avgScore": 90.83,
+  "scoreTrend": [85, 92, 88, 95, 90, 100, 87, 92, 90, 95, 88, 100],
+  "totalLinesAdded": 4301,
+  "totalLinesDeleted": 3,
+  "reviewFindings": { "high": 0, "medium": 0, "low": 2, "resolved": 12 },
+  "lastUpdated": "2026-06-13T21:05:00Z"
 }
