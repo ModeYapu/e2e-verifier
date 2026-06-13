@@ -33,6 +33,7 @@ import { StorageService } from './services/storage-service';
 import { createHealthRoutes } from './routes/health-routes';
 import { createVerifyRoutes } from './routes/verify-routes';
 import { createJobRoutes } from './routes/job-routes';
+import { createJobQueueRoutes } from './routes/jobs';
 import { createProjectRoutes } from './routes/project-routes';
 import { createWebhookRoutes } from './routes/webhook-routes';
 import { createWebhookTriggerRoutes } from './routes/webhook-trigger';
@@ -205,6 +206,7 @@ export class VerifyServer {
     this.app.use('/api', createHealthRoutes(this.verifyService));
     this.app.use('/api', apiKeyRouter());
     this.app.use('/api', createVerifyRoutes(this.verifyService, this.jobService));
+    this.app.use('/api', createJobQueueRoutes(this.jobQueue));
     this.app.use('/api', createJobRoutes(this.jobService));
     this.app.use('/api', createProjectRoutes(this.projectService));
     this.app.use('/api', createWebhookRoutes());
