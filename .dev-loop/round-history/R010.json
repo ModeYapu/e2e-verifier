@@ -1,0 +1,51 @@
+{
+  "round": "R010",
+  "title": "CI/CD Integration + Smart Scheduling + Release Comparison",
+  "status": "completed",
+  "startedAt": "2026-06-13T17:46:00+08:00",
+  "completedAt": "2026-06-13T17:55:00+08:00",
+  "tasks": [
+    { "name": "CI/CD Webhook Routes (ci-routes.ts)", "status": "done" },
+    { "name": "Smart Scheduler Service", "status": "done" },
+    { "name": "Release Comparator", "status": "done" },
+    { "name": "Comparison Routes", "status": "done" },
+    { "name": "Scheduler Routes", "status": "done" },
+    { "name": "ResultStore release support", "status": "done" },
+    { "name": "Route wiring in verify-server.ts", "status": "done" },
+    { "name": "Dashboard CI/CD page", "status": "done" },
+    { "name": "Dashboard Release Comparison page", "status": "done" },
+    { "name": "Dashboard Scheduler Config page", "status": "done" },
+    { "name": "release-comparator.test.ts", "status": "done" },
+    { "name": "scheduler-service.test.ts", "status": "done" },
+    { "name": "Tests passing (381 passed)", "status": "done" },
+    { "name": "Build passing", "status": "done" }
+  ],
+  "verification": {
+    "build": "pass",
+    "test": "pass",
+    "testCount": "381 passed, 17 suites"
+  },
+  "files": {
+    "new": [
+      "src/server/routes/ci-routes.ts",
+      "src/server/routes/comparison-routes.ts",
+      "src/server/routes/scheduler-routes.ts",
+      "src/server/services/scheduler-service.ts",
+      "src/server/services/scheduler-service.test.ts",
+      "src/storage/release-comparator.ts",
+      "src/storage/release-comparator.test.ts",
+      "R010_TASK.md"
+    ],
+    "modified": [
+      "src/server/verify-server.ts",
+      "src/storage/result-store.ts",
+      "dashboard/index.html"
+    ]
+  },
+  "commitSha": "77d4e34",
+  "stats": {
+    "filesChanged": 11,
+    "insertions": 1891,
+    "deletions": 2
+  }
+}

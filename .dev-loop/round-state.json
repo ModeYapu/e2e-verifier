@@ -1,38 +1,57 @@
 {
   "schemaVersion": 2,
-  "roundId": "R007",
+  "roundId": "R010",
   "slice": {
-    "description": "E2E Verifier 历史趋势系统：结果持久化 + 历史对比 API + 回归检测 + 质量评分趋势",
+    "description": "CI/CD integration + smart scheduling + release comparison",
     "sourceFiles": [
+      "src/server/routes/ci-routes.ts",
+      "src/server/routes/comparison-routes.ts",
+      "src/server/routes/scheduler-routes.ts",
+      "src/server/services/scheduler-service.ts",
+      "src/server/services/scheduler-service.test.ts",
+      "src/storage/release-comparator.ts",
+      "src/storage/release-comparator.test.ts",
       "src/storage/result-store.ts",
-      "src/storage/result-store.test.ts",
-      "src/server/routes/api-routes.ts",
-      "src/services/trend-analyzer.ts",
-      "src/services/trend-analyzer.test.ts"
+      "src/server/verify-server.ts",
+      "dashboard/index.html"
     ],
     "acceptanceCriteria": [
       "npm run build exit 0",
       "npm test exit 0 — 所有测试全绿",
-      "ResultStore 支持 save/get/list/delete，用 SQLite 持久化",
-      "TrendAnalyzer 提供 getPassRateTrend(site, days) 和 detectRegressions(site)",
-      "API: GET /api/results — 列表+过滤，GET /api/results/:id — 详情",
-      "API: GET /api/trends/:site — 通过率和评分趋势",
-      "API: GET /api/trends/:site/regressions — 回归检测"
+      "POST /api/ci/trigger — CI pipeline 触发验证",
+      "POST /api/ci/gate — 发布门禁检查",
+      "GET /api/ci/result/:job_id — 查询 CI 任务结果",
+      "SmartScheduler getRecommendedFrequency() — 智能调度建议",
+      "ReleaseComparator compareReleases() — 版本对比",
+      "GET /api/results/compare — 版本对比 API",
+      "Dashboard 增加 CI/CD 触发、版本对比、调度配置页面"
     ],
-    "maxCoreFiles": 5,
+    "maxCoreFiles": 10,
     "maxInterfaceFiles": 3,
     "estimatedComplexity": "medium"
   },
   "parallelMode": false,
-  "phase": "developing",
-  "startedAt": "2026-06-13T15:45:00+08:00",
-  "filesChanged": [],
+  "phase": "completed",
+  "startedAt": "2026-06-13T17:46:00+08:00",
+  "filesChanged": [
+    "R010_TASK.md",
+    "dashboard/index.html",
+    "src/server/routes/ci-routes.ts",
+    "src/server/routes/comparison-routes.ts",
+    "src/server/routes/scheduler-routes.ts",
+    "src/server/services/scheduler-service.test.ts",
+    "src/server/services/scheduler-service.ts",
+    "src/server/verify-server.ts",
+    "src/storage/release-comparator.test.ts",
+    "src/storage/release-comparator.ts",
+    "src/storage/result-store.ts"
+  ],
   "verifyBuildCmd": "npm run build",
   "verifySliceCmd": "npm test",
   "verifyRegressionCmd": "npm test",
   "regressionInterval": 2,
-  "verifyBuildPassed": null,
-  "verifySlicePassed": null,
-  "completedAt": null,
-  "commitSha": null
+  "verifyBuildPassed": true,
+  "verifySlicePassed": true,
+  "completedAt": "2026-06-13T17:55:00+08:00",
+  "commitSha": "77d4e34"
 }

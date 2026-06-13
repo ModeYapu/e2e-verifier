@@ -546,6 +546,22 @@
           <span>📅</span>
           <span>Scheduler</span>
         </div>
+        <div
+          class="menu-item"
+          :class="{ active: currentPage === 'batch' }"
+          @click="navigateTo('batch')"
+        >
+          <span>📦</span>
+          <span>Batch Operations</span>
+        </div>
+        <div
+          class="menu-item"
+          :class="{ active: currentPage === 'notifications' }"
+          @click="navigateTo('notifications')"
+        >
+          <span>🔔</span>
+          <span>Notifications</span>
+        </div>
       </nav>
     </aside>
 
@@ -1081,6 +1097,254 @@
             </table>
           </div>
         </div>
+
+        <!-- Batch Operations Page -->
+        <div v-if="currentPage === 'batch'" v-loading="loading.batch">
+          <div class="form-section">
+            <div class="form-section-title">Batch Verification</div>
+            <div class="form-row">
+              <div class="form-group" style="flex: 2;">
+                <label class="form-label">Sites (one URL per line)</label>
+                <textarea
+                  v-model="batchUrls"
+                  class="form-input"
+                  placeholder="https://example.com&#10;https://test.com"
+                  style="height: 120px; font-family: monospace;"
+                ></textarea>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Priority</label>
+                <select v-model="batchPriority" class="form-input" style="margin-bottom: 12px;">
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                </select>
+                <label class="form-label">Checks (comma separated)</label>
+                <input v-model="batchChecks" type="text" class="form-input" placeholder="status, title, console-errors">
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-primary" @click="runBatchVerify" :disabled="!batchUrls.trim()">Run Batch Verification</button>
+              <button class="btn btn-secondary" @click="batchUrls = ''">Clear</button>
+            </div>
+          </div>
+
+          <!-- Batch Result -->
+          <div v-if="batchResult" class="form-section">
+            <div class="form-section-title">Batch Result</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 16px;">
+              <div class="stat-card">
+                <div class="stat-label">Batch ID</div>
+                <div class="stat-value" style="font-size: 14px;">{{ batchResult.batchId?.slice(0, 12) }}...</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Total Jobs</div>
+                <div class="stat-value">{{ batchResult.totalJobs }}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Completed</div>
+                <div class="stat-value" :style="{ color: '#67c23a' }">{{ batchResult.completedJobs }}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Passed</div>
+                <div class="stat-value" :style="{ color: '#67c23a' }">{{ batchResult.passedJobs }}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Failed</div>
+                <div class="stat-value" :style="{ color: '#f56c6c' }">{{ batchResult.failedJobs }}</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary" @click="refreshBatchStatus" :disabled="!batchResult.batchId">
+              🔄 Refresh Status
+            </button>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-title">Batch Scheduling</div>
+            <div class="form-row">
+              <div class="form-group" style="flex: 2;">
+                <label class="form-label">Sites (one URL per line)</label>
+                <textarea
+                  v-model="scheduleUrls"
+                  class="form-input"
+                  placeholder="https://example.com&#10;https://test.com"
+                  style="height: 80px; font-family: monospace;"
+                ></textarea>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Frequency</label>
+                <select v-model="scheduleFrequency" class="form-input" style="margin-bottom: 12px;">
+                  <option value="hourly">Hourly</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+                <label class="form-label">Time (for daily/weekly)</label>
+                <input v-model="scheduleTime" type="time" class="form-input">
+              </div>
+            </div>
+            <button class="btn btn-primary" @click="runBatchSchedule" :disabled="!scheduleUrls.trim()">Create Schedule</button>
+          </div>
+
+          <!-- Schedule Result -->
+          <div v-if="scheduleResult" class="form-section">
+            <div class="form-section-title">Schedule Created</div>
+            <div style="padding: 16px; background: #f0f9ff; border-radius: 4px;">
+              <div><strong>Batch ID:</strong> {{ scheduleResult.batchId }}</div>
+              <div><strong>Total Scheduled:</strong> {{ scheduleResult.totalScheduled }}</div>
+              <div v-for="item in scheduleResult.scheduled" :key="item.scheduleId" style="margin-top: 8px; font-size: 14px; color: #606266;">
+                ✓ {{ item.site }} - Next run: {{ new Date(item.nextRun).toLocaleString() }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications Page -->
+        <div v-if="currentPage === 'notifications'" v-loading="loading.notifications">
+          <div class="form-section">
+            <div class="form-section-title">Notification Configuration</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Notify On</label>
+                <select v-model="notificationConfig.rules.notifyOn" class="form-input" @change="updateNotificationConfig">
+                  <option value="all">All Results</option>
+                  <option value="failure-only">Failures Only</option>
+                  <option value="regression-only">Regressions Only</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Minimum Severity</label>
+                <select v-model="notificationConfig.rules.minSeverity" class="form-input" @change="updateNotificationConfig">
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-title">Notification Channels</div>
+
+            <!-- Console (always enabled) -->
+            <div style="padding: 16px; border: 1px solid #ebeef5; border-radius: 4px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: 600; color: #303133; margin-bottom: 4px;">Console (Always Active)</div>
+                  <div style="font-size: 14px; color: #909399;">Logs notifications to console</div>
+                </div>
+                <span class="status-tag completed">Enabled</span>
+              </div>
+            </div>
+
+            <!-- Feishu -->
+            <div style="padding: 16px; border: 1px solid #ebeef5; border-radius: 4px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <div>
+                  <div style="font-weight: 600; color: #303133; margin-bottom: 4px;">Feishu Webhook</div>
+                  <div style="font-size: 14px; color: #909399;">Send notifications to Feishu</div>
+                </div>
+                <label class="form-label" style="margin: 0;">
+                  <input type="checkbox" v-model="feishuEnabled" @change="toggleFeishu">
+                  {{ feishuEnabled ? 'Enabled' : 'Disabled' }}
+                </label>
+              </div>
+              <div v-if="feishuEnabled" style="margin-top: 12px;">
+                <input
+                  v-model="feishuWebhookUrl"
+                  type="text"
+                  class="form-input"
+                  placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+                  style="margin-bottom: 8px;"
+                >
+                <button class="btn btn-primary" @click="updateNotificationConfig" :disabled="!feishuWebhookUrl">Save Feishu Config</button>
+              </div>
+            </div>
+
+            <!-- Slack -->
+            <div style="padding: 16px; border: 1px solid #ebeef5; border-radius: 4px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <div>
+                  <div style="font-weight: 600; color: #303133; margin-bottom: 4px;">Slack Webhook</div>
+                  <div style="font-size: 14px; color: #909399;">Send notifications to Slack</div>
+                </div>
+                <label class="form-label" style="margin: 0;">
+                  <input type="checkbox" v-model="slackEnabled" @change="toggleSlack">
+                  {{ slackEnabled ? 'Enabled' : 'Disabled' }}
+                </label>
+              </div>
+              <div v-if="slackEnabled" style="margin-top: 12px;">
+                <input
+                  v-model="slackWebhookUrl"
+                  type="text"
+                  class="form-input"
+                  placeholder="https://hooks.slack.com/services/..."
+                  style="margin-bottom: 8px;"
+                >
+                <button class="btn btn-primary" @click="updateNotificationConfig" :disabled="!slackWebhookUrl">Save Slack Config</button>
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div style="padding: 16px; border: 1px solid #ebeef5; border-radius: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <div>
+                  <div style="font-weight: 600; color: #303133; margin-bottom: 4px;">Email</div>
+                  <div style="font-size: 14px; color: #909399;">Send notifications via email</div>
+                </div>
+                <label class="form-label" style="margin: 0;">
+                  <input type="checkbox" v-model="emailEnabled" @change="toggleEmail">
+                  {{ emailEnabled ? 'Enabled' : 'Disabled' }}
+                </label>
+              </div>
+              <div v-if="emailEnabled" style="margin-top: 12px;">
+                <div class="form-row" style="margin-bottom: 8px;">
+                  <input v-model="emailConfig.smtpHost" type="text" class="form-input" placeholder="SMTP Host">
+                  <input v-model="emailConfig.port" type="number" class="form-input" placeholder="Port" style="width: 100px;">
+                </div>
+                <div class="form-row" style="margin-bottom: 8px;">
+                  <input v-model="emailConfig.from" type="text" class="form-input" placeholder="From">
+                  <input v-model="emailConfig.to" type="text" class="form-input" placeholder="To (comma separated)">
+                </div>
+                <button class="btn btn-primary" @click="updateNotificationConfig" :disabled="!emailConfig.smtpHost">Save Email Config</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notification History -->
+          <div class="data-table">
+            <div class="table-header">
+              <div class="table-title">Notification History</div>
+              <button class="btn btn-secondary" @click="loadNotificationHistory">🔄 Refresh</button>
+            </div>
+            <div v-if="notificationHistory.length === 0" class="empty-state">
+              No notifications sent yet
+            </div>
+            <table v-else style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #f5f7fa;">
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Timestamp</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Channel</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Status</th>
+                  <th style="padding: 12px 20px; text-align: left; font-size: 14px; color: #606266;">Job ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="notif in notificationHistory" :key="notif.id" style="border-bottom: 1px solid #ebeef5;">
+                  <td style="padding: 12px 20px; font-size: 14px; color: #303133;">{{ formatTime(notif.timestamp) }}</td>
+                  <td style="padding: 12px 20px;">
+                    <span class="status-tag">{{ notif.channel }}</span>
+                  </td>
+                  <td style="padding: 12px 20px;">
+                    <span class="status-tag" :class="notif.status === 'sent' ? 'completed' : 'failed'">
+                      {{ notif.status }}
+                    </span>
+                  </td>
+                  <td style="padding: 12px 20px; font-size: 14px; color: #606266;">{{ notif.jobId?.slice(0, 8) }}...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -1130,8 +1394,47 @@
             <div class="detail-label">Result</div>
             <div class="detail-value">{{ JSON.stringify(selectedJob.result, null, 2) }}</div>
           </div>
+
+          <!-- AI Repair Suggestions -->
+          <div v-if="repairSuggestions && repairSuggestions.length > 0" style="margin-top: 20px; padding: 16px; background: #f0f9ff; border-radius: 4px; border: 1px solid #d9ecff;">
+            <div style="font-weight: 600; color: #303133; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <span>🤖</span>
+              <span>AI Repair Suggestions</span>
+              <span class="status-tag" style="margin-left: auto;">{{ repairSuggestions.length }} suggestion{{ repairSuggestions.length > 1 ? 's' : '' }}</span>
+            </div>
+            <div style="font-size: 14px; color: #606266; margin-bottom: 12px;">{{ repairSummary }}</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div
+                v-for="(suggestion, index) in repairSuggestions"
+                :key="index"
+                style="padding: 12px; background: #fff; border-radius: 4px; border-left: 4px solid;"
+                :style="{ borderColor: suggestion.severity === 'critical' ? '#f56c6c' : suggestion.severity === 'high' ? '#e6a23c' : '#409eff' }"
+              >
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                  <span
+                    class="status-tag"
+                    :style="{
+                      background: suggestion.severity === 'critical' ? '#fef0f0' : suggestion.severity === 'high' ? '#fdf6ec' : '#ecf5ff',
+                      color: suggestion.severity === 'critical' ? '#f56c6c' : suggestion.severity === 'high' ? '#e6a23c' : '#409eff'
+                    }"
+                  >
+                    {{ suggestion.severity.toUpperCase() }} • {{ suggestion.category }}
+                  </span>
+                  <span style="font-size: 12px; color: #909399;">{{ Math.round(suggestion.confidence * 100) }}% confidence</span>
+                </div>
+                <div style="font-size: 14px; color: #303133; margin-bottom: 4px;">{{ suggestion.description }}</div>
+                <div style="font-size: 14px; color: #409eff;">💡 {{ suggestion.suggestedFix }}</div>
+                <div v-if="suggestion.relatedCheck" style="font-size: 12px; color: #909399; margin-top: 4px;">
+                  Check: {{ suggestion.relatedCheck }}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="dialog-footer">
+          <button class="btn btn-secondary" @click="loadRepairSuggestions" :disabled="loading.repairSuggestions || !selectedJob?.id || selectedJob?.status === 'pending'">
+            {{ loading.repairSuggestions ? 'Loading...' : '🤖 Get AI Suggestions' }}
+          </button>
           <button class="btn btn-secondary" @click="showJobDialog = false">Close</button>
         </div>
       </div>
@@ -1212,7 +1515,7 @@
         const currentPage = ref('dashboard');
         const sidebarOpen = ref(false);
         const healthStatus = ref({ text: 'Checking...', class: '' });
-        const loading = ref({ dashboard: false, jobs: false, sites: false, trends: false, settings: false, ciTrigger: false, releaseCompare: false, scheduler: false });
+        const loading = ref({ dashboard: false, jobs: false, sites: false, trends: false, settings: false, ciTrigger: false, releaseCompare: false, scheduler: false, batch: false, notifications: false, repairSuggestions: false });
 
         // Dashboard stats
         const stats = ref({ totalSites: 0, todayVerifications: 0, passRate: 0, activeJobs: 0 });
@@ -1253,6 +1556,41 @@
         // Scheduler
         const schedulerRecommendations = ref([]);
 
+        // Batch Operations
+        const batchUrls = ref('');
+        const batchPriority = ref('normal');
+        const batchChecks = ref('status, title, console-errors');
+        const batchResult = ref(null);
+        const scheduleUrls = ref('');
+        const scheduleFrequency = ref('daily');
+        const scheduleTime = ref('09:00');
+        const scheduleResult = ref(null);
+
+        // Notifications
+        const notificationConfig = ref({
+          channels: {
+            feishu: null,
+            slack: null,
+            email: null
+          },
+          rules: {
+            notifyOn: 'failure-only',
+            minSeverity: 'high',
+            siteFilter: []
+          }
+        });
+        const feishuEnabled = ref(false);
+        const feishuWebhookUrl = ref('');
+        const slackEnabled = ref(false);
+        const slackWebhookUrl = ref('');
+        const emailEnabled = ref(false);
+        const emailConfig = ref({ smtpHost: '', port: 587, from: '', to: '', user: '', pass: '' });
+        const notificationHistory = ref([]);
+
+        // Repair Suggestions
+        const repairSuggestions = ref([]);
+        const repairSummary = ref('');
+
         // Auto-refresh interval
         let refreshInterval = null;
 
@@ -1266,7 +1604,9 @@
             settings: 'Settings',
             'ci-trigger': 'CI/CD Trigger',
             'release-compare': 'Release Comparison',
-            scheduler: 'Smart Scheduler'
+            scheduler: 'Smart Scheduler',
+            batch: 'Batch Operations',
+            notifications: 'Notifications'
           };
           return titles[currentPage.value] || 'E2E Verifier';
         });
@@ -1470,6 +1810,8 @@
             case 'ci-trigger': loadSites(); break;
             case 'release-compare': loadSites(); break;
             case 'scheduler': loadSchedulerRecommendations(); break;
+            case 'batch': /* Batch page has manual actions */ break;
+            case 'notifications': loadNotificationConfig(); break;
           }
         };
 
@@ -1637,6 +1979,163 @@
           loading.value.scheduler = false;
         };
 
+        // Batch Operations functions
+        const runBatchVerify = async () => {
+          const urls = batchUrls.value.split('\n').filter(u => u.trim()).map(u => u.trim());
+          if (urls.length === 0) {
+            ElementPlus.ElMessage.warning('Please enter at least one URL');
+            return;
+          }
+
+          const checks = batchChecks.value.split(',').map(c => c.trim()).filter(c => c);
+
+          try {
+            const data = await apiFetch('/api/batch/verify', {
+              method: 'POST',
+              body: JSON.stringify({
+                sites: urls.map(url => ({ url, checks })),
+                priority: batchPriority.value
+              })
+            });
+            batchResult.value = data.data;
+            ElementPlus.ElMessage.success(`Batch verification started with ${data.data.totalJobs} jobs`);
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to start batch verification');
+          }
+        };
+
+        const refreshBatchStatus = async () => {
+          if (!batchResult.value?.batchId) return;
+
+          try {
+            const data = await apiFetch(`/api/batch/status/${batchResult.value.batchId}`);
+            batchResult.value = data.data;
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to refresh batch status');
+          }
+        };
+
+        const runBatchSchedule = async () => {
+          const urls = scheduleUrls.value.split('\n').filter(u => u.trim()).map(u => u.trim());
+          if (urls.length === 0) {
+            ElementPlus.ElMessage.warning('Please enter at least one URL');
+            return;
+          }
+
+          try {
+            const data = await apiFetch('/api/batch/schedule', {
+              method: 'POST',
+              body: JSON.stringify({
+                sites: urls.map(url => ({ url })),
+                schedule: {
+                  frequency: scheduleFrequency.value,
+                  time: scheduleTime.value
+                }
+              })
+            });
+            scheduleResult.value = data.data;
+            ElementPlus.ElMessage.success(`Created ${data.data.totalScheduled} schedules`);
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to create schedules');
+          }
+        };
+
+        // Notification functions
+        const loadNotificationConfig = async () => {
+          loading.value.notifications = true;
+          try {
+            const data = await apiFetch('/api/notifications/config');
+            if (data.success && data.data.config) {
+              notificationConfig.value = data.data.config;
+              feishuEnabled.value = !!data.data.config.channels.feishu;
+              slackEnabled.value = !!data.data.config.channels.slack;
+              emailEnabled.value = !!data.data.config.channels.email;
+            }
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to load notification config');
+          }
+          loading.value.notifications = false;
+        };
+
+        const loadNotificationHistory = async () => {
+          try {
+            const data = await apiFetch('/api/notifications/history?limit=50');
+            if (data.success && data.data.history) {
+              notificationHistory.value = data.data.history;
+            }
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to load notification history');
+          }
+        };
+
+        const updateNotificationConfig = async () => {
+          try {
+            const config = {
+              channels: {},
+              rules: notificationConfig.value.rules
+            };
+
+            if (feishuEnabled.value && feishuWebhookUrl.value) {
+              config.channels.feishu = { webhookUrl: feishuWebhookUrl.value };
+            }
+            if (slackEnabled.value && slackWebhookUrl.value) {
+              config.channels.slack = { webhookUrl: slackWebhookUrl.value };
+            }
+            if (emailEnabled.value && emailConfig.value.smtpHost) {
+              config.channels.email = {
+                smtpHost: emailConfig.value.smtpHost,
+                port: parseInt(emailConfig.value.port) || 587,
+                from: emailConfig.value.from,
+                to: emailConfig.value.to.split(',').map(t => t.trim())
+              };
+            }
+
+            await apiFetch('/api/notifications/config', {
+              method: 'POST',
+              body: JSON.stringify(config)
+            });
+            ElementPlus.ElMessage.success('Notification configuration updated');
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to update notification config');
+          }
+        };
+
+        const toggleFeishu = () => {
+          if (!feishuEnabled.value) feishuWebhookUrl.value = '';
+        };
+
+        const toggleSlack = () => {
+          if (!slackEnabled.value) slackWebhookUrl.value = '';
+        };
+
+        const toggleEmail = () => {
+          if (!emailEnabled.value) {
+            emailConfig.value = { smtpHost: '', port: 587, from: '', to: '', user: '', pass: '' };
+          }
+        };
+
+        // Repair Suggestions functions
+        const loadRepairSuggestions = async () => {
+          if (!selectedJob.value?.id) return;
+
+          loading.value.repairSuggestions = true;
+          try {
+            const data = await apiFetch(`/api/results/${selectedJob.value.id}/repair-suggestions`);
+            if (data.success && data.data) {
+              repairSuggestions.value = data.data.suggestions || [];
+              repairSummary.value = data.data.summary || '';
+              if (repairSuggestions.value.length > 0) {
+                ElementPlus.ElMessage.success(`Found ${repairSuggestions.value.length} repair suggestions`);
+              } else {
+                ElementPlus.ElMessage.info('No repair suggestions available - job may still be running');
+              }
+            }
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to load repair suggestions');
+          }
+          loading.value.repairSuggestions = false;
+        };
+
         // Utility functions
         const formatTime = (date) => {
           if (!date) return '';
@@ -1717,11 +2216,39 @@
           availableReleases,
           comparisonResult,
           schedulerRecommendations,
+          batchUrls,
+          batchPriority,
+          batchChecks,
+          batchResult,
+          scheduleUrls,
+          scheduleFrequency,
+          scheduleTime,
+          scheduleResult,
+          notificationConfig,
+          feishuEnabled,
+          feishuWebhookUrl,
+          slackEnabled,
+          slackWebhookUrl,
+          emailEnabled,
+          emailConfig,
+          notificationHistory,
+          repairSuggestions,
+          repairSummary,
           navigateTo,
           loadJobs,
           loadSites,
           loadTrends,
           loadSchedulerRecommendations,
+          runBatchVerify,
+          refreshBatchStatus,
+          runBatchSchedule,
+          loadNotificationConfig,
+          loadNotificationHistory,
+          updateNotificationConfig,
+          toggleFeishu,
+          toggleSlack,
+          toggleEmail,
+          loadRepairSuggestions,
           showJobDetail,
           cancelJob,
           getJobProgress,
