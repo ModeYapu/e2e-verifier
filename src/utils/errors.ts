@@ -24,6 +24,8 @@ export enum ErrorCode {
   CONFIG_ERROR = 'CONFIG_ERROR',
   /** Execution failures */
   EXECUTION_ERROR = 'EXECUTION_ERROR',
+  /** Rate limiting exceeded */
+  RATE_LIMIT_ERROR = 'RATE_LIMIT_ERROR',
   /** Internal/unexpected errors */
   INTERNAL_ERROR = 'INTERNAL_ERROR',
 }
@@ -40,6 +42,7 @@ const DEFAULT_STATUS_CODES: Record<ErrorCode, number> = {
   [ErrorCode.STORAGE_ERROR]: 500,
   [ErrorCode.CONFIG_ERROR]: 500,
   [ErrorCode.EXECUTION_ERROR]: 500,
+  [ErrorCode.RATE_LIMIT_ERROR]: 429,
   [ErrorCode.INTERNAL_ERROR]: 500,
 };
 

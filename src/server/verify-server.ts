@@ -40,6 +40,7 @@ import { createTrendRoutes } from './routes/trend-routes';
 import { createReportRoutes } from './routes/report-routes';
 import { errorHandler } from '../middleware/error-handler';
 import { validateConfig } from '../config/execution-config';
+import { rateLimiter } from '../middleware/rate-limiter';
 
 /**
  * Server statistics
@@ -138,6 +139,12 @@ export class VerifyServer {
 
     // Apply API key authentication (automatically skips /health endpoint)
     this.app.use('/api', apiKeyAuth);
+
+    // Apply rate limiting to API routes
+    this.app.use('/api', rateLimiter({
+      maxRequests: 60,  // 60 requests per minute
+      windowMs: 60000   // 1 minute window
+    }));
 
     // Serve static dashboard files
     const dashboardPath = path.join(__dirname, '../../dashboard');
