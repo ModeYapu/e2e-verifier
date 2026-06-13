@@ -97,3 +97,67 @@ export function calculateRetryDelay(attempt: number, strategy: RetryStrategy): n
   );
   return Math.floor(delay);
 }
+
+/**
+ * Validate server configuration
+ * Throws AppError if configuration is invalid
+ */
+export function validateConfig(config: Record<string, unknown>): void {
+  // Import AppError and ErrorCode here to avoid circular dependency
+  const { AppError: ImportAppError, ErrorCode: ImportErrorCode } = require('../utils/errors');
+  const AppError = ImportAppError;
+  const ErrorCode = ImportErrorCode;
+
+  // Validate port: must be integer 1-65535
+  if ('port' in config) {
+    const port = config.port;
+    if (typeof port !== 'number' || !Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new AppError(
+        ErrorCode.CONFIG_ERROR,
+        `Invalid port: ${port}. Port must be an integer between 1 and 65535.`
+      );
+    }
+  }
+
+  // Validate sites: if present, must be array with each element having url
+  if ('sites' in config) {
+    const sites = config.sites;
+    if (!Array.isArray(sites)) {
+      throw new AppError(
+        ErrorCode.CONFIG_ERROR,
+        `Invalid sites: must be an array. Got: ${typeof sites}`
+      );
+    }
+    for (let i = 0; i < sites.length; i++) {
+      const site = sites[i];
+      if (typeof site !== 'object' || site === null || !('url' in site)) {
+        throw new AppError(
+          ErrorCode.CONFIG_ERROR,
+          `Invalid site at index ${i}: each site must have a 'url' property.`
+        );
+      }
+    }
+  }
+
+  // Validate concurrency: if present, must be positive integer
+  if ('concurrency' in config) {
+    const concurrency = config.concurrency;
+    if (typeof concurrency !== 'number' || !Number.isInteger(concurrency) || concurrency < 1) {
+      throw new AppError(
+        ErrorCode.CONFIG_ERROR,
+        `Invalid concurrency: ${concurrency}. Concurrency must be a positive integer.`
+      );
+    }
+  }
+
+  // Validate timeout: if present, must be positive number
+  if ('timeout' in config) {
+    const timeout = config.timeout;
+    if (typeof timeout !== 'number' || timeout <= 0) {
+      throw new AppError(
+        ErrorCode.CONFIG_ERROR,
+        `Invalid timeout: ${timeout}. Timeout must be a positive number.`
+      );
+    }
+  }
+}

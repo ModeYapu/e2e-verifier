@@ -39,6 +39,7 @@ import { createDashboardRoutes } from './routes/dashboard-routes';
 import { createTrendRoutes } from './routes/trend-routes';
 import { createReportRoutes } from './routes/report-routes';
 import { errorHandler } from '../middleware/error-handler';
+import { validateConfig } from '../config/execution-config';
 
 /**
  * Server statistics
@@ -228,6 +229,13 @@ export class VerifyServer {
    * Start the server
    */
   async start(): Promise<void> {
+    // Validate server configuration before starting
+    validateConfig({
+      port: this.port,
+      concurrency: 2, // browser pool maxInstances
+      timeout: 30000,  // default timeout (30s)
+    });
+
     // Update uptime
     this.app.set('uptime', Date.now() - this.serverStartTime);
 
