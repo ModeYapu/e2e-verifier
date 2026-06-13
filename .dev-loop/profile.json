@@ -1,0 +1,12 @@
+{
+  "projectType": "ts-node",
+  "language": "typescript",
+  "buildCmd": "npm run build",
+  "testCmd": "npm test",
+  "vetCmd": "npx tsc --noEmit",
+  "reviewInterval": 3,
+  "regressionInterval": 3,
+  "parallelMax": 3,
+  "hooks": { "onSuccess": ["commit", "push"] },
+  "scoring": { "testWeight": 25, "reviewWeight": 20, "coverageRatio": 0.3 }
+}

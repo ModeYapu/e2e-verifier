@@ -49,6 +49,9 @@ import { createSchedulerRoutes } from './routes/scheduler-routes';
 import { createRepairRoutes } from './routes/repair-routes';
 import { createBatchRoutes } from './routes/batch-routes';
 import { createNotificationRoutes } from './routes/notification-routes';
+import { createVisualRoutes } from './routes/visual-routes';
+import { createBenchmarkRoutes } from './routes/benchmark-routes';
+import { createExportRoutes } from './routes/export-routes';
 import { errorHandler } from '../middleware/error-handler';
 import { validateConfig } from '../config/execution-config';
 import { rateLimiter } from '../middleware/rate-limiter';
@@ -228,6 +231,9 @@ export class VerifyServer {
     this.app.use('/api', createRepairRoutes(this.storageService, this.jobService));
     this.app.use('/api', createBatchRoutes(this.jobService, this.storageService, this.scheduleManager));
     this.app.use('/api', createNotificationRoutes());
+    this.app.use('/api', createVisualRoutes(this.storageService));
+    this.app.use('/api', createBenchmarkRoutes(this.storageService));
+    this.app.use('/api', createExportRoutes(this.storageService, this.jobService));
 
     // Experience store routes (already separated)
     this.app.use('/api', experienceRoutes);

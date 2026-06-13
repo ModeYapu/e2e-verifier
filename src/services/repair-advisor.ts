@@ -391,6 +391,6 @@ export class RepairAdvisorWithStore extends RepairAdvisor {
   async analyzeJob(jobId: string): Promise<RepairAnalysis | null> {
     const result = this.store.get ? this.store.get(jobId) : null;
     if (!result) return null;
-    return this.analyzeResult(result);
+    return this.analyzeFailure(jobId, result);
   }
 }

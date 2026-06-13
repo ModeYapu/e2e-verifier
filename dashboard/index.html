@@ -562,6 +562,22 @@
           <span>🔔</span>
           <span>Notifications</span>
         </div>
+        <div
+          class="menu-item"
+          :class="{ active: currentPage === 'visual-diff' }"
+          @click="navigateTo('visual-diff')"
+        >
+          <span>🖼️</span>
+          <span>Visual Diff</span>
+        </div>
+        <div
+          class="menu-item"
+          :class="{ active: currentPage === 'performance' }"
+          @click="navigateTo('performance')"
+        >
+          <span>⚡</span>
+          <span>Performance</span>
+        </div>
       </nav>
     </aside>
 
@@ -1345,6 +1361,254 @@
             </table>
           </div>
         </div>
+
+        <!-- Visual Diff Page -->
+        <div v-if="currentPage === 'visual-diff'" v-loading="loading.visualDiff">
+          <div class="form-section">
+            <div class="form-section-title">Ignore Regions Configuration</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Site</label>
+                <select v-model="visualDiff.site" class="form-input">
+                  <option value="">Select a site</option>
+                  <option v-for="site in sites" :key="site.name" :value="site.name">
+                    {{ site.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Add Ignore Region Form -->
+            <div style="margin-top: 16px;">
+              <label class="form-label">Add Ignore Region</label>
+              <div class="form-row">
+                <div class="form-group">
+                  <input v-model="newIgnoreRegion.selector" type="text" class="form-input" placeholder="CSS Selector (optional)">
+                </div>
+                <div class="form-group">
+                  <input v-model="newIgnoreRegion.x" type="number" class="form-input" placeholder="X">
+                </div>
+                <div class="form-group">
+                  <input v-model="newIgnoreRegion.y" type="number" class="form-input" placeholder="Y">
+                </div>
+                <div class="form-group">
+                  <input v-model="newIgnoreRegion.width" type="number" class="form-input" placeholder="Width">
+                </div>
+                <div class="form-group">
+                  <input v-model="newIgnoreRegion.height" type="number" class="form-input" placeholder="Height">
+                </div>
+                <div class="form-group">
+                  <button class="btn btn-primary" @click="addIgnoreRegion" :disabled="!visualDiff.site">Add</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ignore Regions List -->
+            <div v-if="visualDiff.regions.length > 0" style="margin-top: 20px;">
+              <label class="form-label">Configured Regions</label>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div
+                  v-for="(region, index) in visualDiff.regions"
+                  :key="index"
+                  style="padding: 12px; background: #f5f7fa; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;"
+                >
+                  <div style="font-size: 14px;">
+                    <span v-if="region.selector" style="color: #409eff;">Selector: {{ region.selector }}</span>
+                    <span v-else>
+                      X: {{ region.x }}, Y: {{ region.y }}, W: {{ region.width }}, H: {{ region.height }}
+                    </span>
+                    <span v-if="region.label" style="color: #909399; margin-left: 8px;">({{ region.label }})</span>
+                  </div>
+                  <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" @click="removeIgnoreRegion(index)">Remove</button>
+                </div>
+              </div>
+              <div style="margin-top: 12px; display: flex; gap: 8px;">
+                <button class="btn btn-primary" @click="saveIgnoreRegions">Save Regions</button>
+                <button class="btn btn-secondary" @click="clearIgnoreRegions">Clear All</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Diff Comparison Result -->
+          <div v-if="diffResult" class="form-section">
+            <div class="form-section-title">Diff Result</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 16px;">
+              <div class="stat-card">
+                <div class="stat-label">Total Pixels</div>
+                <div class="stat-value">{{ diffResult.totalPixels }}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Diff Pixels</div>
+                <div class="stat-value" style="color: #f56c6c;">{{ diffResult.diffPixels }}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Diff Percentage</div>
+                <div class="stat-value" :style="{ color: diffResult.diffPercentage < 5 ? '#67c23a' : diffResult.diffPercentage < 20 ? '#e6a23c' : '#f56c6c' }">
+                  {{ diffResult.diffPercentage.toFixed(2) }}%
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Diff Regions</div>
+                <div class="stat-value">{{ diffResult.regions.length }}</div>
+              </div>
+            </div>
+
+            <!-- Heatmap Display -->
+            <div v-if="diffResult.heatmapBase64" style="margin-top: 16px;">
+              <label class="form-label">Diff Heatmap</label>
+              <div style="padding: 8px; background: #f5f7fa; border-radius: 4px;">
+                <img :src="'data:image/png;base64,' + diffResult.heatmapBase64" alt="Diff Heatmap" style="max-width: 100%; height: auto;">
+              </div>
+            </div>
+
+            <!-- Diff Regions List -->
+            <div v-if="diffResult.regions.length > 0" style="margin-top: 16px;">
+              <label class="form-label">Diff Regions</label>
+              <div style="max-height: 200px; overflow-y: auto;">
+                <div
+                  v-for="(region, index) in diffResult.regions"
+                  :key="index"
+                  style="padding: 8px; border-left: 3px solid; margin-bottom: 4px; font-size: 12px;"
+                  :style="{ borderColor: region.severity > 0.5 ? '#f56c6c' : '#e6a23c', background: region.severity > 0.5 ? '#fef0f0' : '#fdf6ec' }"
+                >
+                  Region {{ index + 1 }}: x={{ region.x }}, y={{ region.y }}, w={{ region.width }}, h={{ region.height }}, severity={{ region.severity.toFixed(2) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Performance Benchmarks Page -->
+        <div v-if="currentPage === 'performance'" v-loading="loading.performance">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Site</label>
+              <select v-model="performance.site" class="form-input" @change="loadPerformanceBaseline">
+                <option value="">Select a site</option>
+                <option v-for="site in sites" :key="site.name" :value="site.name">
+                  {{ site.name }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group" style="display: flex; align-items: flex-end; gap: 8px;">
+              <button class="btn btn-primary" @click="computePerformanceBaseline" :disabled="!performance.site">Compute Baseline</button>
+              <button class="btn btn-secondary" @click="loadPerformanceBaseline" :disabled="!performance.site">Refresh</button>
+            </div>
+          </div>
+
+          <!-- Baseline Statistics -->
+          <div v-if="performance.baseline" class="form-section">
+            <div class="form-section-title">Performance Baseline</div>
+            <div style="font-size: 12px; color: #909399; margin-bottom: 16px;">
+              Updated: {{ new Date(performance.baseline.updatedAt).toLocaleString() }}
+            </div>
+
+            <div class="data-table">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #f5f7fa;">
+                    <th style="padding: 12px; text-align: left;">Step</th>
+                    <th style="padding: 12px; text-align: right;">Mean (ms)</th>
+                    <th style="padding: 12px; text-align: right;">StdDev</th>
+                    <th style="padding: 12px; text-align: right;">Min</th>
+                    <th style="padding: 12px; text-align: right;">Max</th>
+                    <th style="padding: 12px; text-align: right;">Samples</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(stats, step) in performance.baseline.stepBaselines" :key="step" style="border-bottom: 1px solid #ebeef5;">
+                    <td style="padding: 12px;">{{ step }}</td>
+                    <td style="padding: 12px; text-align: right;">{{ stats.mean }}</td>
+                    <td style="padding: 12px; text-align: right;">{{ stats.stdDev }}</td>
+                    <td style="padding: 12px; text-align: right;">{{ stats.min }}</td>
+                    <td style="padding: 12px; text-align: right;">{{ stats.max }}</td>
+                    <td style="padding: 12px; text-align: right;">{{ stats.samples }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Performance Regressions -->
+          <div v-if="performance.regressions.length > 0" class="form-section">
+            <div class="form-section-title">Performance Regressions</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div
+                v-for="(reg, index) in performance.regressions"
+                :key="index"
+                style="padding: 12px; border-radius: 4px; border-left: 4px solid;"
+                :style="{ borderColor: reg.severity === 'critical' ? '#f56c6c' : '#e6a23c', background: reg.severity === 'critical' ? '#fef0f0' : '#fdf6ec' }"
+              >
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <strong style="color: #303133;">{{ reg.step }}</strong>
+                  <span class="status-tag" :style="{ background: reg.severity === 'critical' ? '#fef0f0' : '#fdf6ec', color: reg.severity === 'critical' ? '#f56c6c' : '#e6a23c' }">
+                    {{ reg.severity.toUpperCase() }}
+                  </span>
+                </div>
+                <div style="font-size: 14px; color: #606266;">
+                  Baseline: <strong>{{ reg.baseline }}ms</strong> |
+                  Actual: <strong>{{ reg.actual }}ms</strong> |
+                  Z-Score: <strong>{{ reg.zScore.toFixed(2) }}</strong>
+                </div>
+                <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+                  Job: {{ reg.jobId.slice(0, 8) }}... | {{ new Date(reg.timestamp).toLocaleString() }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Performance History -->
+          <div v-if="performance.history.length > 0" class="form-section">
+            <div class="form-section-title">Performance History (Last {{ performance.history.length }} runs)</div>
+            <div style="max-height: 300px; overflow-y: auto;">
+              <div
+                v-for="(record, index) in performance.history"
+                :key="index"
+                style="padding: 12px; border-bottom: 1px solid #ebeef5;"
+              >
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 500; color: #303133;">{{ record.jobId.slice(0, 12) }}...</span>
+                  <span style="font-size: 12px; color: #909399;">{{ new Date(record.timestamp).toLocaleString() }}</span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                  <span
+                    v-for="step in record.steps"
+                    :key="step.step"
+                    class="status-tag"
+                    style="font-size: 11px;"
+                  >
+                    {{ step.step }}: {{ step.duration }}ms
+                  </span>
+                </div>
+                <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+                  Total: {{ record.totalDuration }}ms
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary Statistics -->
+          <div v-if="performance.summary" class="stats-grid" style="margin-top: 20px;">
+            <div class="stat-card">
+              <div class="stat-label">Total Records</div>
+              <div class="stat-value">{{ performance.summary.totalRecords }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Steps</div>
+              <div class="stat-value">{{ performance.summary.totalSteps }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg Duration</div>
+              <div class="stat-value">{{ performance.summary.averageDuration }}ms</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Has Baseline</div>
+              <div class="stat-value" :style="{ color: performance.summary.hasBaseline ? '#67c23a' : '#909399' }">
+                {{ performance.summary.hasBaseline ? 'Yes' : 'No' }}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -1432,6 +1696,9 @@
           </div>
         </div>
         <div class="dialog-footer">
+          <button class="btn btn-secondary" @click="exportReport('md')" :disabled="!selectedJob?.id || selectedJob?.status !== 'completed'">📄 Export MD</button>
+          <button class="btn btn-secondary" @click="exportReport('csv')" :disabled="!selectedJob?.id || selectedJob?.status !== 'completed'">📊 Export CSV</button>
+          <button class="btn btn-secondary" @click="exportReport('pdf')" :disabled="!selectedJob?.id || selectedJob?.status !== 'completed'">📑 Export PDF</button>
           <button class="btn btn-secondary" @click="loadRepairSuggestions" :disabled="loading.repairSuggestions || !selectedJob?.id || selectedJob?.status === 'pending'">
             {{ loading.repairSuggestions ? 'Loading...' : '🤖 Get AI Suggestions' }}
           </button>
@@ -1515,7 +1782,7 @@
         const currentPage = ref('dashboard');
         const sidebarOpen = ref(false);
         const healthStatus = ref({ text: 'Checking...', class: '' });
-        const loading = ref({ dashboard: false, jobs: false, sites: false, trends: false, settings: false, ciTrigger: false, releaseCompare: false, scheduler: false, batch: false, notifications: false, repairSuggestions: false });
+        const loading = ref({ dashboard: false, jobs: false, sites: false, trends: false, settings: false, ciTrigger: false, releaseCompare: false, scheduler: false, batch: false, notifications: false, repairSuggestions: false, visualDiff: false, performance: false, export: false });
 
         // Dashboard stats
         const stats = ref({ totalSites: 0, todayVerifications: 0, passRate: 0, activeJobs: 0 });
@@ -1591,6 +1858,14 @@
         const repairSuggestions = ref([]);
         const repairSummary = ref('');
 
+        // Visual Diff
+        const visualDiff = ref({ site: '', regions: [] });
+        const newIgnoreRegion = ref({ selector: '', x: '', y: '', width: '', height: '', label: '' });
+        const diffResult = ref(null);
+
+        // Performance
+        const performance = ref({ site: '', baseline: null, regressions: [], history: [], summary: null });
+
         // Auto-refresh interval
         let refreshInterval = null;
 
@@ -1606,7 +1881,9 @@
             'release-compare': 'Release Comparison',
             scheduler: 'Smart Scheduler',
             batch: 'Batch Operations',
-            notifications: 'Notifications'
+            notifications: 'Notifications',
+            'visual-diff': 'Visual Diff Comparison',
+            performance: 'Performance Benchmarks'
           };
           return titles[currentPage.value] || 'E2E Verifier';
         });
@@ -1812,6 +2089,8 @@
             case 'scheduler': loadSchedulerRecommendations(); break;
             case 'batch': /* Batch page has manual actions */ break;
             case 'notifications': loadNotificationConfig(); break;
+            case 'visual-diff': loadSites(); break;
+            case 'performance': loadSites(); break;
           }
         };
 
@@ -2136,6 +2415,135 @@
           loading.value.repairSuggestions = false;
         };
 
+        // Visual Diff functions
+        const addIgnoreRegion = () => {
+          if (!visualDiff.value.site) return;
+          const region = { ...newIgnoreRegion.value };
+          // Convert numeric fields
+          if (region.x) region.x = parseInt(region.x);
+          if (region.y) region.y = parseInt(region.y);
+          if (region.width) region.width = parseInt(region.width);
+          if (region.height) region.height = parseInt(region.height);
+          if (!region.label) region.label = `region_${Date.now()}`;
+          visualDiff.value.regions.push(region);
+          newIgnoreRegion.value = { selector: '', x: '', y: '', width: '', height: '', label: '' };
+        };
+
+        const removeIgnoreRegion = (index) => {
+          visualDiff.value.regions.splice(index, 1);
+        };
+
+        const saveIgnoreRegions = async () => {
+          if (!visualDiff.value.site) return;
+          loading.value.visualDiff = true;
+          try {
+            await apiFetch('/api/config/ignore-regions', {
+              method: 'POST',
+              body: JSON.stringify({
+                site: visualDiff.value.site,
+                regions: visualDiff.value.regions
+              })
+            });
+            ElementPlus.ElMessage.success('Ignore regions saved');
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to save ignore regions');
+          }
+          loading.value.visualDiff = false;
+        };
+
+        const clearIgnoreRegions = async () => {
+          if (!visualDiff.value.site) return;
+          loading.value.visualDiff = true;
+          try {
+            await apiFetch(`/api/config/ignore-regions?site=${encodeURIComponent(visualDiff.value.site)}`, {
+              method: 'DELETE'
+            });
+            visualDiff.value.regions = [];
+            ElementPlus.ElMessage.success('Ignore regions cleared');
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to clear ignore regions');
+          }
+          loading.value.visualDiff = false;
+        };
+
+        // Performance functions
+        const loadPerformanceBaseline = async () => {
+          if (!performance.value.site) return;
+          loading.value.performance = true;
+          try {
+            const [baselineData, summaryData] = await Promise.all([
+              apiFetch(`/api/benchmarks/${encodeURIComponent(performance.value.site)}`).catch(() => null),
+              apiFetch(`/api/benchmarks/${encodeURIComponent(performance.value.site)}/summary`).catch(() => null)
+            ]);
+
+            if (baselineData?.success) {
+              performance.value.baseline = baselineData.data;
+            }
+
+            if (summaryData?.success) {
+              performance.value.summary = summaryData.data;
+            }
+
+            // Check for regressions
+            const regressionsData = await apiFetch(`/api/benchmarks/${encodeURIComponent(performance.value.site)}/regressions`).catch(() => null);
+            if (regressionsData?.success) {
+              performance.value.regressions = regressionsData.data.regressions || [];
+            }
+
+            // Load history
+            const historyData = await apiFetch(`/api/benchmarks/${encodeURIComponent(performance.value.site)}/history?limit=20`).catch(() => null);
+            if (historyData?.success) {
+              performance.value.history = historyData.data.history || [];
+            }
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to load performance data');
+          }
+          loading.value.performance = false;
+        };
+
+        const computePerformanceBaseline = async () => {
+          if (!performance.value.site) return;
+          loading.value.performance = true;
+          try {
+            const data = await apiFetch(`/api/benchmarks/${encodeURIComponent(performance.value.site)}/compute`, {
+              method: 'POST'
+            });
+            if (data.success) {
+              performance.value.baseline = data.data;
+              ElementPlus.ElMessage.success('Performance baseline computed');
+            }
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to compute baseline');
+          }
+          loading.value.performance = false;
+        };
+
+        // Export functions
+        const exportReport = async (format) => {
+          if (!selectedJob.value?.id) return;
+          loading.value.export = true;
+          try {
+            const response = await fetch(`${API_BASE}/api/results/${selectedJob.value.id}/export?format=${format}`);
+            if (response.ok) {
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `report_${selectedJob.value.id.slice(0, 8)}.${format === 'pdf' ? 'html' : format}`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+              ElementPlus.ElMessage.success(`Report exported as ${format.toUpperCase()}`);
+            } else {
+              ElementPlus.ElMessage.error('Failed to export report');
+            }
+          } catch (error) {
+            ElementPlus.ElMessage.error('Failed to export report');
+          }
+          loading.value.export = false;
+        };
+
         // Utility functions
         const formatTime = (date) => {
           if (!date) return '';
@@ -2185,6 +2593,26 @@
           }
           if (newPage === 'release-compare') {
             setTimeout(() => loadSites(), 100);
+          }
+          if (newPage === 'visual-diff') {
+            setTimeout(() => loadSites(), 100);
+          }
+          if (newPage === 'performance') {
+            setTimeout(() => loadSites(), 100);
+          }
+        });
+
+        // Watch for visual diff site changes to load ignore regions
+        watch(() => visualDiff.value.site, async (newSite) => {
+          if (newSite) {
+            try {
+              const data = await apiFetch(`/api/config/ignore-regions?site=${encodeURIComponent(newSite)}`);
+              if (data.success && data.data) {
+                visualDiff.value.regions = data.data.regions || [];
+              }
+            } catch (error) {
+              visualDiff.value.regions = [];
+            }
           }
         });
 
@@ -2261,6 +2689,17 @@
           checkGate,
           loadReleases,
           compareReleases,
+          visualDiff,
+          newIgnoreRegion,
+          diffResult,
+          addIgnoreRegion,
+          removeIgnoreRegion,
+          saveIgnoreRegions,
+          clearIgnoreRegions,
+          performance,
+          loadPerformanceBaseline,
+          computePerformanceBaseline,
+          exportReport,
           formatTime,
           formatDate,
           truncateUrl
