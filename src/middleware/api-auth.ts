@@ -18,7 +18,7 @@ export interface ApiKey {
 
 const KEYS_FILE = path.join(process.cwd(), 'data', 'api-keys.json');
 
-function loadKeys(): ApiKey[] {
+export function loadKeys(): ApiKey[] {
   try {
     if (fs.existsSync(KEYS_FILE)) {
       return JSON.parse(fs.readFileSync(KEYS_FILE, 'utf-8'));
@@ -29,7 +29,7 @@ function loadKeys(): ApiKey[] {
   return [];
 }
 
-function saveKeys(keys: ApiKey[]): void {
+export function saveKeys(keys: ApiKey[]): void {
   const dir = path.dirname(KEYS_FILE);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });

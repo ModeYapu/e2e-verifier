@@ -34,6 +34,7 @@ import { createJobRoutes } from './routes/job-routes';
 import { createProjectRoutes } from './routes/project-routes';
 import { createWebhookRoutes } from './routes/webhook-routes';
 import { createKeyRoutes } from './routes/key-routes';
+import { apiKeyRouter } from './routes/api-keys';
 import { createAIRoutes } from './routes/ai-routes';
 import { createDashboardRoutes } from './routes/dashboard-routes';
 import { createTrendRoutes } from './routes/trend-routes';
@@ -193,6 +194,7 @@ export class VerifyServer {
   private setupRoutes(): void {
     // Register all route modules
     this.app.use('/api', createHealthRoutes(this.verifyService));
+    this.app.use('/api', apiKeyRouter());
     this.app.use('/api', createVerifyRoutes(this.verifyService, this.jobService));
     this.app.use('/api', createJobRoutes(this.jobService));
     this.app.use('/api', createProjectRoutes(this.projectService));
