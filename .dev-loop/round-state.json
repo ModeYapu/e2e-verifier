@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "roundId": "R001",
+  "slice": {
+    "description": "P6 Slice 1: 统一错误分类体系 — 建立 AppError 基类和错误码枚举，替换分散的 Error/String 抛出",
+    "sourceFiles": [
+      "src/utils/errors.ts",
+      "src/types/index.ts"
+    ],
+    "acceptanceCriteria": [
+      "npx tsc --noEmit exit 0",
+      "npx jest --passWithNoTests exit 0",
+      "errors.ts 导出 AppError 基类 + ErrorCode 枚举 + isAppError() 类型守卫",
+      "至少 3 个现有模块已从裸 Error 迁移到 AppError"
+    ],
+    "maxFiles": 8,
+    "estimatedComplexity": "medium",
+    "dependencies": ["P5 架构修复已完成"]
+  },
+  "phase": "developing",
+  "startedAt": "2026-06-13T12:00:00+08:00",
+  "filesChanged": [],
+  "verifyBuildCmd": "cd /home/coder/e2e-verifier && npx tsc --noEmit",
+  "verifySliceCmd": "cd /home/coder/e2e-verifier && npx jest --passWithNoTests",
+  "verifyBuildPassed": null,
+  "verifySlicePassed": null,
+  "completedAt": null,
+  "commitSha": null
+}

@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger';
+import { AppError, ErrorCode, fromUnknown } from '../utils/errors';
 
 /**
  * Storage interface for key-value operations (synchronous for backward compatibility)
@@ -333,7 +334,9 @@ export class JsonStorage implements IStorage {
   async restore(backupDir: string): Promise<void> {
     try {
       if (!fs.existsSync(backupDir)) {
-        throw new Error(`Backup directory not found: ${backupDir}`);
+        throw new AppError(ErrorCode.NOT_FOUND, `Backup directory not found: ${backupDir}`, {
+          details: { backupDir }
+        });
       }
 
       const files = fs.readdirSync(backupDir);
@@ -356,7 +359,7 @@ export class JsonStorage implements IStorage {
       logger.info(`[JsonStorage] Restored ${restoredCount} files from ${backupDir}`);
     } catch (error) {
       logger.error(`[JsonStorage] Error restoring storage: ${error}`);
-      throw error;
+      throw fromUnknown(error, ErrorCode.STORAGE_ERROR);
     }
   }
 }

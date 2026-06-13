@@ -5,7 +5,119 @@
  */
 
 /**
- * Base error class with code and context support
+ * Error code enumeration for categorizing all application errors
+ */
+export enum ErrorCode {
+  /** Input validation failures */
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  /** Resource not found */
+  NOT_FOUND = 'NOT_FOUND',
+  /** Operation timeout */
+  TIMEOUT = 'TIMEOUT',
+  /** Browser-related errors */
+  BROWSER_ERROR = 'BROWSER_ERROR',
+  /** Network request failures */
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  /** Storage operation failures */
+  STORAGE_ERROR = 'STORAGE_ERROR',
+  /** Configuration errors */
+  CONFIG_ERROR = 'CONFIG_ERROR',
+  /** Execution failures */
+  EXECUTION_ERROR = 'EXECUTION_ERROR',
+  /** Internal/unexpected errors */
+  INTERNAL_ERROR = 'INTERNAL_ERROR',
+}
+
+/**
+ * Default status codes for each error code
+ */
+const DEFAULT_STATUS_CODES: Record<ErrorCode, number> = {
+  [ErrorCode.VALIDATION_ERROR]: 400,
+  [ErrorCode.NOT_FOUND]: 404,
+  [ErrorCode.TIMEOUT]: 408,
+  [ErrorCode.BROWSER_ERROR]: 500,
+  [ErrorCode.NETWORK_ERROR]: 502,
+  [ErrorCode.STORAGE_ERROR]: 500,
+  [ErrorCode.CONFIG_ERROR]: 500,
+  [ErrorCode.EXECUTION_ERROR]: 500,
+  [ErrorCode.INTERNAL_ERROR]: 500,
+};
+
+/**
+ * Unified application error class with code, status code, and structured details
+ */
+export class AppError extends Error {
+  readonly code: ErrorCode;
+  readonly statusCode: number;
+  readonly details?: unknown;
+  readonly timestamp: string;
+  readonly cause?: unknown;
+
+  constructor(
+    code: ErrorCode,
+    message: string,
+    options?: {
+      statusCode?: number;
+      details?: unknown;
+      cause?: unknown;
+    }
+  ) {
+    super(message);
+    this.name = this.constructor.name;
+    this.code = code;
+    this.statusCode = options?.statusCode ?? DEFAULT_STATUS_CODES[code];
+    this.details = options?.details;
+    this.timestamp = new Date().toISOString();
+    this.cause = options?.cause;
+
+    // Maintains proper stack trace for where our error was thrown
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      name: this.name,
+      code: this.code,
+      message: this.message,
+      statusCode: this.statusCode,
+      details: this.details,
+      timestamp: this.timestamp,
+      ...(this.cause && { cause: this.cause }),
+    };
+  }
+}
+
+/**
+ * Type guard to check if an error is an AppError
+ */
+export function isAppError(error: unknown): error is AppError {
+  return error instanceof AppError;
+}
+
+/**
+ * Convert an unknown error to AppError
+ * If already an AppError, returns as-is
+ * If an Error, wraps in INTERNAL_ERROR with original message
+ * Otherwise, converts to string and wraps in INTERNAL_ERROR
+ */
+export function fromUnknown(error: unknown, code: ErrorCode = ErrorCode.INTERNAL_ERROR): AppError {
+  if (isAppError(error)) {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return new AppError(code, error.message, { cause: error });
+  }
+
+  const message = String(error);
+  return new AppError(code, message || 'Unknown error');
+}
+
+/**
+ * Legacy Base error class with code and context support
+ * @deprecated Use AppError instead
  */
 export class BaseError extends Error {
   public readonly code: string;

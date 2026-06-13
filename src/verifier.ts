@@ -9,7 +9,7 @@ import { NetworkMonitor } from './checks/network';
 import { VisualRegressionChecker } from './checks/visual-regression';
 import { ScreenshotUtil } from './utils/screenshot';
 import { Logger, LogLevel } from './utils/logger';
-import { PageError, AssertionError } from './utils/errors';
+import { PageError, AssertionError, AppError, ErrorCode } from './utils/errors';
 
 export class Verifier {
   private browser: Browser | null = null;
@@ -433,7 +433,7 @@ export class Verifier {
 
   private async performLogin(consoleMonitor: ConsoleMonitor, timeout: number): Promise<void> {
     const auth = this.config.auth!;
-    if (!this.page) throw new Error('Page not initialized');
+    if (!this.page) throw PageError.pageNotInitialized();
 
     const loginUrl = auth.loginUrl || this.config.url;
     const logger = new Logger({ prefix: 'Auth' });

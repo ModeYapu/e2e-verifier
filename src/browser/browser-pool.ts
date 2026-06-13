@@ -8,6 +8,7 @@
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
+import { AppError, ErrorCode, fromUnknown } from '../utils/errors';
 
 /**
  * Browser pool configuration
@@ -89,7 +90,7 @@ export class BrowserPool extends EventEmitter {
     } catch (error) {
       logger.error(`[BrowserPool] Failed to initialize browser pool: ${error}`);
       this.emit('error', error);
-      throw error;
+      throw fromUnknown(error, ErrorCode.BROWSER_ERROR);
     }
   }
 
@@ -117,7 +118,7 @@ export class BrowserPool extends EventEmitter {
       return browser;
     } catch (error) {
       logger.error(`[BrowserPool] Failed to launch browser: ${error}`);
-      throw error;
+      throw fromUnknown(error, ErrorCode.BROWSER_ERROR);
     }
   }
 
@@ -186,7 +187,7 @@ export class BrowserPool extends EventEmitter {
         return page;
       } catch (error) {
         logger.error(`[BrowserPool] Failed to create new page: ${error}`);
-        throw error;
+        throw fromUnknown(error, ErrorCode.BROWSER_ERROR);
       }
     }
 
