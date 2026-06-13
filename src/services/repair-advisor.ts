@@ -378,3 +378,19 @@ export class RepairAdvisor {
     return parts.join('. ') + '.';
   }
 }
+
+// Extended methods for job-based analysis
+export class RepairAdvisorWithStore extends RepairAdvisor {
+  private store: any;
+
+  constructor(store: any) {
+    super();
+    this.store = store;
+  }
+
+  async analyzeJob(jobId: string): Promise<RepairAnalysis | null> {
+    const result = this.store.get ? this.store.get(jobId) : null;
+    if (!result) return null;
+    return this.analyzeResult(result);
+  }
+}
