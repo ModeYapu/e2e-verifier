@@ -4,7 +4,7 @@
  */
 
 import { JobStore } from '../../scheduler/job-store';
-import { JobQueue } from '../../scheduler/job-queue';
+import { JobQueue } from '../../scheduler/job-queue-legacy';
 import { Scheduler } from '../../scheduler/scheduler';
 import { Job, JobConfig, JobType, JobPriority, JobStatus } from '../../scheduler/types';
 

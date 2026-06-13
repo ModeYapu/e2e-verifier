@@ -4,7 +4,7 @@
 
 import { EventEmitter } from 'events';
 import { Browser } from '@playwright/test';
-import { JobQueue } from './job-queue';
+import { JobQueue } from './job-queue-legacy';
 import { JobStore } from './job-store';
 import { Job, JobStatus, JobResult } from './types';
 import { Verifier } from '../verifier';
