@@ -16,10 +16,12 @@ interface WebhookTriggerRequest {
     url: string;
     name: string;
     expectedStatusCode?: number;
-    viewport?: { width: number; height: number };
+    viewport?: string | { width: number; height: number };
     timeout?: number;
     checks?: string[];
   }>;
+  /** Viewport presets to test each site with (e.g., ['desktop', 'mobile']) */
+  viewports?: Array<string | { width: number; height: number }>;
   callbackUrl?: string;
   jobType?: 'fast' | 'deep' | 'orchestrated';
   priority?: 'high' | 'normal' | 'low';
@@ -110,71 +112,112 @@ export function createWebhookTriggerRoutes(jobService: JobService): Router {
       const callbackUrl = body.callbackUrl;
       const jobIds: string[] = [];
 
+      // Viewport matrix: if viewports array is provided, create jobs for each viewport
+      const viewports: Array<string | { width: number; height: number }> | null = body.viewports ?? null;
+
       if (body.sites.length === 1) {
         // Single site verification
         const site = body.sites[0];
-        const config: JobConfig = {
-          url: site.url,
-          name: site.name,
-        };
 
-        // Add type-specific config
-        if (jobType === 'fast') {
-          config.fastVerify = {
+        // Determine which viewports to use
+        const viewportsToUse: Array<string | { width: number; height: number }> = viewports
+          ? viewports
+          : [site.viewport ?? 'desktop'];
+
+        // Create a job for each viewport
+        for (const vp of viewportsToUse) {
+          const viewportName = typeof vp === 'string' ? vp : `custom-${vp.width}x${vp.height}`;
+          const config: JobConfig = {
             url: site.url,
-            name: site.name,
-            checks: site.checks,
-            viewport: site.viewport,
-            timeout: site.timeout,
-            expectedStatusCode: site.expectedStatusCode,
+            name: viewports ? `${site.name} [${viewportName}]` : site.name,
           };
-        } else if (jobType === 'deep') {
-          config.deepVerify = {
-            url: site.url,
-            task: `Verify ${site.name}`,
-            maxSteps: 20,
-          };
-        } else if (jobType === 'orchestrated') {
-          config.orchestratedVerify = {
-            sites: [{
-              name: site.name,
+
+          // Add type-specific config
+          if (jobType === 'fast') {
+            config.fastVerify = {
               url: site.url,
-              expectedStatusCode: site.expectedStatusCode,
-              viewport: site.viewport,
-              timeout: site.timeout,
+              name: viewports ? `${site.name} [${viewportName}]` : site.name,
               checks: site.checks,
-            }],
-          };
-        }
+              viewport: vp,
+              timeout: site.timeout,
+              expectedStatusCode: site.expectedStatusCode,
+            };
+          } else if (jobType === 'deep') {
+            config.deepVerify = {
+              url: site.url,
+              task: `Verify ${site.name} [${viewportName}]`,
+              maxSteps: 20,
+            };
+          } else if (jobType === 'orchestrated') {
+            config.orchestratedVerify = {
+              sites: [{
+                name: viewports ? `${site.name} [${viewportName}]` : site.name,
+                url: site.url,
+                expectedStatusCode: site.expectedStatusCode,
+                viewport: vp,
+                timeout: site.timeout,
+                checks: site.checks,
+              }],
+            };
+          }
 
-        const job = jobService.createAndEnqueueJob(jobType, config, priority);
-        jobIds.push(job.id);
+          const job = jobService.createAndEnqueueJob(jobType, config, priority);
+          jobIds.push(job.id);
 
-        // Register callback if provided
-        if (callbackUrl) {
-          registerCallback(job.id, callbackUrl, jobService);
+          // Register callback if provided
+          if (callbackUrl) {
+            registerCallback(job.id, callbackUrl, jobService);
+          }
         }
       } else {
         // Multiple sites - use orchestrated verify
-        const config: JobConfig = {
-          orchestratedVerify: {
-            sites: body.sites.map(site => ({
-              name: site.name,
-              url: site.url,
-              expectedStatusCode: site.expectedStatusCode,
-              viewport: site.viewport,
-              timeout: site.timeout,
-              checks: site.checks,
-            })),
-          },
-        };
+        // If viewports specified, create separate orchestrated jobs per viewport
+        if (viewports && viewports.length > 0) {
+          for (const vp of viewports) {
+            const viewportName = typeof vp === 'string' ? vp : `custom-${vp.width}x${vp.height}`;
+            const config: JobConfig = {
+              orchestratedVerify: {
+                sites: body.sites.map(site => ({
+                  name: `${site.name} [${viewportName}]`,
+                  url: site.url,
+                  expectedStatusCode: site.expectedStatusCode,
+                  viewport: vp,
+                  timeout: site.timeout,
+                  checks: site.checks,
+                })),
+              },
+            };
 
-        const job = jobService.createAndEnqueueJob('orchestrated', config, priority);
-        jobIds.push(job.id);
+            const job = jobService.createAndEnqueueJob('orchestrated', config, priority);
+            jobIds.push(job.id);
 
-        // Register callback if provided
-        if (callbackUrl) {
-          registerCallback(job.id, callbackUrl, jobService);
+            // Register callback if provided
+            if (callbackUrl) {
+              registerCallback(job.id, callbackUrl, jobService);
+            }
+          }
+        } else {
+          // No viewports specified, use single orchestrated job
+          const config: JobConfig = {
+            orchestratedVerify: {
+              sites: body.sites.map(site => ({
+                name: site.name,
+                url: site.url,
+                expectedStatusCode: site.expectedStatusCode,
+                viewport: site.viewport,
+                timeout: site.timeout,
+                checks: site.checks,
+              })),
+            },
+          };
+
+          const job = jobService.createAndEnqueueJob('orchestrated', config, priority);
+          jobIds.push(job.id);
+
+          // Register callback if provided
+          if (callbackUrl) {
+            registerCallback(job.id, callbackUrl, jobService);
+          }
         }
       }
 

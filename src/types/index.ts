@@ -47,8 +47,10 @@ export interface SiteConfig {
   url: string;
   expectedStatusCode: number;
   screenshots?: ScreenshotConfig[] | string[];
-  viewport?: { width: number; height: number };
-  viewports?: ViewportConfig[];
+  /** Viewport as preset name (e.g., 'desktop', 'mobile') or custom dimensions */
+  viewport?: string | { width: number; height: number };
+  /** Multiple viewports for responsive testing (preset names or ViewportConfig) */
+  viewports?: Array<string | ViewportConfig>;
   customChecks?: CustomCheck[];
   checks?: string[];
   timeout?: number;

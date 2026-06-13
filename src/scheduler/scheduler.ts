@@ -386,11 +386,18 @@ export class Scheduler extends EventEmitter {
     const siteConfig = config.sites[0];
     const matrixConfig: DeviceMatrixConfig = {
       browsers: config.browsers as any,
-      viewports: config.viewports?.map((vp, index) => ({
-        name: vp.name || `viewport-${index}`,
-        width: vp.width,
-        height: vp.height
-      })),
+      viewports: config.viewports?.map((vp, index) => {
+        if (typeof vp === 'string') {
+          // String viewport presets are handled elsewhere; for matrix, we need dimensions
+          // This is a simplified handling - in production, resolve from presets
+          return { name: vp, width: 1920, height: 1080 };
+        }
+        return {
+          name: vp.name || `viewport-${index}`,
+          width: vp.width,
+          height: vp.height
+        };
+      }),
       locales: config.locales
     };
 

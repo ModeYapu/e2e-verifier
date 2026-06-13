@@ -7,6 +7,11 @@ import type { AgentResult } from '../agent/types';
 import type { OrchestratedResult } from '../orchestrator/verify-orchestrator';
 
 /**
+ * Viewport type: preset name (e.g., 'desktop', 'mobile') or custom dimensions
+ */
+export type ViewportType = string | { width: number; height: number };
+
+/**
  * Job result types - union of all possible job execution results
  */
 export type JobResult = TestResult | AgentResult | OrchestratedResult | MatrixResult;
@@ -39,7 +44,7 @@ export interface JobConfig {
     url: string;
     name: string;
     checks?: string[];
-    viewport?: { width: number; height: number };
+    viewport?: ViewportType;
     timeout?: number;
     expectedStatusCode?: number;
     screenshots?: string[];
@@ -67,7 +72,7 @@ export interface JobConfig {
       name: string;
       url: string;
       expectedStatusCode?: number;
-      viewport?: { width: number; height: number };
+      viewport?: ViewportType;
       timeout?: number;
       checks?: string[];
       auth?: {
@@ -92,7 +97,7 @@ export interface JobConfig {
   matrixVerify?: {
     sites: Array<any>;
     browsers?: string[];
-    viewports?: Array<{ name?: string; width: number; height: number }>;
+    viewports?: Array<string | { name?: string; width: number; height: number }>;
     locales?: string[];
   };
 

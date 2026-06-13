@@ -1,6 +1,6 @@
 import { chromium, Browser, Page, BrowserContext } from '@playwright/test';
 import { BrowserPool } from './browser/browser-pool';
-import { SiteConfig, TestResult, CheckResult, ScreenshotResult, CustomCheck, AuthConfig, ScreenshotConfig } from './types';
+import { SiteConfig, TestResult, CheckResult, ScreenshotResult, CustomCheck, AuthConfig, ScreenshotConfig, ViewportConfig } from './types';
 import { PerformanceChecker } from './checks/performance';
 import { AccessibilityChecker } from './checks/accessibility';
 import { SEOChecker } from './checks/seo';
@@ -10,6 +10,7 @@ import { VisualRegressionChecker } from './checks/visual-regression';
 import { ScreenshotUtil } from './utils/screenshot';
 import { Logger, LogLevel } from './utils/logger';
 import { PageError, AssertionError, AppError, ErrorCode } from './utils/errors';
+import { getViewportConfig, resolveViewport, type ViewportPreset } from './config/viewport-presets';
 
 export class Verifier {
   private browser: Browser | null = null;
@@ -65,8 +66,19 @@ export class Verifier {
 
         // Create context and page if we own the browser
         if (this.browser && !this.page && !this.browserPool) {
-          this.context = await this.browser.newContext();
+          const configuredViewports = this.getConfiguredViewports();
+          const contextOptions: { viewport?: { width: number; height: number }; userAgent?: string } = {};
+          if (configuredViewports.length > 0) {
+            const vp = configuredViewports[0];
+            contextOptions.viewport = { width: vp.width, height: vp.height };
+            if (vp.userAgent) {
+              contextOptions.userAgent = vp.userAgent;
+            }
+          }
+          this.context = await this.browser.newContext(contextOptions);
           this.page = await this.context.newPage();
+        } else {
+          // For pooled pages, viewport is set later
         }
         const configuredViewports = this.getConfiguredViewports();
 
@@ -419,16 +431,31 @@ export class Verifier {
     return lastResult || this.createResult(Date.now(), [], [], ['Verification failed: unknown error'], false);
   }
 
-  private getConfiguredViewports(): Array<{ width: number; height: number }> {
+  private getConfiguredViewports(): Array<{ width: number; height: number; userAgent?: string }> {
     if (this.config.viewports && this.config.viewports.length > 0) {
-      return this.config.viewports.map(v => ({ width: v.width, height: v.height }));
+      return this.config.viewports.map(v => {
+        // If viewport is a string (preset name), resolve it
+        if (typeof v === 'string') {
+          const preset = getViewportConfig(v);
+          return { width: preset.width, height: preset.height, userAgent: preset.userAgent };
+        }
+        // Custom viewport object
+        return { width: v.width, height: v.height, userAgent: undefined };
+      });
     }
 
-    if (this.config.viewport?.width && this.config.viewport?.height) {
-      return [{ width: this.config.viewport.width, height: this.config.viewport.height }];
+    // Handle single viewport (can be string preset name or custom object)
+    if (this.config.viewport) {
+      if (typeof this.config.viewport === 'string') {
+        const preset = getViewportConfig(this.config.viewport);
+        return [{ width: preset.width, height: preset.height, userAgent: preset.userAgent }];
+      }
+      if (this.config.viewport.width && this.config.viewport.height) {
+        return [{ width: this.config.viewport.width, height: this.config.viewport.height, userAgent: undefined }];
+      }
     }
 
-    return [{ width: 1920, height: 1080 }];
+    return [{ width: 1920, height: 1080, userAgent: undefined }];
   }
 
   private async performLogin(consoleMonitor: ConsoleMonitor, timeout: number): Promise<void> {
