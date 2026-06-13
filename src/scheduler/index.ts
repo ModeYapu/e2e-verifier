@@ -16,3 +16,10 @@ export {
   WorkerPool,
   type WorkerPoolConfig,
 } from './worker-pool';
+
+// Schedule Manager exports
+export {
+  ScheduleManager,
+  type ScheduleConfig,
+  type SiteConfig,
+} from './schedule-manager';

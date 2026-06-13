@@ -18,6 +18,8 @@ import { IntelligentOrchestrator } from '../intelligence/orchestrator';
 import { parseIntelligenceConfigFromEnv } from '../intelligence/config';
 import { LLMRegistry } from '../llm/llm-registry';
 import type { Job } from '../scheduler/types';
+import { ScheduleManager } from '../scheduler/schedule-manager';
+import { JobQueue } from '../scheduler/job-queue';
 import { logger } from '../utils/logger';
 
 // Import services
@@ -33,6 +35,7 @@ import { createVerifyRoutes } from './routes/verify-routes';
 import { createJobRoutes } from './routes/job-routes';
 import { createProjectRoutes } from './routes/project-routes';
 import { createWebhookRoutes } from './routes/webhook-routes';
+import { createWebhookTriggerRoutes } from './routes/webhook-trigger';
 import { createKeyRoutes } from './routes/key-routes';
 import { apiKeyRouter } from './routes/api-keys';
 import { createAIRoutes } from './routes/ai-routes';
@@ -67,6 +70,8 @@ export class VerifyServer {
   private webhookConfig: WebhookConfigManager;
   private webhookDelivery: WebhookDelivery;
   private intelligentOrchestrator: IntelligentOrchestrator;
+  private scheduleManager: ScheduleManager;
+  private jobQueue: JobQueue;
   private port: number;
   private host: string;
   private apiToken: string | null;
@@ -95,6 +100,10 @@ export class VerifyServer {
     this.projectService = new ProjectService();
     this.aiService = new AIService();
     this.storageService = new StorageService();
+
+    // Initialize job queue and schedule manager
+    this.jobQueue = new JobQueue();
+    this.scheduleManager = new ScheduleManager(this.jobQueue);
 
     // Initialize LLM Registry with environment configuration
     LLMRegistry.initialize({
@@ -199,6 +208,7 @@ export class VerifyServer {
     this.app.use('/api', createJobRoutes(this.jobService));
     this.app.use('/api', createProjectRoutes(this.projectService));
     this.app.use('/api', createWebhookRoutes());
+    this.app.use('/api', createWebhookTriggerRoutes(this.jobService));
     this.app.use('/api', createKeyRoutes());
     this.app.use('/api', createAIRoutes(this.aiService, this.jobService));
     this.app.use('/api', createDashboardRoutes(this.jobService));
@@ -290,6 +300,8 @@ export class VerifyServer {
         logger.info('  - GET    /api/jobs/:jobId         Poll job status (legacy)');
         logger.info('  - GET    /api/jobs                List all jobs (legacy)');
         logger.info('  - DELETE /api/jobs/:jobId         Cancel job (legacy)');
+        logger.info('  - POST   /api/webhook/trigger     Webhook trigger verification');
+        logger.info('  - GET    /api/webhook/trigger/status/:jobId Webhook trigger job status');
         logger.info('  - GET    /api/health              Health check');
         logger.info('  - GET    /api/stats               Server statistics');
         resolve();
@@ -307,6 +319,15 @@ export class VerifyServer {
    */
   async stop(): Promise<void> {
     logger.info('Stopping VerifyServer...');
+
+    // Stop schedule manager
+    logger.info('Stopping schedule manager...');
+    try {
+      this.scheduleManager.stop();
+      logger.info('Schedule manager stopped');
+    } catch (scheduleError) {
+      logger.error(`Error stopping schedule manager: ${scheduleError}`);
+    }
 
     // Stop scheduler first
     logger.info('Stopping job scheduler...');
@@ -348,6 +369,13 @@ export class VerifyServer {
    */
   getApp(): express.Application {
     return this.app;
+  }
+
+  /**
+   * Get Schedule Manager instance
+   */
+  getScheduleManager(): ScheduleManager {
+    return this.scheduleManager;
   }
 
   private server: ReturnType<express.Application['listen']> | null = null;
