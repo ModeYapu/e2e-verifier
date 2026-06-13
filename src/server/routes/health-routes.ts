@@ -6,6 +6,9 @@
 import { Router, Request, Response } from 'express';
 import { VerifyService } from '../services/verify-service';
 import { BrowserPool } from '../../browser/browser-pool';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 // Import version from package.json
 const VERSION = '1.0.0';
@@ -50,11 +53,153 @@ export function createHealthRoutes(verifyService: VerifyService): Router {
       status = 'degraded';
     }
 
+    // Get memory usage
+    const memoryUsage = process.memoryUsage();
+
+    // Get data directory size
+    let dbSize = 0;
+    try {
+      const dataDir = path.join(process.cwd(), 'data');
+      if (fs.existsSync(dataDir)) {
+        const stats = fs.statSync(dataDir);
+        dbSize = stats.size;
+        // If it's a directory, try to get approximate size
+        if (stats.isDirectory()) {
+          try {
+            const files = fs.readdirSync(dataDir);
+            let totalSize = 0;
+            for (const file of files) {
+              const filePath = path.join(dataDir, file);
+              try {
+                const fileStats = fs.statSync(filePath);
+                totalSize += fileStats.size;
+              } catch {
+                // Skip files that can't be read
+              }
+            }
+            dbSize = totalSize;
+          } catch {
+            // Use directory entry size if listing fails
+          }
+        }
+      }
+    } catch {
+      // Data directory doesn't exist or can't be read
+      dbSize = 0;
+    }
+
     res.json({
       status,
       version: VERSION,
       uptime: uptimeSeconds,
-      browserPool: browserPoolStats
+      browserPool: browserPoolStats,
+      memory: {
+        rss: memoryUsage.rss,
+        heapTotal: memoryUsage.heapTotal,
+        heapUsed: memoryUsage.heapUsed,
+        external: memoryUsage.external
+      },
+      dbSize
+    });
+  });
+
+  /**
+   * GET /api/health/detailed - Detailed health check with system information
+   */
+  router.get('/health/detailed', (req: Request, res: Response) => {
+    const uptime = (req.app.get('uptime') as number) || 0;
+    const uptimeSeconds = Math.floor(uptime / 1000);
+
+    // Get browser pool stats if available
+    let browserPoolStats: {
+      active: number;
+      idle: number;
+      max: number;
+    } = {
+      active: 0,
+      idle: 0,
+      max: 0
+    };
+
+    try {
+      const pool = BrowserPool.getInstance();
+      const stats = pool.getStats();
+      browserPoolStats = {
+        active: stats.pagesInUse,
+        idle: stats.pagesAvailable,
+        max: stats.maxInstances
+      };
+    } catch {
+      // Browser pool not initialized, use defaults
+    }
+
+    // Determine health status
+    let status = 'ok';
+    if (browserPoolStats.max > 0 && browserPoolStats.active === browserPoolStats.max && browserPoolStats.idle === 0) {
+      status = 'degraded';
+    }
+
+    // Get memory usage
+    const memoryUsage = process.memoryUsage();
+
+    // Get data directory size
+    let dbSize = 0;
+    try {
+      const dataDir = path.join(process.cwd(), 'data');
+      if (fs.existsSync(dataDir)) {
+        const stats = fs.statSync(dataDir);
+        dbSize = stats.size;
+        if (stats.isDirectory()) {
+          try {
+            const files = fs.readdirSync(dataDir);
+            let totalSize = 0;
+            for (const file of files) {
+              const filePath = path.join(dataDir, file);
+              try {
+                const fileStats = fs.statSync(filePath);
+                totalSize += fileStats.size;
+              } catch {
+                // Skip files that can't be read
+              }
+            }
+            dbSize = totalSize;
+          } catch {
+            // Use directory entry size if listing fails
+          }
+        }
+      }
+    } catch {
+      dbSize = 0;
+    }
+
+    // Get CPU usage
+    const cpuUsage = process.cpuUsage();
+
+    // Get load average (only on Unix)
+    const loadAvg = os.loadavg();
+
+    res.json({
+      status,
+      version: VERSION,
+      uptime: uptimeSeconds,
+      browserPool: browserPoolStats,
+      memory: {
+        rss: memoryUsage.rss,
+        heapTotal: memoryUsage.heapTotal,
+        heapUsed: memoryUsage.heapUsed,
+        external: memoryUsage.external
+      },
+      dbSize,
+      nodeVersion: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      cpuUsage: {
+        user: cpuUsage.user,
+        system: cpuUsage.system
+      },
+      loadAverage: loadAvg,
+      totalMemory: os.totalmem(),
+      freeMemory: os.freemem()
     });
   });
 

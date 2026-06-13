@@ -1,27 +1,36 @@
 {
-  "schemaVersion": 1,
-  "roundId": "R002",
+  "schemaVersion": 2,
+  "roundId": "R007",
   "slice": {
-    "description": "P6 Slice 2: 统一配置验证 — 添加启动时配置校验，缺失/非法配置提前报 AppError(CONFIG_ERROR)",
+    "description": "E2E Verifier 历史趋势系统：结果持久化 + 历史对比 API + 回归检测 + 质量评分趋势",
     "sourceFiles": [
-      "src/config/execution-config.ts",
-      "src/server/verify-server.ts"
+      "src/storage/result-store.ts",
+      "src/storage/result-store.test.ts",
+      "src/server/routes/api-routes.ts",
+      "src/services/trend-analyzer.ts",
+      "src/services/trend-analyzer.test.ts"
     ],
     "acceptanceCriteria": [
-      "npx tsc --noEmit exit 0",
-      "npx jest --passWithNoTests exit 0",
-      "execution-config.ts 导出 validateConfig() 函数",
-      "verify-server.ts 启动时调用 validateConfig()，非法配置抛 AppError(CONFIG_ERROR)"
+      "npm run build exit 0",
+      "npm test exit 0 — 所有测试全绿",
+      "ResultStore 支持 save/get/list/delete，用 SQLite 持久化",
+      "TrendAnalyzer 提供 getPassRateTrend(site, days) 和 detectRegressions(site)",
+      "API: GET /api/results — 列表+过滤，GET /api/results/:id — 详情",
+      "API: GET /api/trends/:site — 通过率和评分趋势",
+      "API: GET /api/trends/:site/regressions — 回归检测"
     ],
-    "maxFiles": 5,
-    "estimatedComplexity": "medium",
-    "dependencies": ["R001 AppError 已建立"]
+    "maxCoreFiles": 5,
+    "maxInterfaceFiles": 3,
+    "estimatedComplexity": "medium"
   },
+  "parallelMode": false,
   "phase": "developing",
-  "startedAt": "2026-06-13T12:10:00+08:00",
+  "startedAt": "2026-06-13T15:45:00+08:00",
   "filesChanged": [],
-  "verifyBuildCmd": "cd /home/coder/e2e-verifier && npx tsc --noEmit",
-  "verifySliceCmd": "cd /home/coder/e2e-verifier && npx jest --passWithNoTests",
+  "verifyBuildCmd": "npm run build",
+  "verifySliceCmd": "npm test",
+  "verifyRegressionCmd": "npm test",
+  "regressionInterval": 2,
   "verifyBuildPassed": null,
   "verifySlicePassed": null,
   "completedAt": null,

@@ -1,17 +1,21 @@
 # Scope Lock
 
-## Original Requirement
-按 ROADMAP 继续推进 e2e-verifier 开发。P0-P5 已完成（21 slices + 4 P5 architecture fixes）。下一步：P6 Production Polish。
+## Master Scope: 全项目产品化推进
+- [x] LogMonitor P4-P6（已完成 R001-R006）
+- [ ] E2E Verifier P2-P3
+- [ ] Accounting Agent 完善
+- [ ] 全项目回归测试通过
 
-## In Scope
-- [ ] P6: 生产就绪打磨（错误分类、日志规范、API 稳定性、配置验证）
-- [ ] P7: 性能优化（启动时间、内存使用、并发效率）
-- [ ] P8: 深度优化（测试覆盖、文档完善、代码规范）
+## Current Sub-Scope: E2E Verifier P2 多环境执行
+- [ ] 多浏览器支持（chromium/firefox/webkit）
+- [ ] 多 viewport 矩阵执行
+- [ ] 并行测试执行器
+- [ ] 测试结果历史对比
 
 ## Explicitly Out of Scope
-- 新增检查项（先统一模型再加功能）
-- Agent 直接主导执行生命周期
-- 复杂 UI Dashboard
+- E2E Verifier 前端 UI
+- CI/CD 集成（P3 再做）
+- 其他项目
 
-## Locked At: 2026-06-13T12:00:00+08:00
-## Locked By: Round R001
+## Locked At: 2026-06-13T15:42:00+08:00
+## Locked By: Round R007

@@ -1,0 +1,12 @@
+node_modules
+dist
+test-results
+screenshots
+reports
+logs
+.git
+.dev-loop
+*.md
+artifacts
+convergence-results
+explorer-output

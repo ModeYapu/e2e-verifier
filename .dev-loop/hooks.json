@@ -1,0 +1,7 @@
+{
+  "onSuccess": [
+    {"name": "commit", "cmd": "git add -A && git commit -m '${COMMIT_MSG}'", "required": true},
+    {"name": "push", "cmd": "git push origin main", "required": false, "continueOnError": true}
+  ],
+  "onBlocked": []
+}
