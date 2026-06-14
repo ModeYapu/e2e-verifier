@@ -16,6 +16,8 @@ import { AppError, ErrorCode, fromUnknown } from '../utils/errors';
 export interface BrowserPoolConfig {
   /** Maximum number of browser instances to maintain */
   maxInstances?: number;
+  /** Maximum number of pooled pages (concurrency cap / back-pressure) */
+  maxPages?: number;
   /** Whether to run browsers in headless mode */
   headless?: boolean;
   /** Slow motion for debugging (ms) */
@@ -46,11 +48,17 @@ export class BrowserPool extends EventEmitter {
   private pages: PooledPage[] = [];
   private config: Required<BrowserPoolConfig>;
   private initialized: boolean = false;
+  /**
+   * FIFO of acquirePage() callers blocked because the pool is at the page cap.
+   * Resolved (in release order) by releasePage().
+   */
+  private pendingResolvers: Array<() => void> = [];
 
   private constructor(config: BrowserPoolConfig = {}) {
     super();
     this.config = {
       maxInstances: config.maxInstances || 2,
+      maxPages: config.maxPages || 8,
       headless: config.headless !== false,
       slowMo: config.slowMo || 0,
       devtools: config.devtools || false,
@@ -149,27 +157,75 @@ export class BrowserPool extends EventEmitter {
   }
 
   /**
-   * Acquire a page from the pool
+   * Reset a pooled page's state so a reused page does not leak cookies,
+   * storage or URL from the previous verification. Best-effort: every step is
+   * guarded so a failure on one page cannot break the pool.
+   */
+  private async resetPageState(p: PooledPage): Promise<void> {
+    try {
+      await p.context.clearCookies();
+    } catch (e) {
+      logger.warn(`[BrowserPool] clearCookies failed during reset: ${e}`);
+    }
+    try {
+      await p.page.goto('about:blank', { waitUntil: 'domcontentloaded' } as any);
+    } catch (e) {
+      // about:blank navigation can no-op or fail on closed pages — ignore.
+    }
+    try {
+      await p.page.evaluate(() => {
+        try { localStorage.clear(); } catch (e) { /* ignore */ }
+        try { sessionStorage.clear(); } catch (e) { /* ignore */ }
+      });
+    } catch (e) {
+      // ignore — fresh navigation above already isolates most state.
+    }
+  }
+
+  /**
+   * Acquire a page from the pool.
+   *
+   * Enforces a page cap ({@link BrowserPoolConfig.maxPages}) as a semaphore:
+   * when the pool holds maxPages live pages and none are free, callers block
+   * until a page is released. Reused pages are reset before hand-off so no
+   * state bleeds between verifications.
    */
   async acquirePage(): Promise<Page> {
     await this.ensureInitialized();
 
-    // Try to reuse an existing page
-    const availablePage = this.pages.find(p => !p.inUse);
-    if (availablePage) {
-      availablePage.inUse = true;
-      logger.info('[BrowserPool] Reusing existing page from pool');
-      this.emit('page-acquired', availablePage.page);
-      return availablePage.page;
-    }
+    // Semaphore / back-pressure loop.
+    for (;;) {
+      const available = this.pages.find(p => !p.inUse);
+      if (available) {
+        available.inUse = true;
+        await this.resetPageState(available);
+        logger.info('[BrowserPool] Reusing existing page from pool');
+        this.emit('page-acquired', available.page);
+        return available.page;
+      }
 
+      // No free page. If under the page cap, create one; otherwise wait.
+      if (this.pages.length < this.config.maxPages) {
+        return await this.createNewPage();
+      }
+
+      // At capacity — block until a page is released.
+      await new Promise<void>(resolve => this.pendingResolvers.push(resolve));
+      // Loop: the released page (or a new slot) will be picked up next iter.
+    }
+  }
+
+  /**
+   * Allocate a brand-new page, launching a browser when under maxInstances
+   * or reusing an existing browser otherwise.
+   */
+  private async createNewPage(): Promise<Page> {
     // Launch new browser if under max instances
     if (this.browsers.length < this.config.maxInstances) {
       try {
         const browser = await this.launchBrowser();
         this.browsers.push(browser);
 
-        // Create context and page
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -216,7 +272,7 @@ export class BrowserPool extends EventEmitter {
   }
 
   /**
-   * Release a page back to the pool
+   * Release a page back to the pool and wake the next blocked acquirer, if any.
    */
   releasePage(page: Page): void {
     const pooledPage = this.pages.find(p => p.page === page);
@@ -228,6 +284,14 @@ export class BrowserPool extends EventEmitter {
     pooledPage.inUse = false;
     logger.info('[BrowserPool] Released page back to pool');
     this.emit('page-released', page);
+
+    // Wake one blocked acquirer; it will find this freshly-freed page.
+    const next = this.pendingResolvers.shift();
+    if (next) {
+      // Run on the next tick so releasePage stays synchronous from the
+      // caller's perspective.
+      Promise.resolve().then(() => next());
+    }
   }
 
   /**

@@ -419,6 +419,12 @@ export class Verifier {
             this.browserPool.releasePage(this.pooledPage);
             this.pooledPage = undefined;
           }
+          // Null out per-attempt resources so the next retry attempt starts
+          // clean. Previously this.page/context/consoleMonitor survived across
+          // retries, causing the loop to reuse a closed page (stale-state leak).
+          this.page = null;
+          this.context = null;
+          this.consoleMonitor = null;
         } catch (cleanupError) {
           new Logger({ prefix: 'Verifier' }).error(`Cleanup error: ${cleanupError}`);
         }

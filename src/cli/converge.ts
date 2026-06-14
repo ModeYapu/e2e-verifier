@@ -255,41 +255,45 @@ class ConvergenceEngine {
       const sites = config.sites || [config];
 
       const pool = new VerifierPool();
-      for (const site of sites) {
-        try {
-          const verifier = new Verifier(site);
-          const result = await verifier.verify();
-          totalChecks += result.checks.length;
-          const resultPassed = result.checks.filter(c => c.passed).length;
-          const resultFailed = result.checks.length - resultPassed;
-          passed += resultPassed;
-          failed += resultFailed;
+      try {
+        for (const site of sites) {
+          try {
+            const verifier = new Verifier(site);
+            const result = await verifier.verify();
+            totalChecks += result.checks.length;
+            const resultPassed = result.checks.filter(c => c.passed).length;
+            const resultFailed = result.checks.length - resultPassed;
+            passed += resultPassed;
+            failed += resultFailed;
 
-          // Extract failure details
-          for (const check of result.checks) {
-            if (!check.passed) {
-              failures.push({
-                page: result.siteName || result.url,
-                check: check.name,
-                reason: check.message || (typeof check.details === 'object' && check.details && 'error' in check.details ? (check.details as { error?: string }).error : undefined) || 'Unknown',
-                category: this.categorizeFailure(check.name, check.message || '')
-              });
+            // Extract failure details
+            for (const check of result.checks) {
+              if (!check.passed) {
+                failures.push({
+                  page: result.siteName || result.url,
+                  check: check.name,
+                  reason: check.message || (typeof check.details === 'object' && check.details && 'error' in check.details ? (check.details as { error?: string }).error : undefined) || 'Unknown',
+                  category: this.categorizeFailure(check.name, check.message || '')
+                });
+              }
             }
+            verifyData = result;
+          } catch (err) {
+            this.logger.warn(`  Verify error for ${site.name}: ${err}`);
+            failures.push({
+              page: site.name || site.url,
+              check: 'verify_execution',
+              reason: String(err),
+              category: 'framework_bug'
+            });
+            failed++;
+            totalChecks++;
           }
-          verifyData = result;
-        } catch (err) {
-          this.logger.warn(`  Verify error for ${site.name}: ${err}`);
-          failures.push({
-            page: site.name || site.url,
-            check: 'verify_execution',
-            reason: String(err),
-            category: 'framework_bug'
-          });
-          failed++;
-          totalChecks++;
         }
+      } finally {
+        // Always release the shared browser pool, even if the loop threw.
+        await pool.close();
       }
-      await pool.close();
     } catch (err) {
       this.logger.error(`  Verify failed: ${err}`);
       failures.push({
