@@ -1,238 +1,254 @@
 /**
- * JobQueue unit tests (in-memory, priority-based FIFO implementation)
+ * JobQueue (persistent, EventEmitter) unit tests
  *
- * Tests enqueue/dequeue priority ordering, lifecycle transitions
- * (cancel, updateStatus, updateResult, updateError), and stats.
+ * Tests the unified JobQueue backed by a JobStore: createJob, enqueue/dequeue
+ * priority ordering, atomic claim, complete/fail event emission, cancel, retry
+ * semantics, and getStats.
  */
 
-import { JobQueue, Job, JobStatus } from '../../src/scheduler/job-queue';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { JobQueue } from '../../src/scheduler/job-queue';
+import { JobStore } from '../../src/scheduler/job-store';
+import { Job } from '../../src/scheduler/types';
 
-describe('JobQueue (in-memory)', () => {
+function makeConfig(): Job['config'] {
+  return { fastVerify: { url: 'https://example.com', name: 'Example' } };
+}
+
+describe('JobQueue (persistent EventEmitter)', () => {
+  let tempDir: string;
+  let jobStore: JobStore;
   let queue: JobQueue;
 
   beforeEach(() => {
-    queue = new JobQueue();
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jq-legacy-test-'));
+    jobStore = new JobStore(tempDir);
+    queue = new JobQueue(jobStore);
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  describe('createJob', () => {
+    test('should build a job with default priority and retries', () => {
+      const job = queue.createJob('fast', makeConfig());
+      expect(job.id).toMatch(/^job-/);
+      expect(job.status).toBe('pending');
+      expect(job.priority).toBe('normal');
+      expect(job.maxRetries).toBe(3);
+      expect(job.retryCount).toBe(0);
+      expect(job.progress).toBe('Job created');
+      expect(job.createdAt).toBeInstanceOf(Date);
+    });
+
+    test('should respect priority, maxRetries and timeout overrides', () => {
+      const job = queue.createJob('deep', makeConfig(), 'high', 5, 12000);
+      expect(job.priority).toBe('high');
+      expect(job.maxRetries).toBe(5);
+      expect(job.timeout).toBe(12000);
+    });
+
+    test('should produce unique ids', () => {
+      const a = queue.createJob('fast', makeConfig());
+      const b = queue.createJob('fast', makeConfig());
+      expect(a.id).not.toBe(b.id);
+    });
   });
 
   describe('enqueue / dequeue', () => {
-    test('should enqueue a job and auto-generate an id', () => {
-      const id = queue.enqueue({ type: 'fast', payload: { a: 1 }, priority: 0 });
-      expect(id).toMatch(/^job-\d+-\d+$/);
-      expect(queue.get(id)).toBeDefined();
-      expect(queue.get(id)!.status).toBe('queued');
-      expect(queue.get(id)!.type).toBe('fast');
-      expect(queue.get(id)!.payload).toEqual({ a: 1 });
+    test('enqueue should persist a pending job', () => {
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      expect(jobStore.get(job.id)).toBeDefined();
+      expect(jobStore.get(job.id)!.status).toBe('pending');
     });
 
-    test('should preserve a caller-supplied id', () => {
-      const id = queue.enqueue({ id: 'custom-id', type: 'deep', payload: {}, priority: 0 });
-      expect(id).toBe('custom-id');
-      expect(queue.get('custom-id')).toBeDefined();
+    test('dequeue should return null when there are no pending jobs', () => {
+      expect(queue.dequeue()).toBeNull();
     });
 
-    test('should default priority to 0 when not provided', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: undefined as unknown as number });
-      expect(queue.get(id)!.priority).toBe(0);
+    test('dequeue should return pending jobs and flip status to queued', () => {
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      const dequeued = queue.dequeue();
+      expect(dequeued).not.toBeNull();
+      expect(dequeued!.id).toBe(job.id);
+      expect(jobStore.get(job.id)!.status).toBe('queued');
     });
 
-    test('should default createdAt to an ISO timestamp', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      const createdAt = queue.get(id)!.createdAt;
-      expect(() => new Date(createdAt).toISOString()).not.toThrow();
-      expect(new Date(createdAt).toString()).not.toBe('Invalid Date');
+    test('dequeue should honor priority order (high > normal > low)', () => {
+      const low = queue.createJob('fast', makeConfig(), 'low');
+      const high = queue.createJob('fast', makeConfig(), 'high');
+      const normal = queue.createJob('fast', makeConfig(), 'normal');
+      // stagger creation times so FIFO is deterministic within a priority
+      low.createdAt = new Date(Date.now() - 3000);
+      normal.createdAt = new Date(Date.now() - 2000);
+      high.createdAt = new Date(Date.now() - 1000);
+      queue.enqueue(low);
+      queue.enqueue(high);
+      queue.enqueue(normal);
+
+      expect(queue.dequeue()!.id).toBe(high.id);
+      expect(queue.dequeue()!.id).toBe(normal.id);
+      expect(queue.dequeue()!.id).toBe(low.id);
     });
 
-    test('should return undefined when dequeuing an empty queue', () => {
-      expect(queue.dequeue()).toBeUndefined();
+    test('dequeue should use FIFO within the same priority', () => {
+      const first = queue.createJob('fast', makeConfig(), 'normal');
+      first.createdAt = new Date(Date.now() - 1000);
+      const second = queue.createJob('fast', makeConfig(), 'normal');
+      second.createdAt = new Date(Date.now());
+      queue.enqueue(first);
+      queue.enqueue(second);
+
+      expect(queue.dequeue()!.id).toBe(first.id);
+      expect(queue.dequeue()!.id).toBe(second.id);
     });
 
-    test('should return undefined when no queued jobs remain', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(id, 'running');
-      expect(queue.dequeue()).toBeUndefined();
+    test('dequeue should atomically claim — never hand the same job out twice', () => {
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+
+      const first = queue.dequeue();
+      const second = queue.dequeue();
+
+      expect(first).not.toBeNull();
+      expect(first!.id).toBe(job.id);
+      // The claimed job is now 'queued', so a subsequent dequeue must skip it.
+      expect(second).toBeNull();
+      expect(jobStore.get(job.id)!.status).toBe('queued');
+    });
+  });
+
+  describe('complete', () => {
+    test('should set result, status and completedAt', () => {
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      queue.complete(job.id, { passed: true } as any);
+
+      const stored = jobStore.get(job.id)!;
+      expect(stored.status).toBe('completed');
+      expect(stored.result).toEqual({ passed: true });
+      expect(stored.completedAt).toBeInstanceOf(Date);
+      expect(stored.progress).toContain('completed');
     });
 
-    test('should dequeue the highest priority job first', () => {
-      const low = queue.enqueue({ type: 'fast', payload: { tag: 'low' }, priority: 1 });
-      const high = queue.enqueue({ type: 'fast', payload: { tag: 'high' }, priority: 10 });
-      const mid = queue.enqueue({ type: 'fast', payload: { tag: 'mid' }, priority: 5 });
+    test('should emit job.completed event with the updated job', () => {
+      const handler = jest.fn();
+      queue.on('job.completed', handler);
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      queue.complete(job.id, { passed: true } as any);
 
-      // dequeue does not mutate status, so mark each dequeued job non-queued
-      // before asking for the next one.
-      expect(queue.dequeue()!.id).toBe(high);
-      queue.updateStatus(high, 'running');
-      expect(queue.dequeue()!.id).toBe(mid);
-      queue.updateStatus(mid, 'running');
-      expect(queue.dequeue()!.id).toBe(low);
-      queue.updateStatus(low, 'running');
-      expect(queue.dequeue()).toBeUndefined();
-
-      // ensure original entries still exist (dequeue does not remove)
-      expect(queue.get(low)).toBeDefined();
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler.mock.calls[0][0].id).toBe(job.id);
     });
 
-    test('should preserve FIFO order within the same priority', () => {
-      const first = queue.enqueue({ type: 'fast', payload: {}, priority: 5, createdAt: '2024-01-01T00:00:00.000Z' });
-      const second = queue.enqueue({ type: 'fast', payload: {}, priority: 5, createdAt: '2024-01-02T00:00:00.000Z' });
-      const third = queue.enqueue({ type: 'fast', payload: {}, priority: 5, createdAt: '2024-01-03T00:00:00.000Z' });
+    test('should be a no-op for an unknown job id', () => {
+      const handler = jest.fn();
+      queue.on('job.completed', handler);
+      expect(() => queue.complete('ghost', {} as any)).not.toThrow();
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
 
-      expect(queue.dequeue()!.id).toBe(first);
-      queue.updateStatus(first, 'running');
-      expect(queue.dequeue()!.id).toBe(second);
-      queue.updateStatus(second, 'running');
-      expect(queue.dequeue()!.id).toBe(third);
+  describe('fail', () => {
+    test('should set error and emit job.failed', () => {
+      const handler = jest.fn();
+      queue.on('job.failed', handler);
+
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      queue.fail(job.id, 'boom');
+
+      const stored = jobStore.get(job.id)!;
+      expect(stored.status).toBe('failed');
+      expect(stored.error).toBe('boom');
+      expect(stored.completedAt).toBeInstanceOf(Date);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler.mock.calls[0][0].id).toBe(job.id);
     });
   });
 
   describe('cancel', () => {
+    test('should cancel a pending job', () => {
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      expect(queue.cancel(job.id)).toBe(true);
+      expect(jobStore.get(job.id)!.status).toBe('cancelled');
+    });
+
     test('should cancel a queued job', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      expect(queue.cancel(id)).toBe(true);
-      expect(queue.get(id)!.status).toBe('cancelled');
-      expect(queue.get(id)!.completedAt).toBeDefined();
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      queue.dequeue(); // flips to queued
+      expect(queue.cancel(job.id)).toBe(true);
+      expect(jobStore.get(job.id)!.status).toBe('cancelled');
     });
 
-    test('should cancel a running job', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(id, 'running');
-      expect(queue.cancel(id)).toBe(true);
-      expect(queue.get(id)!.status).toBe('cancelled');
+    test('should refuse to cancel a running job', () => {
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      jobStore.update(job.id, { status: 'running' });
+      expect(queue.cancel(job.id)).toBe(false);
     });
 
-    test('should return false for a non-existent job', () => {
-      expect(queue.cancel('does-not-exist')).toBe(false);
-    });
-
-    test('should not cancel an already-completed job', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(id, 'completed');
-      expect(queue.cancel(id)).toBe(false);
-      expect(queue.get(id)!.status).toBe('completed');
-    });
-
-    test('should not cancel an already-failed job', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(id, 'failed');
-      expect(queue.cancel(id)).toBe(false);
+    test('should return false for unknown job', () => {
+      expect(queue.cancel('ghost')).toBe(false);
     });
   });
 
-  describe('updateStatus', () => {
-    test('should set startedAt when transitioning to running', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(id, 'running');
-      expect(queue.get(id)!.startedAt).toBeDefined();
+  describe('retryJob', () => {
+    test('should reset a failed job to pending and bump retryCount', () => {
+      const job = queue.createJob('fast', makeConfig(), 'normal', 3);
+      queue.enqueue(job);
+      queue.fail(job.id, 'transient');
+
+      const retried = queue.retryJob(job.id);
+      expect(retried).not.toBeNull();
+      expect(retried!.status).toBe('pending');
+      expect(retried!.retryCount).toBe(1);
+      expect(retried!.error).toBeUndefined();
     });
 
-    test('should not overwrite startedAt on subsequent updates', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(id, 'running');
-      const first = queue.get(id)!.startedAt;
-      queue.updateStatus(id, 'running');
-      expect(queue.get(id)!.startedAt).toBe(first);
+    test('should refuse to retry a non-failed job', () => {
+      const job = queue.createJob('fast', makeConfig());
+      queue.enqueue(job);
+      expect(queue.retryJob(job.id)).toBeNull();
     });
 
-    test('should set completedAt for terminal states', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(id, 'completed');
-      expect(queue.get(id)!.completedAt).toBeDefined();
+    test('should refuse to retry once max retries is reached', () => {
+      const job = queue.createJob('fast', makeConfig(), 'normal', 1);
+      queue.enqueue(job);
+      queue.fail(job.id, 'err');
+      queue.retryJob(job.id); // retryCount -> 1 (== maxRetries)
+      queue.fail(job.id, 'err again');
+      expect(queue.retryJob(job.id)).toBeNull();
     });
 
-    test('should be a no-op for an unknown job', () => {
-      expect(() => queue.updateStatus('ghost', 'completed')).not.toThrow();
-    });
-  });
-
-  describe('updateResult', () => {
-    test('should store the result and mark the job completed', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateResult(id, { passed: true });
-      const job = queue.get(id)!;
-      expect(job.result).toEqual({ passed: true });
-      expect(job.status).toBe('completed');
-      expect(job.completedAt).toBeDefined();
+    test('should return null for an unknown job', () => {
+      expect(queue.retryJob('ghost')).toBeNull();
     });
   });
 
-  describe('updateError', () => {
-    test('should store the error and mark the job failed', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateError(id, 'something broke');
-      const job = queue.get(id)!;
-      expect(job.error).toBe('something broke');
-      expect(job.status).toBe('failed');
-      expect(job.completedAt).toBeDefined();
-    });
-  });
+  describe('getStats', () => {
+    test('should reflect counts by status from the store', () => {
+      const a = queue.createJob('fast', makeConfig());
+      const b = queue.createJob('fast', makeConfig());
+      queue.enqueue(a);
+      queue.enqueue(b);
+      queue.complete(a.id, {} as any);
+      queue.fail(b.id, 'err');
 
-  describe('getQueueStatus', () => {
-    test('should count jobs by status and track total created', () => {
-      const a = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      const b = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(a, 'running');
-      queue.updateResult(b, { ok: true });
-
-      const status = queue.getQueueStatus();
-      expect(status.waiting).toBe(1);
-      expect(status.running).toBe(1);
-      expect(status.completed).toBe(1);
-      expect(status.failed).toBe(0);
-      expect(status.cancelled).toBe(0);
-      expect(status.total).toBe(3);
-    });
-
-    test('should keep totalCreated after cancel/complete', () => {
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.cancel(id);
-      expect(queue.getQueueStatus().total).toBe(1);
-      expect(queue.getQueueStatus().cancelled).toBe(1);
-    });
-  });
-
-  describe('list', () => {
-    test('should return all jobs when no filter is supplied', () => {
-      queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.enqueue({ type: 'deep', payload: {}, priority: 0 });
-      expect(queue.list().length).toBe(2);
-    });
-
-    test('should filter jobs by status', () => {
-      const a = queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.updateStatus(a, 'running');
-      const running = queue.list('running');
-      expect(running.length).toBe(1);
-      expect(running[0].id).toBe(a);
-    });
-  });
-
-  describe('clear', () => {
-    test('should remove all jobs and reset the total counter', () => {
-      queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.enqueue({ type: 'fast', payload: {}, priority: 0 });
-      queue.clear();
-      expect(queue.list().length).toBe(0);
-      expect(queue.getQueueStatus().total).toBe(0);
-    });
-  });
-
-  describe('integration: priority + lifecycle', () => {
-    test('end-to-end enqueue → dequeue → run → complete flow', () => {
-      const statuses: JobStatus[] = [];
-      const id = queue.enqueue({ type: 'fast', payload: {}, priority: 7 });
-      statuses.push(queue.get(id)!.status); // queued
-
-      const dequeued = queue.dequeue()!;
-      expect(dequeued.id).toBe(id);
-      queue.updateStatus(id, 'running');
-      statuses.push(queue.get(id)!.status); // running
-
-      queue.updateResult(id, { ok: true });
-      statuses.push(queue.get(id)!.status); // completed
-
-      expect(statuses).toEqual(['queued', 'running', 'completed']);
-      expect(queue.getQueueStatus().total).toBe(1);
+      const stats = queue.getStats() as ReturnType<JobStore['countByStatus']>;
+      expect(stats.total).toBe(2);
+      expect(stats.completed).toBe(1);
+      expect(stats.failed).toBe(1);
     });
   });
 });

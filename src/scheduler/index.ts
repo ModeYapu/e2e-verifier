@@ -1,21 +1,23 @@
 /**
  * P1 Platform Job Queue Scheduler System
- * Unified exports for the job queue and worker pool
+ * Unified exports for the job queue and schedule manager.
  */
 
-// Job Queue exports
+// Job Queue exports (single persistent implementation)
 export {
   JobQueue,
   type Job,
   type JobStatus,
+  type JobPriority,
+  type JobConfig,
+  type JobResult,
+  type JobStats,
+  type JobFilter,
   type QueueStatus,
 } from './job-queue';
 
-// Worker Pool exports
-export {
-  WorkerPool,
-  type WorkerPoolConfig,
-} from './worker-pool';
+// Job Store exports
+export { JobStore } from './job-store';
 
 // Schedule Manager exports
 export {

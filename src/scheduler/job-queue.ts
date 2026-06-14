@@ -1,235 +1,236 @@
 /**
- * In-memory Job Queue with priority-based FIFO semantics
- * Part of P1 Platform Job Queue Scheduler System
+ * Job Queue — single, persistent, priority-based FIFO queue.
+ *
+ * Backed by {@link JobStore} (JSON file persistence) and extending EventEmitter
+ * for job lifecycle events. This is the ONE queue used by the Scheduler,
+ * ScheduleManager and the REST routes. The previous separate in-memory queue
+ * and the mis-named `job-queue-legacy` module were merged into this file.
  */
 
+import { EventEmitter } from 'events';
+import { JobStore } from './job-store';
+import { Job, JobStatus, JobPriority, JobConfig, JobResult, JobStats, JobFilter } from './types';
+import { generateId } from '../utils/security';
 import { logger } from '../utils/logger';
 
-/**
- * Job status throughout its lifecycle
- */
-export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+// Re-export the job model so consumers can import everything from one place.
+export type { Job, JobStatus, JobPriority, JobConfig, JobResult, JobStats, JobFilter };
 
 /**
- * Job interface representing a unit of work
- */
-export interface Job {
-  id: string;
-  type: string;
-  payload: unknown;
-  priority: number; // Higher number = higher priority
-  status: JobStatus;
-  createdAt: string; // ISO timestamp
-  startedAt?: string;
-  completedAt?: string;
-  result?: unknown;
-  error?: string;
-}
-
-/**
- * Queue status statistics
+ * Queue status shape used by the legacy `/api/jobs/queue/status` route.
+ * `waiting` aggregates pending + queued jobs.
  */
 export interface QueueStatus {
-  waiting: number; // queued jobs
-  running: number; // running jobs
-  completed: number; // completed jobs
-  failed: number; // failed jobs
-  cancelled: number; // cancelled jobs
-  total: number; // total jobs ever created
+  waiting: number;
+  running: number;
+  completed: number;
+  failed: number;
+  cancelled: number;
+  total: number;
 }
 
 /**
- * In-memory job queue with priority-based FIFO scheduling
- * - Higher priority number = higher priority (executed first)
- * - FIFO ordering within same priority level
- * - In-memory storage only (no persistence)
+ * Job Queue class extending EventEmitter for job lifecycle events
  */
-export class JobQueue {
-  private queue: Map<string, Job> = new Map();
-  private jobIdCounter = 0;
-  private totalCreated = 0;
+export class JobQueue extends EventEmitter {
+  private jobStore: JobStore;
 
-  /**
-   * Enqueue a new job
-   * @param job - The job to enqueue (id is auto-generated if empty)
-   * @returns The jobId of the enqueued job
-   */
-  enqueue(job: Omit<Job, 'id' | 'status' | 'createdAt'> & Partial<Pick<Job, 'id' | 'status' | 'createdAt'>>): string {
-    const jobId = job.id || this.generateJobId();
-    const newJob: Job = {
-      id: jobId,
-      type: job.type,
-      payload: job.payload,
-      priority: job.priority ?? 0,
-      status: job.status ?? 'queued',
-      createdAt: job.createdAt || new Date().toISOString(),
-      startedAt: job.startedAt,
-      completedAt: job.completedAt,
-      result: job.result,
-      error: job.error,
-    };
+  constructor(jobStore: JobStore) {
+    super();
+    this.jobStore = jobStore;
+  }
 
-    this.queue.set(jobId, newJob);
-    this.totalCreated++;
-
-    logger.debug(`[JobQueue] Enqueued job ${jobId} (type: ${newJob.type}, priority: ${newJob.priority})`);
-
-    return jobId;
+  /** Expose the backing store (routes/transactions). */
+  getStore(): JobStore {
+    return this.jobStore;
   }
 
   /**
-   * Dequeue the next job based on priority and FIFO
-   * - Jobs must be in 'queued' status to be dequeued
-   * - Higher priority numbers are dequeued first
-   * - FIFO ordering within same priority
-   * @returns The next job to process, or undefined if no queued jobs
+   * Enqueue a new job
    */
-  dequeue(): Job | undefined {
-    const queuedJobs = Array.from(this.queue.values()).filter(j => j.status === 'queued');
+  enqueue(job: Job): void {
+    // Set initial status to pending
+    job.status = 'pending';
+    this.jobStore.save(job);
 
-    if (queuedJobs.length === 0) {
-      return undefined;
+    logger.info(`[JobQueue] Enqueued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
+  }
+
+  /**
+   * Atomically claim the next pending job.
+   *
+   * Delegates to {@link JobStore.claimNextPending} which performs the
+   * select-and-status-flip in a single synchronous critical section, so
+   * multiple workers can never be handed the same job.
+   */
+  dequeue(): Job | null {
+    const job = this.jobStore.claimNextPending();
+    if (job) {
+      logger.info(`[JobQueue] Dequeued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
     }
-
-    // Sort by priority (descending), then by creation time (ascending for FIFO)
-    queuedJobs.sort((a, b) => {
-      const priorityDiff = b.priority - a.priority;
-      if (priorityDiff !== 0) {
-        return priorityDiff;
-      }
-      // Same priority: FIFO by creation time
-      return a.createdAt.localeCompare(b.createdAt);
-    });
-
-    const job = queuedJobs[0];
-    logger.debug(`[JobQueue] Dequeued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
-
     return job;
   }
 
   /**
-   * Cancel a queued or running job
-   * @param jobId - The ID of the job to cancel
-   * @returns true if cancelled, false if not found or not cancellable
+   * Mark a job as completed
+   */
+  complete(jobId: string, result: JobResult): void {
+    const job = this.jobStore.get(jobId);
+    if (!job) return;
+
+    const updatedJob = this.jobStore.update(jobId, {
+      status: 'completed',
+      result,
+      completedAt: new Date(),
+      progress: 'Job completed successfully'
+    });
+
+    if (updatedJob) {
+      this.emit('job.completed', updatedJob);
+      logger.info(`[JobQueue] Job ${jobId} completed successfully`);
+    }
+  }
+
+  /**
+   * Mark a job as failed
+   */
+  fail(jobId: string, error: string): void {
+    const job = this.jobStore.get(jobId);
+    if (!job) return;
+
+    const updatedJob = this.jobStore.update(jobId, {
+      status: 'failed',
+      error,
+      completedAt: new Date(),
+      progress: `Job failed: ${error}`
+    });
+
+    if (updatedJob) {
+      this.emit('job.failed', updatedJob);
+      logger.info(`[JobQueue] Job ${jobId} failed: ${error}`);
+    }
+  }
+
+  /**
+   * Cancel a job
    */
   cancel(jobId: string): boolean {
-    const job = this.queue.get(jobId);
+    const job = this.jobStore.get(jobId);
+    if (!job) return false;
 
-    if (!job) {
-      logger.warn(`[JobQueue] Cannot cancel non-existent job ${jobId}`);
+    // Can only cancel pending or queued jobs
+    if (job.status !== 'pending' && job.status !== 'queued') {
+      logger.info(`[JobQueue] Cannot cancel job ${jobId} with status ${job.status}`);
       return false;
     }
 
-    // Can only cancel queued or running jobs
-    if (job.status !== 'queued' && job.status !== 'running') {
-      logger.warn(`[JobQueue] Cannot cancel job ${jobId} with status ${job.status}`);
-      return false;
-    }
+    this.jobStore.update(jobId, {
+      status: 'cancelled',
+      completedAt: new Date(),
+      progress: 'Job cancelled by user'
+    });
 
-    job.status = 'cancelled';
-    job.completedAt = new Date().toISOString();
-
-    logger.info(`[JobQueue] Cancelled job ${jobId}`);
+    logger.info(`[JobQueue] Job ${jobId} cancelled`);
     return true;
   }
 
   /**
-   * Update job status
-   * @param jobId - The ID of the job to update
-   * @param status - The new status
+   * Create a new job (factory method)
    */
-  updateStatus(jobId: string, status: JobStatus): void {
-    const job = this.queue.get(jobId);
-    if (job) {
-      job.status = status;
-      if (status === 'running' && !job.startedAt) {
-        job.startedAt = new Date().toISOString();
-      } else if (status === 'completed' || status === 'failed' || status === 'cancelled') {
-        if (!job.completedAt) {
-          job.completedAt = new Date().toISOString();
-        }
-      }
-    }
-  }
-
-  /**
-   * Update job result
-   * @param jobId - The ID of the job to update
-   * @param result - The result to set
-   */
-  updateResult(jobId: string, result: unknown): void {
-    const job = this.queue.get(jobId);
-    if (job) {
-      job.result = result;
-      job.status = 'completed';
-      job.completedAt = new Date().toISOString();
-    }
-  }
-
-  /**
-   * Update job error
-   * @param jobId - The ID of the job to update
-   * @param error - The error message to set
-   */
-  updateError(jobId: string, error: string): void {
-    const job = this.queue.get(jobId);
-    if (job) {
-      job.error = error;
-      job.status = 'failed';
-      job.completedAt = new Date().toISOString();
-    }
-  }
-
-  /**
-   * Get a job by ID
-   * @param jobId - The ID of the job to retrieve
-   * @returns The job, or undefined if not found
-   */
-  get(jobId: string): Job | undefined {
-    return this.queue.get(jobId);
-  }
-
-  /**
-   * Get queue status statistics
-   * @returns Queue status with counts by status
-   */
-  getQueueStatus(): QueueStatus {
-    const jobs = Array.from(this.queue.values());
-
+  createJob(
+    type: Job['type'],
+    config: JobConfig,
+    priority: JobPriority = 'normal',
+    maxRetries: number = 3,
+    timeout?: number
+  ): Job {
     return {
-      waiting: jobs.filter(j => j.status === 'queued').length,
-      running: jobs.filter(j => j.status === 'running').length,
-      completed: jobs.filter(j => j.status === 'completed').length,
-      failed: jobs.filter(j => j.status === 'failed').length,
-      cancelled: jobs.filter(j => j.status === 'cancelled').length,
-      total: this.totalCreated,
+      id: generateId('job-'),
+      type,
+      status: 'pending',
+      priority,
+      config,
+      retryCount: 0,
+      maxRetries,
+      createdAt: new Date(),
+      timeout,
+      progress: 'Job created'
     };
   }
 
   /**
-   * Get all jobs (optional filter by status)
-   * @param status - Optional status to filter by
-   * @returns Array of jobs matching the filter
+   * Retry a failed job
    */
-  list(status?: JobStatus): Job[] {
-    const jobs = Array.from(this.queue.values());
-    return status ? jobs.filter(j => j.status === status) : jobs;
+  retryJob(jobId: string): Job | null {
+    const job = this.jobStore.get(jobId);
+    if (!job) return null;
+
+    // Can only retry failed jobs
+    if (job.status !== 'failed') {
+      logger.info(`[JobQueue] Cannot retry job ${jobId} with status ${job.status}`);
+      return null;
+    }
+
+    // Check retry limit
+    if (job.retryCount >= job.maxRetries) {
+      logger.info(`[JobQueue] Job ${jobId} has reached max retries (${job.maxRetries})`);
+      return null;
+    }
+
+    // Reset job for retry
+    const updatedJob = this.jobStore.update(jobId, {
+      status: 'pending',
+      retryCount: job.retryCount + 1,
+      error: undefined,
+      completedAt: undefined,
+      progress: `Retry attempt ${job.retryCount + 1} of ${job.maxRetries}`
+    });
+
+    if (updatedJob) {
+      logger.info(`[JobQueue] Job ${jobId} queued for retry (attempt ${updatedJob.retryCount}/${updatedJob.maxRetries})`);
+    }
+
+    return updatedJob;
   }
 
   /**
-   * Clear all jobs from the queue
+   * Get queue statistics (status counts).
    */
-  clear(): void {
-    this.queue.clear();
-    this.totalCreated = 0;
-    logger.info('[JobQueue] Queue cleared');
+  getStats(): JobStats {
+    return this.jobStore.countByStatus();
+  }
+
+  // ---------------------------------------------------------------
+  // Route-facing convenience accessors.
+  // These delegate to the store so the REST layer can talk to the
+  // queue directly without a separate JobStore reference.
+  // ---------------------------------------------------------------
+
+  /** Get a job by id. */
+  get(jobId: string): Job | undefined {
+    return this.jobStore.get(jobId);
+  }
+
+  /** List jobs, optionally filtered by status (or a full JobFilter). */
+  list(filter?: JobStatus | JobFilter): Job[] {
+    if (!filter) return this.jobStore.list();
+    if (typeof filter === 'string') return this.jobStore.list({ status: filter });
+    return this.jobStore.list(filter);
   }
 
   /**
-   * Generate a unique job ID
-   * @returns A unique job ID string
+   * Queue status in the legacy {@link QueueStatus} shape used by the
+   * `/api/jobs/queue/status` route. `waiting` covers both pending and queued.
    */
-  private generateJobId(): string {
-    return `job-${Date.now()}-${++this.jobIdCounter}`;
+  getQueueStatus(): QueueStatus {
+    const s = this.jobStore.countByStatus();
+    return {
+      waiting: s.pending + s.queued,
+      running: s.running,
+      completed: s.completed,
+      failed: s.failed,
+      cancelled: s.cancelled,
+      total: s.total,
+    };
   }
 }

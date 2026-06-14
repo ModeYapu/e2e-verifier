@@ -4,7 +4,7 @@
 
 import { EventEmitter } from 'events';
 import { Browser } from '@playwright/test';
-import { JobQueue } from './job-queue-legacy';
+import { JobQueue } from './job-queue';
 import { JobStore } from './job-store';
 import { Job, JobStatus, JobResult } from './types';
 import { Verifier } from '../verifier';
@@ -198,15 +198,23 @@ export class Scheduler extends EventEmitter {
     let result: JobResult | undefined;
     let error: string | null = null;
 
+    // AbortController lets us signal cancellation on timeout; the timer is
+    // always cleared in finally so it can never leak across the long-lived
+    // scheduler loop.
+    const controller = new AbortController();
+    const timeout = job.timeout || 300000; // Default 5 minutes
+    let timer: NodeJS.Timeout | undefined;
+
     try {
-      // Set timeout for job execution
-      const timeout = job.timeout || 300000; // Default 5 minutes
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Job timeout')), timeout);
+        timer = setTimeout(() => {
+          controller.abort(new Error('Job timeout'));
+          reject(new Error('Job timeout'));
+        }, timeout);
       });
 
-      // Execute job based on type
-      const executionPromise = this.executeJobByType(job, worker);
+      // Execute job based on type, threading the abort signal through.
+      const executionPromise = this.executeJobByType(job, worker, controller.signal);
 
       // Race between execution and timeout
       result = await Promise.race([executionPromise, timeoutPromise]);
@@ -215,6 +223,23 @@ export class Scheduler extends EventEmitter {
       error = err instanceof Error ? err.message : String(err);
       logger.error(`[Scheduler] Job ${job.id} failed: ${error}`);
     } finally {
+      // Always release the timer handle.
+      if (timer) {
+        clearTimeout(timer);
+        timer = undefined;
+      }
+
+      // Release any browser handle the worker may hold (defensive — workers
+      // normally source browsers from the shared pool).
+      if (worker.browser) {
+        try {
+          await worker.browser.close();
+        } catch (closeErr) {
+          logger.warn(`[Scheduler] Error closing worker browser: ${closeErr}`);
+        }
+        worker.browser = undefined;
+      }
+
       const duration = Date.now() - startTime;
 
       // Update worker state
@@ -235,9 +260,13 @@ export class Scheduler extends EventEmitter {
   }
 
   /**
-   * Execute job based on its type
+   * Execute job based on its type.
+   *
+   * The optional AbortSignal is forwarded for cooperative cancellation on
+   * timeout; signal-aware executors should check `signal.aborted` / listen for
+   * the 'abort' event and tear down page/browser resources promptly.
    */
-  private async executeJobByType(job: Job, worker: WorkerState): Promise<JobResult> {
+  private async executeJobByType(job: Job, worker: WorkerState, signal?: AbortSignal): Promise<JobResult> {
     switch (job.type) {
       case 'fast':
         return await this.executeFastVerify(job);

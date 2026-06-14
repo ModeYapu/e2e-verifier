@@ -5,7 +5,8 @@
  */
 
 import { logger } from '../utils/logger';
-import { JobQueue, type Job } from './job-queue';
+import { JobQueue } from './job-queue';
+import type { JobPriority } from './types';
 
 /**
  * Simple cron expression parser
@@ -357,6 +358,11 @@ export class ScheduleManager {
 
   /**
    * Execute a scheduled task
+   *
+   * Builds a real 'fast' verify job from the schedule's site config and
+   * enqueues it on the shared persistent JobQueue. (Previously this enqueued
+   * an ad-hoc `{type:'scheduled', payload}` shape onto a separate in-memory
+   * queue that the Scheduler could never actually execute.)
    */
   private executeScheduledTask(id: string): void {
     const schedule = this.schedules.get(id);
@@ -366,19 +372,36 @@ export class ScheduleManager {
 
     logger.info(`[ScheduleManager] Executing scheduled task ${id} - ${schedule.name}`);
 
-    // Create a job and enqueue it
-    const jobId = this.jobQueue.enqueue({
-      type: 'scheduled',
-      payload: {
-        scheduleId: id,
-        scheduleName: schedule.name,
-        siteConfig: schedule.siteConfig,
-        executedAt: new Date().toISOString(),
+    const site = schedule.siteConfig;
+    const job = this.jobQueue.createJob(
+      'fast',
+      {
+        name: site.name,
+        fastVerify: {
+          url: site.url,
+          name: site.name,
+          checks: site.checks,
+          viewport: site.viewport,
+          timeout: site.timeout,
+          expectedStatusCode: site.expectedStatusCode,
+        },
       },
-      priority: schedule.priority ?? 5,
-    });
+      this.numericPriorityToEnum(schedule.priority),
+    );
+    this.jobQueue.enqueue(job);
 
-    logger.info(`[ScheduleManager] Enqueued job ${jobId} for schedule ${id}`);
+    logger.info(`[ScheduleManager] Enqueued job ${job.id} for schedule ${id}`);
+  }
+
+  /**
+   * Map the schedule's numeric priority (higher = more urgent) onto the
+   * JobPriority enum the queue understands.
+   */
+  private numericPriorityToEnum(priority: number | undefined): JobPriority {
+    if (priority === undefined) return 'normal';
+    if (priority >= 7) return 'high';
+    if (priority <= 3) return 'low';
+    return 'normal';
   }
 
   /**

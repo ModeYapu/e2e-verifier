@@ -117,7 +117,9 @@ export class VerifyServer {
     this.storageService = new StorageService();
 
     // Initialize job queue and schedule manager
-    this.jobQueue = new JobQueue();
+    // Share the JobService's persistent queue so the Scheduler,
+    // ScheduleManager and REST routes all use one source of truth.
+    this.jobQueue = this.jobService.getJobQueue();
     this.scheduleManager = new ScheduleManager(this.jobQueue);
 
     // Initialize LLM Registry with environment configuration

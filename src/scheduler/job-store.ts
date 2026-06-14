@@ -4,8 +4,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { Job, JobStatus, JobStats, JobFilter, JobResult } from './types';
+import { Job, JobStatus, JobStats, JobFilter, JobResult, JobPriority } from './types';
 import { JsonStorage } from '../storage/json-storage';
+import { Mutex } from '../utils/mutex';
 import { logger } from '../utils/logger';
 
 /**
@@ -27,6 +28,12 @@ export class JobStore {
   private filePath: string;
   private dataDir: string;
   private storage: JsonStorage;
+  /**
+   * Serialises read-modify-write sections that span an `await`. Sync callers
+   * (single-process, single-thread) are already atomic per tick; this guards
+   * the async transaction path and documents intent.
+   */
+  private mutex: Mutex = new Mutex();
 
   constructor(dataDir: string = 'data') {
     this.dataDir = dataDir;
@@ -216,6 +223,51 @@ export class JobStore {
     }
 
     return stats;
+  }
+
+  /**
+   * Atomically claim the next pending job for execution.
+   *
+   * Selection: highest priority first (high > normal > low), then FIFO by
+   * creation time. The selected job's status is flipped to 'queued' and
+   * persisted in the same synchronous critical section, so concurrent workers
+   * dequeueing in the same (or later) tick can never be handed the same job.
+   *
+   * This replaces the previous non-atomic list → sort → update sequence in
+   * JobQueue.dequeue which left a window for duplicate assignment.
+   */
+  claimNextPending(): Job | null {
+    const priorityOrder: Record<JobPriority, number> = { high: 3, normal: 2, low: 1 };
+
+    let best: Job | null = null;
+    for (const job of this.jobs.values()) {
+      if (job.status !== 'pending') continue;
+      if (!best) {
+        best = job;
+        continue;
+      }
+      const prioDiff = priorityOrder[job.priority] - priorityOrder[best.priority];
+      if (prioDiff > 0 || (prioDiff === 0 && job.createdAt.getTime() < best.createdAt.getTime())) {
+        best = job;
+      }
+    }
+
+    if (!best) return null;
+
+    const claimed = this.update(best.id, {
+      status: 'queued' as JobStatus,
+      progress: 'Job claimed by worker',
+    });
+    return claimed;
+  }
+
+  /**
+   * Run an async read-modify-write callback while holding the store lock.
+   * Use this for any multi-step mutation that spans an `await` so concurrent
+   * transactions cannot interleave and clobber each other.
+   */
+  async transaction<T>(fn: () => Promise<T>): Promise<T> {
+    return this.mutex.run(fn);
   }
 
   /**
