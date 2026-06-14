@@ -55,6 +55,8 @@ import { createExportRoutes } from './routes/export-routes';
 import { errorHandler } from '../middleware/error-handler';
 import { validateConfig } from '../config/execution-config';
 import { rateLimiter } from '../middleware/rate-limiter';
+import { WebSocketServer } from '../realtime/websocket-server';
+import { EventBroadcaster } from '../realtime/event-broadcaster';
 
 /**
  * Server statistics
@@ -87,6 +89,9 @@ export class VerifyServer {
   private apiToken: string | null;
   private headless: boolean;
   private serverStartTime: number;
+  private webSocketServer: WebSocketServer | null = null;
+  private broadcaster: EventBroadcaster | null = null;
+  private detachBroadcaster: (() => void) | null = null;
   private stats: ServerStats = {
     totalVerifications: 0,
     totalDeepVerifications: 0,
@@ -324,6 +329,18 @@ export class VerifyServer {
         logger.info('  - GET    /api/webhook/trigger/status/:jobId Webhook trigger job status');
         logger.info('  - GET    /api/health              Health check');
         logger.info('  - GET    /api/stats               Server statistics');
+        logger.info('Realtime:');
+        logger.info('  - WS     /ws                      WebSocket job progress stream');
+
+        // Attach the WebSocket server to the now-listening http server and
+        // wire the scheduler's job lifecycle events to the broadcast stream.
+        this.webSocketServer = new WebSocketServer(this.server, { path: '/ws' });
+        this.webSocketServer.attach();
+        this.broadcaster = new EventBroadcaster(this.webSocketServer);
+        this.detachBroadcaster = this.broadcaster.attachToScheduler(
+          this.jobService.getScheduler()
+        );
+
         resolve();
       });
 
@@ -339,6 +356,22 @@ export class VerifyServer {
    */
   async stop(): Promise<void> {
     logger.info('Stopping VerifyServer...');
+
+    // Detach realtime broadcaster and close all WebSocket clients first,
+    // so dashboard connections see a clean shutdown before the port closes.
+    try {
+      if (this.detachBroadcaster) {
+        this.detachBroadcaster();
+        this.detachBroadcaster = null;
+      }
+      if (this.webSocketServer) {
+        this.webSocketServer.close();
+        this.webSocketServer = null;
+        logger.info('WebSocket server closed');
+      }
+    } catch (wsError) {
+      logger.error(`Error closing WebSocket server: ${wsError}`);
+    }
 
     // Stop schedule manager
     logger.info('Stopping schedule manager...');
@@ -396,6 +429,21 @@ export class VerifyServer {
    */
   getScheduleManager(): ScheduleManager {
     return this.scheduleManager;
+  }
+
+  /**
+   * Number of connected realtime (WebSocket) clients.
+   */
+  getRealtimeConnectionCount(): number {
+    return this.webSocketServer?.getConnectionCount() ?? 0;
+  }
+
+  /**
+   * Event broadcaster used to push job-lifecycle events to dashboard
+   * clients. Returns null before the server has started.
+   */
+  getBroadcaster(): EventBroadcaster | null {
+    return this.broadcaster;
   }
 
   private server: ReturnType<express.Application['listen']> | null = null;
