@@ -3,6 +3,8 @@
  * Handles pixel-level image comparison with region-aware diff detection and heatmap generation
  */
 
+import * as zlib from 'zlib';
+
 /**
  * Region to ignore during comparison
  */
@@ -226,8 +228,16 @@ export class VisualComparator {
   }
 
   /**
-   * Parse PNG buffer to extract width, height, and pixel data
-   * This is a minimal PNG parser for the common case of 8-bit RGBA images
+   * Parse a PNG buffer into width, height and RGBA pixel data.
+   *
+   * This is a REAL decoder: it concatenates every IDAT chunk, inflates the
+   * zlib stream with the built-in `zlib` module, reverses the per-scanline
+   * PNG filtering, and normalises the result to 8-bit RGBA. The previous
+   * implementation copied the still-compressed IDAT bytes verbatim into the
+   * pixel buffer, so every "diff" it produced was meaningless.
+   *
+   * Supports the colour types Playwright (and typical PNG encoders) emit:
+   * grayscale (0), RGB (2), grayscale+alpha (4) and RGBA (6), at 8 or 16 bit.
    */
   private parsePNG(buffer: Buffer): PNGImage {
     // Validate PNG signature
@@ -236,77 +246,151 @@ export class VisualComparator {
     }
 
     let offset = 8;
-
-    // Parse chunks until we find IHDR
     let width = 0;
     let height = 0;
     let bitDepth = 0;
     let colorType = 0;
-    let foundIDAT = false;
+    const idatChunks: Buffer[] = [];
 
-    while (offset < buffer.length) {
-      // Read chunk length (4 bytes)
+    while (offset + 8 <= buffer.length) {
       const chunkLength = buffer.readUInt32BE(offset);
       offset += 4;
-
-      // Read chunk type (4 bytes)
       const chunkType = buffer.slice(offset, offset + 4).toString('ascii');
       offset += 4;
 
       if (chunkType === 'IHDR') {
-        // Image header chunk
         width = buffer.readUInt32BE(offset);
         height = buffer.readUInt32BE(offset + 4);
         bitDepth = buffer.readUInt8(offset + 8);
         colorType = buffer.readUInt8(offset + 9);
-        offset += chunkLength + 4; // Skip data and CRC
       } else if (chunkType === 'IDAT') {
-        // Image data chunk - collect all pixel data
-        // For simplicity, we'll use a basic approach for uncompressed/standard PNGs
-        foundIDAT = true;
-        offset += chunkLength + 4;
+        idatChunks.push(buffer.slice(offset, offset + chunkLength));
       } else if (chunkType === 'IEND') {
-        // End of PNG
         break;
-      } else {
-        // Skip other chunks
-        offset += chunkLength + 4;
       }
+
+      offset += chunkLength + 4; // skip data + CRC
     }
 
     if (!width || !height) {
       throw new Error('Could not parse PNG dimensions');
     }
+    if (idatChunks.length === 0) {
+      throw new Error('PNG has no IDAT data');
+    }
 
-    // For PNG images, we need to decompress the IDAT data
-    // Since we're in Node.js without zlib dependency (per constraints),
-    // we'll create a simplified representation for testing purposes
-    // In production, you'd use zlib.inflateSync()
+    // Number of samples per pixel for each colour type.
+    const channelsByColorType: Record<number, number> = { 0: 1, 2: 3, 4: 2, 6: 4 };
+    const channels = channelsByColorType[colorType];
+    if (!channels) {
+      throw new Error(`Unsupported PNG colour type: ${colorType} (indexed/palette PNGs are not supported)`);
+    }
+    if (bitDepth !== 8 && bitDepth !== 16) {
+      throw new Error(`Unsupported PNG bit depth: ${bitDepth} (only 8 and 16 are supported)`);
+    }
 
-    // Create a mock RGBA buffer for demonstration
-    // Real implementation would decompress IDAT chunks
-    const data = Buffer.alloc(width * height * 4);
+    // Inflate the concatenated IDAT zlib stream → filtered scanline bytes.
+    const inflated = zlib.inflateSync(Buffer.concat(idatChunks));
 
-    // Try to extract raw pixel data from the buffer
-    // This is a simplified approach that works for basic test cases
-    let dataOffset = 0;
-    offset = 8; // Reset to start after signature
+    // bytesPerPixel in the FILTERED (pre-normalisation) representation, which
+    // the unfiltering step operates on. Round up to a whole byte.
+    const bitsPerPixel = channels * bitDepth;
+    const filterBpp = Math.max(1, Math.ceil(bitsPerPixel / 8));
+    const bytesPerRow = Math.ceil((width * bitsPerPixel) / 8);
+    const expected = (bytesPerRow + 1) * height;
+    if (inflated.length < expected) {
+      throw new Error(`Truncated PNG data: got ${inflated.length} bytes, expected at least ${expected}`);
+    }
 
-    while (offset < buffer.length && dataOffset < data.length) {
-      const chunkLength = buffer.readUInt32BE(offset);
-      offset += 4;
-      const chunkType = buffer.slice(offset, offset + 4).toString('ascii');
-      offset += 4;
+    // Reverse PNG per-scanline filtering into `recon` (still native channels).
+    const recon = Buffer.alloc(bytesPerRow * height);
+    const prevLine = Buffer.alloc(bytesPerRow); // zero-initialised (line above first row)
+    const curLine = Buffer.alloc(bytesPerRow);
 
-      if (chunkType === 'IDAT') {
-        const chunkData = buffer.slice(offset, offset + chunkLength);
-        // Copy available data (simplified - real PNG needs decompression)
-        const copyLength = Math.min(chunkData.length, data.length - dataOffset);
-        chunkData.copy(data, dataOffset, 0, copyLength);
-        dataOffset += copyLength;
+    for (let y = 0; y < height; y++) {
+      const lineStart = y * (bytesPerRow + 1);
+      const filterType = inflated[lineStart];
+      const src = inflated.subarray(lineStart + 1, lineStart + 1 + bytesPerRow);
+
+      for (let x = 0; x < bytesPerRow; x++) {
+        const xBpp = x >= filterBpp ? x - filterBpp : x;
+        const filt = src[x];
+        const a = x >= filterBpp ? curLine[xBpp] : 0; // left
+        const b = prevLine[x];                          // above
+        const c = x >= filterBpp ? prevLine[xBpp] : 0;  // above-left
+
+        let value: number;
+        switch (filterType) {
+          case 0: // None
+            value = filt;
+            break;
+          case 1: // Sub
+            value = (filt + a) & 0xff;
+            break;
+          case 2: // Up
+            value = (filt + b) & 0xff;
+            break;
+          case 3: // Average
+            value = (filt + ((a + b) >> 1)) & 0xff;
+            break;
+          case 4: { // Paeth
+            const p = a + b - c;
+            const pa = Math.abs(p - a);
+            const pb = Math.abs(p - b);
+            const pc = Math.abs(p - c);
+            const pred = pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+            value = (filt + pred) & 0xff;
+            break;
+          }
+          default:
+            throw new Error(`Unknown PNG filter type: ${filterType}`);
+        }
+        curLine[x] = value;
+        recon[y * bytesPerRow + x] = value;
       }
 
-      offset += chunkLength + 4; // Skip to next chunk
+      // Roll the line window forward.
+      prevLine.set(curLine);
+    }
+
+    // Normalise to 8-bit RGBA, scaling 16-bit samples down and expanding
+    // non-alpha colour types to include a fully-opaque alpha channel.
+    const data = Buffer.alloc(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const srcPixel = y * width + x;
+        const srcOff = srcPixel * channels * (bitDepth === 16 ? 2 : 1);
+        let r = 0, g = 0, b = 0, a = 255;
+
+        const sample = (byteIndex: number): number => {
+          if (bitDepth === 16) {
+            // Drop the low byte (take the high byte) to scale to 8-bit.
+            return recon[srcOff + byteIndex * 2];
+          }
+          return recon[srcOff + byteIndex];
+        };
+
+        switch (colorType) {
+          case 0: // grayscale
+            r = g = b = sample(0);
+            break;
+          case 2: // RGB
+            r = sample(0); g = sample(1); b = sample(2);
+            break;
+          case 4: // grayscale + alpha
+            r = g = b = sample(0); a = sample(1);
+            break;
+          case 6: // RGBA
+            r = sample(0); g = sample(1); b = sample(2); a = sample(3);
+            break;
+        }
+
+        const dstOff = srcPixel * 4;
+        data[dstOff] = r;
+        data[dstOff + 1] = g;
+        data[dstOff + 2] = b;
+        data[dstOff + 3] = a;
+      }
     }
 
     return { width, height, data };
@@ -345,7 +429,7 @@ export class VisualComparator {
     // This is a minimal PNG - in production you'd use a proper PNG encoder
     const signature = PNG_SIGNATURE;
     const ihdr = this.createIHDRChunk(width, height);
-    const idat = this.createIDATChunk(heatmapData);
+    const idat = this.createIDATChunk(heatmapData, width, height);
     const iend = Buffer.from([0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]); // IEND chunk
 
     return Buffer.concat([signature, ihdr, idat, iend]);
@@ -374,16 +458,29 @@ export class VisualComparator {
   }
 
   /**
-   * Create IDAT chunk (simplified, no compression)
+   * Create a valid IDAT chunk: the raw scanline bytes (each prefixed with a
+   * None filter byte) are zlib-deflated, as the PNG spec requires. The
+   * previous version wrote the uncompressed bytes directly, producing an
+   * invalid PNG that no decoder could read.
    */
-  private createIDATChunk(data: Buffer): Buffer {
+  private createIDATChunk(rgba: Buffer, width: number, height: number): Buffer {
+    // Add a None (0) filter byte at the start of each scanline.
+    const bytesPerRow = width * 4;
+    const raw = Buffer.alloc((bytesPerRow + 1) * height);
+    for (let y = 0; y < height; y++) {
+      raw[y * (bytesPerRow + 1)] = 0; // filter type None
+      rgba.copy(raw, y * (bytesPerRow + 1) + 1, y * bytesPerRow, y * bytesPerRow + bytesPerRow);
+    }
+
+    const compressed = zlib.deflateSync(raw);
+
     const length = Buffer.alloc(4);
-    length.writeUInt32BE(data.length, 0);
+    length.writeUInt32BE(compressed.length, 0);
 
     const type = Buffer.from('IDAT');
-    const crc = this.calculateCRC(Buffer.concat([type, data]));
+    const crc = this.calculateCRC(Buffer.concat([type, compressed]));
 
-    return Buffer.concat([length, type, data, crc]);
+    return Buffer.concat([length, type, compressed, crc]);
   }
 
   /**

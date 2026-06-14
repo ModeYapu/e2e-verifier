@@ -1,5 +1,6 @@
 import { Page } from '@playwright/test';
 import { VisualRegressionResult } from '../types';
+import { VisualComparator } from '../services/visual-comparator';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger';
@@ -7,10 +8,12 @@ import { logger } from '../utils/logger';
 export class VisualRegressionChecker {
   private baselineDir: string;
   private threshold: number;
+  private comparator: VisualComparator;
 
   constructor(baselineDir: string = 'baselines', threshold: number = 0.001) {
     this.baselineDir = baselineDir;
     this.threshold = threshold;
+    this.comparator = new VisualComparator();
     this.ensureBaselineDir();
   }
 
@@ -41,28 +44,25 @@ export class VisualRegressionChecker {
         };
       }
 
-      // Compare with baseline
-      const diffPercentage = await this.calculatePixelDiff(baselinePath, currentPath);
+      // Compare with baseline (real pixel diff via VisualComparator)
+      const diff = await this.calculatePixelDiff(baselinePath, currentPath, diffPath);
 
-      if (diffPercentage < this.threshold) {
+      if (diff.diffPercentage < this.threshold) {
         // Passed - within threshold
         return {
           passed: true,
-          diffPercentage,
+          diffPercentage: diff.diffPercentage,
           baselinePath,
-          message: `Visual regression passed: ${(diffPercentage * 100).toFixed(3)}% diff`
+          message: `Visual regression passed: ${(diff.diffPercentage * 100).toFixed(3)}% diff`
         };
       }
 
-      // Failed - generate diff image
-      await this.generateDiffImage(baselinePath, currentPath, diffPath);
-
       return {
         passed: false,
-        diffPercentage,
+        diffPercentage: diff.diffPercentage,
         baselinePath,
-        diffPath,
-        message: `Visual regression failed: ${(diffPercentage * 100).toFixed(3)}% diff exceeds threshold ${(this.threshold * 100).toFixed(3)}%`
+        diffPath: diff.heatmapWritten ? diffPath : undefined,
+        message: `Visual regression failed: ${(diff.diffPercentage * 100).toFixed(3)}% diff exceeds threshold ${(this.threshold * 100).toFixed(3)}%`
       };
 
     } catch (error) {
@@ -75,34 +75,43 @@ export class VisualRegressionChecker {
     }
   }
 
-  private async calculatePixelDiff(baselinePath: string, currentPath: string): Promise<number> {
+  /**
+   * Real pixel-level diff using {@link VisualComparator}, which inflates the
+   * PNG IDAT and compares RGBA pixels. Writes a heatmap PNG to `diffPath`
+   * when differences are detected. Replaces the old file-size heuristic that
+   * reported identical images as "different" (and vice-versa).
+   */
+  private async calculatePixelDiff(
+    baselinePath: string,
+    currentPath: string,
+    diffPath: string
+  ): Promise<{ diffPercentage: number; heatmapWritten: boolean }> {
     try {
-      // Simple pixel comparison using PNG decoder
       const baselineBuffer = fs.readFileSync(baselinePath);
       const currentBuffer = fs.readFileSync(currentPath);
 
-      // For a proper implementation, we'd use pixelmatch or similar
-      // For now, return a simple comparison based on file size
-      const sizeDiff = Math.abs(baselineBuffer.length - currentBuffer.length);
-      const avgSize = (baselineBuffer.length + currentBuffer.length) / 2;
+      const result = this.comparator.compare(baselineBuffer, currentBuffer, {
+        // diffPercentage is returned on a 0-100 scale; the caller's threshold
+        // is a 0-1 fraction, so we keep this on 0-1 to match.
+      });
 
-      // This is a rough approximation - real implementation needs pixel-by-pixel comparison
-      return Math.min(sizeDiff / avgSize, 1);
+      const diffPercentage = result.diffPercentage / 100;
 
+      // Persist the comparator's heatmap when there's something to show.
+      let heatmapWritten = false;
+      if (result.diffPixels > 0 && result.heatmapBase64) {
+        try {
+          fs.writeFileSync(diffPath, Buffer.from(result.heatmapBase64, 'base64'));
+          heatmapWritten = true;
+        } catch (writeErr) {
+          logger.warn(`Failed to write diff heatmap: ${writeErr}`);
+        }
+      }
+
+      return { diffPercentage, heatmapWritten };
     } catch (error) {
       logger.error(`Error calculating pixel diff: ${error}`);
-      return 1; // Return max diff on error
-    }
-  }
-
-  private async generateDiffImage(baselinePath: string, currentPath: string, diffPath: string): Promise<void> {
-    // Placeholder for diff image generation
-    // Real implementation would use pixelmatch or sharp to create visual diff
-    try {
-      // Copy current as diff for now
-      fs.copyFileSync(currentPath, diffPath);
-    } catch (error) {
-      logger.error(`Error generating diff image: ${error}`);
+      return { diffPercentage: 1, heatmapWritten: false };
     }
   }
 

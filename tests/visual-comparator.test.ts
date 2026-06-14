@@ -3,14 +3,17 @@
  * Tests for visual comparison, diff detection, and heatmap generation
  */
 
+import * as zlib from 'zlib';
 import { VisualComparator, IgnoreRegion, DiffResult } from '../src/services/visual-comparator';
 
-// Helper to create a simple PNG buffer (minimal format)
+// Helper to create a simple, *valid* PNG buffer (8-bit RGB, solid colour).
+// Produces a real PNG: None-filtered scanlines, zlib-compressed IDAT — so the
+// decoder under test inflates and unfilters exactly like a real encoder's
+// output. (The previous helper wrote raw uncompressed RGB as IDAT, which only
+// the broken old decoder could read.)
 function createSimplePNG(width: number, height: number, color: [number, number, number]): Buffer {
-  // Create a minimal valid PNG with IHDR and IDAT chunks
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
-  // IHDR chunk: width (4), height (4), bit depth (1), color type (1), compression (1), filter (1), interlace (1) = 13 bytes
   const ihdrData = Buffer.alloc(13);
   ihdrData.writeUInt32BE(width, 0);
   ihdrData.writeUInt32BE(height, 4);
@@ -25,13 +28,20 @@ function createSimplePNG(width: number, height: number, color: [number, number, 
   const ihdrType = Buffer.from('IHDR');
   const ihdrCrc = calculateCRC(Buffer.concat([ihdrType, ihdrData]));
 
-  // Create pixel data (simplified - no compression for testing)
-  const pixelData = Buffer.alloc(width * height * 3);
-  for (let i = 0; i < width * height; i++) {
-    pixelData[i * 3] = color[0];     // R
-    pixelData[i * 3 + 1] = color[1]; // G
-    pixelData[i * 3 + 2] = color[2]; // B
+  // Build filtered scanlines: one None (0) filter byte, then width*3 RGB bytes.
+  const bytesPerRow = width * 3;
+  const raw = Buffer.alloc((bytesPerRow + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const lineOff = y * (bytesPerRow + 1);
+    raw[lineOff] = 0; // filter: None
+    for (let x = 0; x < width; x++) {
+      const px = lineOff + 1 + x * 3;
+      raw[px] = color[0];
+      raw[px + 1] = color[1];
+      raw[px + 2] = color[2];
+    }
   }
+  const pixelData = zlib.deflateSync(raw);
 
   const idatLength = Buffer.alloc(4);
   idatLength.writeUInt32BE(pixelData.length, 0);

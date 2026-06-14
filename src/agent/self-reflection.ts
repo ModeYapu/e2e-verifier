@@ -70,21 +70,23 @@ export class SelfReflectionGate {
         evidence.push('Script executed successfully');
       }
 
-      // Analyze stdout for test results
-      if (result.stdout) {
-        const stdoutLines = result.stdout.split('\n');
-        const passedLines = stdoutLines.filter(line => 
-          line.toLowerCase().includes('passed') && !line.toLowerCase().includes('failed')
-        );
-        
-        if (passedLines.length > 0) {
-          evidence.push(`Test assertions passed: ${passedLines.length} occurrences`);
-        }
+      // Parse STRUCTURED assertion results from stdout instead of guessing
+      // from keywords like "passed"/"OK"/"✓". Scripts emit a JSON line with
+      // an `__assertions__` marker to report their outcome deterministically.
+      const assertions = result.stdout ? this.parseStructuredAssertions(result.stdout) : null;
 
-        // Look for specific verification patterns
-        if (result.stdout.includes('OK') || result.stdout.includes('✓') || result.stdout.includes('✅')) {
-          evidence.push('Positive verification markers found in output');
+      if (assertions) {
+        evidence.push(
+          `Structured assertions: ${assertions.passed} passed / ${assertions.failed} failed` +
+          (assertions.results ? ` (${assertions.results.length} recorded)` : '')
+        );
+        for (const r of assertions.results || []) {
+          if (!r.passed) {
+            evidence.push(`Failed assertion: ${r.name}${r.message ? ` — ${r.message}` : ''}`);
+          }
         }
+      } else if (result.success) {
+        evidence.push('No structured assertions emitted (script did not report a JSON `__assertions__` result)');
       }
 
       // Analyze screenshots
@@ -116,7 +118,7 @@ export class SelfReflectionGate {
       }
 
       // Determine if validation passed
-      const passed = this.determinePassStatus(result, evidence, consoleAnalysis);
+      const passed = this.determinePassStatus(result, assertions, consoleAnalysis);
 
       logger.info(`=== Reflection Result: ${passed ? 'PASSED' : 'FAILED'} ===`);
       logger.info(`Evidence collected: ${evidence.length} items`);
@@ -128,7 +130,8 @@ export class SelfReflectionGate {
         evidence,
         screenshotAnalysis,
         consoleAnalysis,
-        failureReason: passed ? undefined : this.generateFailureReason(result, evidence, consoleAnalysis)
+        assertions: assertions || undefined,
+        failureReason: passed ? undefined : this.generateFailureReason(result, assertions, consoleAnalysis)
       };
 
     } catch (error) {
@@ -183,11 +186,65 @@ export class SelfReflectionGate {
   }
 
   /**
-   * Determine if reflection passed based on execution results and evidence
+   * Parse a structured assertion summary from script stdout.
+   *
+   * Agent scripts report their outcome deterministically by printing a JSON
+   * line tagged with an `__assertions__` key, e.g.:
+   *   {"__assertions__":{"passed":3,"failed":0,"results":[...]}}
+   *
+   * Returns the normalised summary, or null if the script emitted no such
+   * marker (in which case we cannot confirm success and must fail-closed).
+   */
+  private parseStructuredAssertions(
+    stdout: string
+  ): { total: number; passed: number; failed: number; results?: Array<{ name: string; passed: boolean; message?: string }> } | null {
+    const lines = stdout.split('\n');
+    // Scan from the end: the final structured report is the authoritative one.
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const trimmed = lines[i].trim();
+      if (!trimmed.startsWith('{') || !trimmed.includes('__assertions__')) {
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(trimmed);
+        const a = parsed && typeof parsed === 'object' && parsed.__assertions__;
+        if (!a || typeof a !== 'object') continue;
+
+        const passed = Number(a.passed) || 0;
+        const failed = Number(a.failed) || 0;
+        const results = Array.isArray(a.results)
+          ? a.results
+              .map((r: any) => ({
+                name: typeof (r && r.name) === 'string' ? r.name : 'unnamed',
+                passed: !!((r && r.passed)),
+                message: r && typeof r.message === 'string' ? r.message : undefined,
+              }))
+              .filter((r: any) => r)
+          : undefined;
+
+        return {
+          total: results ? results.length : passed + failed,
+          passed,
+          failed,
+          results,
+        };
+      } catch {
+        // Not valid JSON / wrong shape — keep scanning.
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Determine if reflection passed.
+   *
+   * Pass requires: successful execution, a structured assertion report with
+   * zero failures, and no console errors. Free-form stdout keyword matching
+   * was removed — it could not be trusted to reflect real assertion outcomes.
    */
   private determinePassStatus(
     result: ScriptExecutionResult,
-    evidence: string[],
+    assertions: { passed: number; failed: number } | null,
     consoleAnalysis: ReflectionResult['consoleAnalysis']
   ): boolean {
     // Must have successful execution
@@ -195,27 +252,15 @@ export class SelfReflectionGate {
       return false;
     }
 
-    // Must have some positive evidence
-    const hasPositiveEvidence = evidence.some(e => 
-      e.includes('passed') || 
-      e.includes('success') || 
-      e.includes('verified') ||
-      e.includes('detected')
-    );
-
-    if (!hasPositiveEvidence) {
+    // Must have a structured assertion report with no failures. Absence of a
+    // report means we cannot confirm success → fail closed.
+    if (!assertions || assertions.failed > 0) {
       return false;
     }
 
     // Should not have console errors
     if (consoleAnalysis.totalErrors > 0) {
       return false;
-    }
-
-    // Should have captured screenshots (visual evidence)
-    if (result.screenshots.length === 0) {
-      logger.warn('No screenshots captured - weak evidence');
-      // Don't fail completely, but flag as weak
     }
 
     return true;
@@ -226,7 +271,7 @@ export class SelfReflectionGate {
    */
   private generateFailureReason(
     result: ScriptExecutionResult,
-    evidence: string[],
+    assertions: { passed: number; failed: number } | null,
     consoleAnalysis: ReflectionResult['consoleAnalysis']
   ): string {
     const reasons: string[] = [];
@@ -239,12 +284,14 @@ export class SelfReflectionGate {
       reasons.push('Script execution reported failure');
     }
 
-    if (consoleAnalysis.totalErrors > 0) {
-      reasons.push(`Console errors detected (${consoleAnalysis.totalErrors} total)`);
+    if (!assertions) {
+      reasons.push('No structured assertion report emitted (script must print a JSON `__assertions__` line)');
+    } else if (assertions.failed > 0) {
+      reasons.push(`${assertions.failed} assertion(s) failed`);
     }
 
-    if (result.screenshots.length === 0) {
-      reasons.push('No visual evidence (screenshots) captured');
+    if (consoleAnalysis.totalErrors > 0) {
+      reasons.push(`Console errors detected (${consoleAnalysis.totalErrors} total)`);
     }
 
     if (reasons.length === 0) {

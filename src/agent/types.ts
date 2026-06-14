@@ -113,6 +113,17 @@ export interface ReflectionResult {
     totalErrors: number;
     errorMessages: string[];
   };
+  /**
+   * Structured assertion summary parsed from the script's structured output
+   * (a JSON line emitted with the `__assertions__` marker). Drives the
+   * pass/fail decision instead of keyword-matching free-form stdout.
+   */
+  assertions?: {
+    total: number;
+    passed: number;
+    failed: number;
+    results?: Array<{ name: string; passed: boolean; message?: string }>;
+  };
   /** Reason for failure if reflection failed */
   failureReason?: string;
 }

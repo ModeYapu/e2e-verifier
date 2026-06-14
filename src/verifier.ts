@@ -168,34 +168,6 @@ export class Verifier {
           continue;
         }
 
-        // Performance checks
-        try {
-          const perfChecker = new PerformanceChecker(this.page, this.config.performanceThresholds);
-          const metrics = await perfChecker.collectMetrics();
-          const passed = perfChecker.checkThresholds(metrics);
-
-          if (!passed) {
-            const violations = perfChecker.getThresholdViolations(metrics);
-            violations.forEach(v => errors.push(`Performance: ${v}`));
-          }
-
-          const perfCheck: CheckResult = {
-            name: 'Performance',
-            type: 'performance',
-            passed,
-            message: perfChecker.formatMetrics(metrics),
-            details: metrics
-          };
-          checks.push(perfCheck);
-        } catch (perfError) {
-          checks.push({
-            name: 'Performance',
-            type: 'performance',
-            passed: false,
-            message: `Performance check failed: ${perfError}`
-          });
-        }
-
         // Network checks (if enabled)
         const checksConfig = this.config.checks || [];
         if (checksConfig.includes('network')) {
@@ -227,12 +199,95 @@ export class Verifier {
           }
         }
 
+        // Core checks (performance / accessibility / SEO) run once per
+        // configured viewport, not just the first. Each result is tagged with
+        // its viewport so responsive regressions are visible individually.
+        for (const vp of configuredViewports) {
+          const vpTag = configuredViewports.length > 1 ? ` @${vp.width}x${vp.height}` : '';
+          try {
+            await this.page.setViewportSize({ width: vp.width, height: vp.height });
+          } catch (vpErr) {
+            // Resizing can race with navigation teardown; keep going so the
+            // other viewports still get exercised.
+            new Logger({ prefix: 'Verifier' }).warn(`Viewport resize failed for ${vp.width}x${vp.height}: ${vpErr}`);
+          }
+
+          // Performance checks
+          try {
+            const perfChecker = new PerformanceChecker(this.page, this.config.performanceThresholds);
+            const metrics = await perfChecker.collectMetrics();
+            const passed = perfChecker.checkThresholds(metrics);
+
+            if (!passed) {
+              const violations = perfChecker.getThresholdViolations(metrics);
+              violations.forEach(v => errors.push(`Performance${vpTag}: ${v}`));
+            }
+
+            checks.push({
+              name: `Performance${vpTag}`,
+              type: 'performance',
+              passed,
+              message: perfChecker.formatMetrics(metrics),
+              details: { viewport: { width: vp.width, height: vp.height }, metrics }
+            });
+          } catch (perfError) {
+            checks.push({
+              name: `Performance${vpTag}`,
+              type: 'performance',
+              passed: false,
+              message: `Performance check failed: ${perfError}`
+            });
+          }
+
+          // Accessibility checks
+          try {
+            const a11yChecker = new AccessibilityChecker(this.page);
+            const a11yResult = await a11yChecker.runChecks();
+            checks.push({
+              name: `Accessibility${vpTag}`,
+              type: 'accessibility',
+              passed: a11yResult.passed,
+              message: a11yChecker.formatResults(a11yResult),
+              details: a11yResult,
+              severity: 'warning',
+            });
+          } catch (a11yError) {
+            checks.push({
+              name: `Accessibility${vpTag}`,
+              type: 'accessibility',
+              passed: false,
+              message: `Accessibility check failed: ${a11yError}`
+            });
+          }
+
+          // SEO checks
+          try {
+            const seoChecker = new SEOChecker(this.page);
+            const seoResult = await seoChecker.runChecks();
+            checks.push({
+              name: `SEO${vpTag}`,
+              type: 'seo',
+              passed: seoResult.passed,
+              message: seoChecker.formatResults(seoResult),
+              details: seoResult,
+              severity: 'warning',
+            });
+          } catch (seoError) {
+            checks.push({
+              name: `SEO${vpTag}`,
+              type: 'seo',
+              passed: false,
+              message: `SEO check failed: ${seoError}`
+            });
+          }
+        }
+
         if (configuredViewports.length > 1) {
           checks.push({
             name: 'Viewport Coverage',
             type: 'responsive',
             passed: true,
-            message: `Executed responsive pass across ${configuredViewports.length} viewports`,
+            message: `Executed responsive pass across ${configuredViewports.length} viewports (performance/accessibility/SEO each)`,
             details: {
               viewports: configuredViewports.map(v => `${v.width}x${v.height}`)
             }
@@ -285,59 +340,6 @@ export class Verifier {
               message: `Visual regression check failed: ${vrError}`
             });
           }
-        }
-
-        // Accessibility checks
-        try {
-          const a11yChecker = new AccessibilityChecker(this.page);
-          const a11yResult = await a11yChecker.runChecks();
-          const a11yCheck: CheckResult = {
-            name: 'Accessibility',
-            type: 'accessibility',
-            passed: a11yResult.passed,
-            message: a11yChecker.formatResults(a11yResult),
-            details: a11yResult,
-            severity: 'warning',
-          };
-          checks.push(a11yCheck);
-
-          // Accessibility issues are warnings for internal tools
-          // if (!a11yResult.passed) {
-          //   a11yResult.issues.forEach(issue => {
-          //     if (issue.severity === 'error') {
-          //       errors.push(`Accessibility: ${issue.message} (${issue.element})`);
-          //     }
-          //   });
-          // }
-        } catch (a11yError) {
-          checks.push({
-            name: 'Accessibility',
-            type: 'accessibility',
-            passed: false,
-            message: `Accessibility check failed: ${a11yError}`
-          });
-        }
-
-        // SEO checks
-        try {
-          const seoChecker = new SEOChecker(this.page);
-          const seoResult = await seoChecker.runChecks();
-          const seoCheck: CheckResult = {
-            name: 'SEO',
-            type: 'seo',
-            passed: seoResult.passed,
-            message: seoChecker.formatResults(seoResult),
-            details: seoResult,
-            severity: 'warning',
-          };
-          checks.push(seoCheck);
-        } catch (seoError) {
-          checks.push({
-            name: 'SEO',
-            type: 'seo',
-            passed: false,
-            message: `SEO check failed: ${seoError}`
-          });
         }
 
         // Custom checks
