@@ -33,6 +33,7 @@
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.1",
     "cors": "^2.8.6",
+    "cron-parser": "^5.5.0",
     "express": "^5.2.1",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"

@@ -354,7 +354,18 @@ export class VerifyServer {
 
         // Attach the WebSocket server to the now-listening http server and
         // wire the scheduler's job lifecycle events to the broadcast stream.
-        this.webSocketServer = new WebSocketServer(this.server, { path: '/ws' });
+        // Harden the socket with auth, an Origin allowlist and a connection
+        // cap (sourced from the same env vars as the REST layer where shared).
+        const wsOrigins = (process.env.CORS_ORIGINS || '')
+          .split(',')
+          .map(o => o.trim())
+          .filter(Boolean);
+        this.webSocketServer = new WebSocketServer(this.server, {
+          path: '/ws',
+          authToken: process.env.E2E_VERIFIER_WS_TOKEN || process.env.E2E_VERIFIER_API_TOKEN || undefined,
+          allowedOrigins: wsOrigins,
+          maxConnections: parseInt(process.env.E2E_VERIFIER_WS_MAX_CONNECTIONS || '50', 10),
+        });
         this.webSocketServer.attach();
         this.broadcaster = new EventBroadcaster(this.webSocketServer);
         this.detachBroadcaster = this.broadcaster.attachToScheduler(

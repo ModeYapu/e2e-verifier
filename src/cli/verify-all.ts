@@ -111,7 +111,7 @@ async function main() {
     if (args.output) {
       const htmlPath = args.output.endsWith('.html') ? args.output : `${args.output}.html`;
       const htmlGenerator = new HtmlReportGenerator();
-      htmlGenerator.saveHtmlReport(reportData, htmlPath);
+      await htmlGenerator.saveHtmlReport(reportData, htmlPath);
       logger.info(`HTML report saved: ${htmlPath}`);
     }
 

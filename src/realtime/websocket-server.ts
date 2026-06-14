@@ -55,11 +55,28 @@ interface ClientConnection {
 export interface WebSocketServerOptions {
   /** URL path the server listens on (default '/ws'). */
   path?: string;
+  /**
+   * If set, clients must authenticate by passing this token as a `token`
+   * query parameter (e.g. `ws://host/ws?token=...`). When unset, anonymous
+   * connections are allowed (local dev / trusted network).
+   */
+  authToken?: string;
+  /**
+   * Allowlist of browser Origins permitted to open a WebSocket. When set, a
+   * request whose `Origin` header is not in this list is rejected (CSRF guard
+   * for browser clients). Empty/unset = Origin not enforced.
+   */
+  allowedOrigins?: string[];
+  /** Hard cap on simultaneous connected clients (default 50). */
+  maxConnections?: number;
 }
 
 export class WebSocketServer {
   private server: HttpServer;
   private path: string;
+  private authToken?: string;
+  private allowedOrigins: Set<string>;
+  private maxConnections: number;
   private clients: Set<ClientConnection> = new Set();
   private upgradeListener: ((req: IncomingMessage, socket: Socket, head: Buffer) => void) | null = null;
   private messageListeners: Array<(data: string, client: ClientConnection) => void> = [];
@@ -67,6 +84,9 @@ export class WebSocketServer {
   constructor(server: HttpServer, options: WebSocketServerOptions = {}) {
     this.server = server;
     this.path = options.path ?? '/ws';
+    this.authToken = options.authToken;
+    this.allowedOrigins = new Set((options.allowedOrigins ?? []).map(o => o.toLowerCase()));
+    this.maxConnections = options.maxConnections ?? 50;
   }
 
   /**
@@ -155,6 +175,31 @@ export class WebSocketServer {
       }
       socket.destroy();
       return;
+    }
+
+    // Origin allowlist — blocks cross-site WebSocket hijacking from browsers.
+    if (this.allowedOrigins.size > 0) {
+      const origin = (req.headers['origin'] as string | undefined)?.toLowerCase();
+      if (!origin || !this.allowedOrigins.has(origin)) {
+        this.reject(socket, 403, 'Forbidden');
+        return;
+      }
+    }
+
+    // Connection cap — bounds resource use under abuse / fan-out.
+    if (this.clients.size >= this.maxConnections) {
+      this.reject(socket, 503, 'Too many connections');
+      return;
+    }
+
+    // Auth token — required when configured. Passed as ?token= so it works
+    // from browsers (which can't set custom headers on the WS handshake).
+    if (this.authToken) {
+      const token = this.extractToken(reqPath);
+      if (!token || token !== this.authToken) {
+        this.reject(socket, 401, 'Unauthorized');
+        return;
+      }
     }
 
     const key = req.headers['sec-websocket-key'] as string | undefined;
@@ -319,6 +364,40 @@ export class WebSocketServer {
       // ignore
     }
     this.clients.delete(client);
+  }
+
+  /**
+   * Reject an upgrade attempt with an HTTP error and close the socket.
+   * Used by the auth / origin / connection-limit gates before the handshake.
+   */
+  private reject(socket: Socket, status: number, reason: string): void {
+    try {
+      socket.write(`HTTP/1.1 ${status} ${reason}\r\nConnection: close\r\n\r\n`);
+    } catch {
+      // ignore write failures
+    }
+    socket.destroy();
+  }
+
+  /**
+   * Extract the `token` query parameter from the request URL.
+   */
+  private extractToken(reqUrl: string): string | null {
+    const q = reqUrl.indexOf('?');
+    if (q < 0) return null;
+    const search = reqUrl.slice(q + 1);
+    for (const pair of search.split('&')) {
+      const eq = pair.indexOf('=');
+      const name = eq < 0 ? pair : pair.slice(0, eq);
+      if (name === 'token') {
+        try {
+          return decodeURIComponent(eq < 0 ? '' : pair.slice(eq + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
   }
 }
 

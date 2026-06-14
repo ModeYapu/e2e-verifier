@@ -274,14 +274,14 @@ export class HtmlReportGenerator {
       const checksHtml = result.checks.map(check => `
         <div class="check-item ${check.passed ? 'passed' : 'failed'}">
           <div class="check-icon">${check.passed ? '✓' : '✗'}</div>
-          <div class="check-name">${check.name}</div>
-          <div class="check-message">${check.message}</div>
+          <div class="check-name">${escapeHtml(check.name)}</div>
+          <div class="check-message">${escapeHtml(check.message)}</div>
         </div>
       `).join('');
 
       const errorsHtml = result.errors.length > 0 ? `
         <div class="errors-section">
-          ${result.errors.map(err => `<div class="error-item">⚠ ${err}</div>`).join('')}
+          ${result.errors.map(err => `<div class="error-item">⚠ ${escapeHtml(err)}</div>`).join('')}
         </div>
       ` : '';
 
@@ -290,8 +290,8 @@ export class HtmlReportGenerator {
         <div class="screenshots-grid">
           ${result.screenshots.map(ss => `
             <div class="screenshot-item">
-              <img src="${ss.path}" alt="${ss.name}" onerror="this.style.display='none'">
-              <div class="screenshot-name">${ss.name}</div>
+              <img src="${escapeHtml(ss.path)}" alt="${escapeHtml(ss.name)}" onerror="this.style.display='none'">
+              <div class="screenshot-name">${escapeHtml(ss.name)}</div>
             </div>
           `).join('')}
         </div>
@@ -301,8 +301,8 @@ export class HtmlReportGenerator {
         <div class="site-result ${statusClass}">
           <div class="site-header">
             <div>
-              <div class="site-name">${result.siteName} <span class="toggle-icon">▼</span></div>
-              <div class="site-url">${result.url}</div>
+              <div class="site-name">${escapeHtml(result.siteName)} <span class="toggle-icon">▼</span></div>
+              <div class="site-url">${escapeHtml(result.url)}</div>
             </div>
             <div>
               <span class="site-status ${statusClass}">${statusText}</span>
@@ -322,9 +322,10 @@ export class HtmlReportGenerator {
     }).join('');
   }
 
-  saveHtmlReport(reportData: ReportData, outputPath: string): void {
+  async saveHtmlReport(reportData: ReportData, outputPath: string): Promise<void> {
     const html = this.generateHtmlReport(reportData);
-    fs.writeFileSync(outputPath, html, 'utf-8');
+    // Async write so a large report never blocks the event loop.
+    await fs.promises.writeFile(outputPath, html, 'utf-8');
   }
 
   // ============================================================

@@ -186,3 +186,27 @@ export function safeJoinPath(base: string, input: string): string {
   }
   return joined;
 }
+
+// =====================================================
+// HTML escaping (XSS prevention)
+// =====================================================
+
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+/**
+ * Escape the five HTML-significant characters so a value can be interpolated
+ * into HTML text or a double-quoted attribute without enabling markup
+ * injection. Use for ANY caller-controlled string woven into an HTML report
+ * or dashboard response. Returns the input untouched for non-strings.
+ */
+export function escapeHtml(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/[&<>"']/g, ch => HTML_ESCAPES[ch]);
+}
+

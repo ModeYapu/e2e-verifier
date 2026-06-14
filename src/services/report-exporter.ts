@@ -215,7 +215,7 @@ export class ReportExporter {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>E2E Verification Report - ${data.site}</title>
+  <title>E2E Verification Report - ${this.escapeHTML(data.site)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -455,13 +455,17 @@ export class ReportExporter {
     }
 
     const rows = data.failures.map(f => {
-      const severityClass = f.severity.toLowerCase();
+      // Sanitise the severity into a known CSS class so it cannot break out of
+      // the attribute, and escape the rendered text.
+      const severityClass = ['critical', 'high', 'medium', 'low'].includes(f.severity.toLowerCase())
+        ? f.severity.toLowerCase()
+        : 'low';
       return `
       <tr>
         <td>${this.escapeHTML(f.step)}</td>
         <td>${this.escapeHTML(f.expected)}</td>
         <td>${this.escapeHTML(f.actual)}</td>
-        <td><span class="severity ${severityClass}">${f.severity}</span></td>
+        <td><span class="severity ${severityClass}">${this.escapeHTML(f.severity)}</span></td>
       </tr>`;
     }).join('');
 

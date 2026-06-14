@@ -4,24 +4,10 @@
  * Part of P1 Platform Job Queue Scheduler System
  */
 
+import { CronExpressionParser } from 'cron-parser';
 import { logger } from '../utils/logger';
 import { JobQueue } from './job-queue';
 import type { JobPriority } from './types';
-
-/**
- * Simple cron expression parser
- * Supports: "* * * * *" format (minute hour day-of-month month day-of-week)
- * - *: any value
- * - Number: exact match
- * - *&#47;n: every n units
- */
-interface CronSchedule {
-  minute: string;   // 0-59
-  hour: string;     // 0-23
-  dayOfMonth: string; // 1-31
-  month: string;    // 1-12
-  dayOfWeek: string; // 0-6 (0=Sunday)
-}
 
 /**
  * Site configuration for scheduled verification
@@ -48,112 +34,16 @@ export interface ScheduleConfig {
 }
 
 /**
- * Parse cron expression into components
- */
-function parseCron(cron: string): CronSchedule {
-  const parts = cron.trim().split(/\s+/);
-  if (parts.length !== 5) {
-    throw new Error(`Invalid cron expression: ${cron}. Expected format: "* * * * *"`);
-  }
-  return {
-    minute: parts[0],
-    hour: parts[1],
-    dayOfMonth: parts[2],
-    month: parts[3],
-    dayOfWeek: parts[4],
-  };
-}
-
-/**
- * Check if a cron pattern matches a value
- */
-function matchesCronPattern(pattern: string, value: number): boolean {
-  if (pattern === '*') return true;
-
-  // Handle */n pattern (every n units)
-  const intervalMatch = pattern.match(/^\*\/(\d+)$/);
-  if (intervalMatch) {
-    const interval = parseInt(intervalMatch[1], 10);
-    return value % interval === 0;
-  }
-
-  // Exact match
-  return parseInt(pattern, 10) === value;
-}
-
-/**
- * Calculate next execution time based on cron schedule
+ * Calculate the next execution time for a cron expression.
+ *
+ * Delegates to the `cron-parser` library, which correctly handles the full
+ * cron grammar (ranges, lists, steps, L/W modifiers, etc.) that the previous
+ * hand-rolled matcher did not. Throws on an invalid expression, which the
+ * caller catches.
  */
 function getNextExecutionTime(cron: string, from: Date = new Date()): Date {
-  const schedule = parseCron(cron);
-  const next = new Date(from);
-
-  // Add 1 minute to start checking from the next minute
-  next.setSeconds(0, 0);
-  next.setTime(next.getTime() + 60000);
-
-  // Check up to 4 years ahead (leap year safe)
-  for (let yearOffset = 0; yearOffset < 1461; yearOffset++) {
-    const current = new Date(next.getTime() + yearOffset * 365 * 24 * 60 * 60 * 1000);
-
-    for (let month = 0; month < 12; month++) {
-      current.setMonth(month);
-
-      // Check month
-      if (!matchesCronPattern(schedule.month, current.getMonth() + 1)) {
-        continue;
-      }
-
-      // Check day of month
-      if (!matchesCronPattern(schedule.dayOfMonth, current.getDate())) {
-        continue;
-      }
-
-      // Check day of week (0=Sunday, 6=Saturday)
-      if (!matchesCronPattern(schedule.dayOfWeek, current.getDay())) {
-        continue;
-      }
-
-      // Find matching day in the month
-      const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-      for (let day = 1; day <= daysInMonth; day++) {
-        current.setDate(day);
-
-        // Re-check day of month and day of week for this specific day
-        if (!matchesCronPattern(schedule.dayOfMonth, current.getDate())) {
-          continue;
-        }
-        if (!matchesCronPattern(schedule.dayOfWeek, current.getDay())) {
-          continue;
-        }
-
-        // Check hour
-        for (let hour = 0; hour < 24; hour++) {
-          current.setHours(hour, 0, 0, 0);
-
-          if (!matchesCronPattern(schedule.hour, current.getHours())) {
-            continue;
-          }
-
-          // Check minute
-          for (let minute = 0; minute < 60; minute++) {
-            current.setMinutes(minute);
-
-            if (!matchesCronPattern(schedule.minute, current.getMinutes())) {
-              continue;
-            }
-
-            // Found match - ensure it's in the future
-            if (current.getTime() > from.getTime()) {
-              return current;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  throw new Error(`Could not calculate next execution time for cron: ${cron}`);
+  const iterator = CronExpressionParser.parse(cron, { currentDate: from });
+  return iterator.next().toDate();
 }
 
 /**
