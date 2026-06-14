@@ -11,6 +11,7 @@ import { ScreenshotUtil } from './utils/screenshot';
 import { Logger, LogLevel } from './utils/logger';
 import { PageError, AssertionError, AppError, ErrorCode } from './utils/errors';
 import { getViewportConfig, resolveViewport, type ViewportPreset } from './config/viewport-presets';
+import { PluginManager } from './plugins/plugin-manager';
 
 export class Verifier {
   private browser: Browser | null = null;
@@ -20,6 +21,7 @@ export class Verifier {
   private ownsBrowser: boolean;
   private browserPool?: BrowserPool;
   private pooledPage?: Page;
+  private pluginManager?: PluginManager;
 
   constructor(private config: SiteConfig, browserOrPool?: Browser | BrowserPool) {
     // Support both Browser (legacy) and BrowserPool (new)
@@ -38,7 +40,27 @@ export class Verifier {
     }
   }
 
+  /**
+   * Attach (or detach) a PluginManager. When set, the verifier runs
+   * beforeVerify before the first attempt and afterVerify on the final
+   * result, merging any checks plugins append. Pass undefined to disable.
+   */
+  setPluginManager(pluginManager?: PluginManager): this {
+    this.pluginManager = pluginManager;
+    return this;
+  }
+
   async verify(): Promise<TestResult> {
+    // Plugin hook: beforeVerify. A veto short-circuits the whole run.
+    if (this.pluginManager && this.pluginManager.count > 0) {
+      this.pluginManager.resetMetadata();
+      const beforeCtx = await this.pluginManager.runBeforeVerify(this.config);
+      if (beforeCtx.veto) {
+        const reason = beforeCtx.veto.reason;
+        return this.applyPlugins(this.createResult(Date.now(), [], [], [`Verification vetoed by plugin: ${reason}`], false));
+      }
+    }
+
     const maxRetries = this.config.retries ?? 0;
     let lastResult: TestResult | null = null;
     let retryCount = 0;
@@ -415,7 +437,7 @@ export class Verifier {
             message: `Passed on attempt ${attempt + 1}`
           });
         }
-        return result;
+        return this.applyPlugins(result);
       }
 
       lastResult = result;
@@ -428,7 +450,26 @@ export class Verifier {
     }
 
     // Return the last result if all retries failed
-    return lastResult || this.createResult(Date.now(), [], [], ['Verification failed: unknown error'], false);
+    const finalResult = lastResult || this.createResult(Date.now(), [], [], ['Verification failed: unknown error'], false);
+    return this.applyPlugins(finalResult);
+  }
+
+  /**
+   * Run afterVerify plugins and merge any appended checks into the result.
+   * Recomputes `passed` so plugin-appended critical checks can flip the
+   * outcome. A no-op when no PluginManager is attached.
+   */
+  private async applyPlugins(result: TestResult): Promise<TestResult> {
+    if (!this.pluginManager || this.pluginManager.count === 0) {
+      return result;
+    }
+    const additional = await this.pluginManager.runAfterVerify(this.config, result);
+    if (additional.length > 0) {
+      result.checks.push(...additional);
+      result.passed = result.errors.length === 0 &&
+        result.checks.every(c => c.passed || c.severity === 'warning');
+    }
+    return result;
   }
 
   private getConfiguredViewports(): Array<{ width: number; height: number; userAgent?: string }> {
