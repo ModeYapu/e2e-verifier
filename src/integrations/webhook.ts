@@ -7,6 +7,7 @@ import { WebhookConfig } from '../config/webhook-config';
 import { Job, JobStatus } from '../scheduler/types';
 import * as crypto from 'crypto';
 import { logger } from '../utils/logger';
+import { assertPublicUrl } from '../utils/security';
 
 /**
  * Webhook event types
@@ -153,6 +154,9 @@ export class WebhookDelivery {
    */
   private async deliver(url: string, payload: WebhookPayload, signature: string): Promise<Response> {
     const payloadString = JSON.stringify(payload);
+
+    // SSRF guard: refuse to deliver to private/loopback/metadata targets.
+    await assertPublicUrl(url);
 
     const response = await fetch(url, {
       method: 'POST',

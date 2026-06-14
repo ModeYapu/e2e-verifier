@@ -5,6 +5,7 @@
 
 import { TestResult } from '../types';
 import { logger } from '../utils/logger';
+import { assertPublicUrl } from '../utils/security';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -427,6 +428,8 @@ ${message.screenshots.length > 0 ? message.screenshots.map(s => `  📸 ${s.name
 
     try {
       const payload = this.formatForFeishu(message);
+      // SSRF guard: only deliver to public http(s) endpoints.
+      await assertPublicUrl(webhookUrl);
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -451,6 +454,8 @@ ${message.screenshots.length > 0 ? message.screenshots.map(s => `  📸 ${s.name
 
     try {
       const payload = this.formatForSlack(message);
+      // SSRF guard: only deliver to public http(s) endpoints.
+      await assertPublicUrl(webhookUrl);
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

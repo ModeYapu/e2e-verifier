@@ -5,13 +5,14 @@
 
 import { Router, Request, Response } from 'express';
 import * as crypto from 'crypto';
+import { safeEqual } from '../../utils/security';
 import type { ApiKey } from '../../middleware/api-auth';
 import { loadKeys, saveKeys } from '../../middleware/api-auth';
 
 const MASTER_API_KEY = process.env.MASTER_API_KEY;
 
 /**
- * Middleware to verify master key authentication
+ * Middleware to verify master key authentication (constant-time compare)
  */
 function masterKeyAuth(req: Request, res: Response, next: () => void): void {
   const providedKey = req.headers['x-master-key'] as string || req.headers['authorization']?.replace('Bearer ', '');
@@ -21,7 +22,7 @@ function masterKeyAuth(req: Request, res: Response, next: () => void): void {
     return;
   }
 
-  if (!providedKey || providedKey !== MASTER_API_KEY) {
+  if (!providedKey || !safeEqual(providedKey, MASTER_API_KEY)) {
     res.status(401).json({ error: 'Unauthorized. Valid master key required.' });
     return;
   }

@@ -6,6 +6,7 @@ import * as path from 'path';
 import { Project, Member, CreateProjectRequest, UpdateProjectRequest } from './types';
 import { JsonStorage } from '../storage/json-storage';
 import { logger } from '../utils/logger';
+import { generateToken, generateId, safeEqual } from '../utils/security';
 
 const PROJECTS_FILE = 'projects';
 const STORAGE_DIR = path.join(process.cwd(), 'data');
@@ -39,9 +40,9 @@ export class ProjectStore {
     const projects = loadProjects();
 
     const project: Project = {
-      id: `proj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: generateId('proj_'),
       name: request.name,
-      apiKey: `ev_proj_${Date.now()}_${Math.random().toString(36).slice(2, 16)}`,
+      apiKey: generateToken('ev_proj_', 32),
       sites: request.sites || [],
       members: request.members || [],
       createdAt: new Date().toISOString()
@@ -69,11 +70,11 @@ export class ProjectStore {
   }
 
   /**
-   * Find project by API key
+   * Find project by API key (constant-time comparison)
    */
   static findByApiKey(apiKey: string): Project | null {
     const projects = loadProjects();
-    return projects.find(p => p.apiKey === apiKey) || null;
+    return projects.find(p => safeEqual(p.apiKey, apiKey)) || null;
   }
 
   /**

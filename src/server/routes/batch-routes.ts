@@ -8,6 +8,7 @@ import { JobService } from '../services/job-service';
 import { StorageService } from '../services/storage-service';
 import { ScheduleManager } from '../../scheduler/schedule-manager';
 import { logger } from '../../utils/logger';
+import { safeJoinPath } from '../../utils/security';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -72,6 +73,10 @@ interface BatchState {
 // =====================================================
 
 const BATCH_DIR = path.join(process.cwd(), 'data', 'batch');
+/** Dedicated directory for user-supplied batch site-config files. */
+const BATCH_CONFIG_DIR = path.join(BATCH_DIR, 'configs');
+/** Allowed characters for a batch id (used directly as a filename). */
+const BATCH_ID_RE = /^[A-Za-z0-9_-]+$/;
 
 /**
  * Ensure batch directory exists
@@ -93,9 +98,16 @@ function saveBatchState(state: BatchState): void {
 
 /**
  * Load batch state from file
+ *
+ * SECURITY: batchId is validated against an allowlist charset and resolved
+ * inside BATCH_DIR via safeJoinPath so request-supplied values cannot escape
+ * the batch directory (e.g. `../../data/api-keys`).
  */
 function loadBatchState(batchId: string): BatchState | null {
-  const filePath = path.join(BATCH_DIR, `${batchId}.json`);
+  if (typeof batchId !== 'string' || !BATCH_ID_RE.test(batchId)) {
+    return null;
+  }
+  const filePath = safeJoinPath(BATCH_DIR, `${batchId}.json`);
   if (!fs.existsSync(filePath)) {
     return null;
   }
@@ -108,10 +120,26 @@ function loadBatchState(batchId: string): BatchState | null {
 }
 
 /**
- * Load sites from config file
+ * Load sites from a config file located inside the dedicated batch config
+ * directory.
+ *
+ * SECURITY: previously this resolved an arbitrary request-supplied path
+ * against process.cwd(), allowing traversal/arbitrary file reads. The path is
+ * now constrained to BATCH_CONFIG_DIR and must end in `.json`.
  */
 function loadSitesFromConfig(configPath: string): BatchSiteConfig[] | null {
-  const fullPath = path.resolve(process.cwd(), configPath);
+  if (typeof configPath !== 'string' || !configPath.endsWith('.json')) {
+    return null;
+  }
+  if (!fs.existsSync(BATCH_CONFIG_DIR)) {
+    fs.mkdirSync(BATCH_CONFIG_DIR, { recursive: true });
+  }
+  let fullPath: string;
+  try {
+    fullPath = safeJoinPath(BATCH_CONFIG_DIR, configPath);
+  } catch {
+    return null;
+  }
   if (!fs.existsSync(fullPath)) {
     return null;
   }

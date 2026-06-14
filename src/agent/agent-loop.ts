@@ -19,18 +19,14 @@ import {
 } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawn } from 'child_process';
 import { Logger } from '../utils/logger';
 
 /**
- * Error from child_process.exec with additional properties
+ * Commands the agent loop is allowed to invoke via {@link executeShellCommand}.
+ * Keep this deliberately small; anything not listed here is refused.
  */
-interface ExecError extends Error {
-  code?: number | string;
-  stdout?: string;
-  stderr?: string;
-  killed?: boolean;
-  signal?: NodeJS.Signals;
-}
+const ALLOWED_COMMANDS = ['echo', 'pwd', 'ls', 'cat', 'git', 'node', 'npm', 'npx'];
 
 /**
  * System prompt for the LLM
@@ -353,11 +349,11 @@ export class AgentLoop {
       if (content.includes('page.') || content.includes('test(') || content.includes('chromium') || content.includes('playwright')) {
         // It's script code — write to file
         scriptPath = this.scriptEngine.writeScript(content, `step-${this.state.currentStep}`);
-      } else if (content.includes(' ') || content.includes('&&') || content.includes('|') || content.startsWith('ls') || content.startsWith('cat') || content.startsWith('pwd') || content.startsWith('echo') || content.startsWith('npx ') || content.startsWith('node ')) {
-        // It's a shell command — execute it directly
-        return await this.executeShellCommand(content);
       } else {
-        // It's a file path — resolve to absolute if needed
+        // It's a file path — resolve to absolute if needed.
+        // NOTE: arbitrary shell commands are intentionally NOT supported here.
+        // The agent must use write_script + execute_script for code, or provide
+        // a path to an existing script file. (RCE hardening: no exec branch.)
         const resolvedPath = path.resolve(content);
         if (fs.existsSync(resolvedPath)) {
           scriptPath = resolvedPath;
@@ -394,20 +390,52 @@ export class AgentLoop {
   }
 
   /**
-   * Execute a shell command directly and return output
+   * Execute a whitelisted command in a shell-free subprocess.
+   *
+   * SECURITY: this never invokes a system shell (`shell: false`), so shell
+   * metacharacters (`;`, `&&`, `|`, backticks, `$()`) cannot inject
+   * additional commands — they are passed through as literal argv. The
+   * executable must additionally appear in {@link ALLOWED_COMMANDS}. This
+   * replaces the previous `child_process.exec(commandString)` path which was
+   * a full RCE sink.
    */
   private async executeShellCommand(command: string): Promise<string> {
-    this.logger.debug(`Executing shell command: ${command}`);
-    try {
-      const { exec } = require('child_process');
-      const { promisify } = require('util');
-      const execAsync = promisify(exec);
-      const { stdout, stderr } = await execAsync(command, { timeout: 10000 });
-      return `Shell command output:\n${stdout.substring(0, 1000)}${stderr ? '\nStderr: ' + stderr.substring(0, 500) : ''}`;
-    } catch (error) {
-      const execError = error as ExecError;
-      return `Shell command failed (exit ${execError.code || '?'}): ${(execError.stdout || execError.message || '').toString().substring(0, 500)}`;
+    // Tokenise on whitespace. Because we spawn without a shell, quoting is
+    // irrelevant; every token is one argv element.
+    const tokens = command.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) {
+      return 'No command provided';
     }
+
+    const bin = tokens[0];
+    if (!ALLOWED_COMMANDS.includes(bin)) {
+      return `Command not allowed: "${bin}". Allowed: ${ALLOWED_COMMANDS.join(', ')}`;
+    }
+
+    this.logger.debug(`Executing whitelisted command: ${tokens.join(' ')}`);
+
+    return new Promise(resolve => {
+      const child = spawn(bin, tokens.slice(1), {
+        shell: false,
+        timeout: 10000,
+        cwd: process.cwd(),
+      });
+
+      let stdout = '';
+      let stderr = '';
+      child.stdout?.on('data', d => { stdout += d.toString(); });
+      child.stderr?.on('data', d => { stderr += d.toString(); });
+
+      child.on('error', err => {
+        resolve(`Command failed to start: ${err.message}`);
+      });
+
+      child.on('close', code => {
+        const trimmedOut = stdout.substring(0, 1000);
+        const trimmedErr = stderr ? '\nStderr: ' + stderr.substring(0, 500) : '';
+        resolve(`Command output (exit ${code ?? '?'}):\n${trimmedOut}${trimmedErr}`);
+      });
+    });
   }
 
   /**

@@ -158,7 +158,25 @@ export class VerifyServer {
   }
 
   private setupMiddleware(): void {
-    this.app.use(cors());
+    // CORS: explicit origin allowlist from the CORS_ORIGINS env var
+    // (comma-separated). A bare "*" is intentionally never used — cross-origin
+    // browser clients must be enumerated. When unset, CORS is disabled
+    // entirely (same-origin only).
+    const allowedOrigins = (process.env.CORS_ORIGINS || '')
+      .split(',')
+      .map(o => o.trim())
+      .filter(Boolean);
+
+    const corsOptions: cors.CorsOptions = {
+      origin(origin, cb) {
+        // Allow same-origin / server-to-server requests (no Origin header).
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+        return cb(null, false);
+      },
+      credentials: true,
+    };
+    this.app.use(cors(corsOptions));
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

@@ -7,6 +7,7 @@ import { Request, Response, NextFunction } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../utils/logger';
+import { safeEqual, generateToken, generateId } from '../utils/security';
 
 export interface ApiKey {
   id: string;
@@ -41,11 +42,15 @@ export function getAllKeys(): ApiKey[] {
   return loadKeys();
 }
 
+/**
+ * Create a new API key backed by cryptographically strong randomness.
+ * The previous implementation used Math.random(), which is not secure.
+ */
 export function createKey(name: string): ApiKey {
   const keys = loadKeys();
   const newKey: ApiKey = {
-    id: `key_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    key: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 14)}`,
+    id: generateId('key_'),
+    key: generateToken('ev_', 32),
     name,
     createdAt: new Date().toISOString()
   };
@@ -64,7 +69,27 @@ export function deleteKey(id: string): boolean {
 }
 
 /**
+ * Is the caller trusted enough to defer auth to a downstream policy gate?
+ * Only loopback connections (and an explicit operator opt-in) qualify —
+ * remote anonymous traffic is never allowed through on its own.
+ */
+function isLocalTrust(req: Request): boolean {
+  if (process.env.E2E_VERIFIER_OPEN_ACCESS === '1') return true;
+  const addr = req.socket?.remoteAddress;
+  if (!addr) return false;
+  return ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(addr);
+}
+
+/**
  * Express middleware for API key authentication
+ *
+ * Policy:
+ *  - /health always passes.
+ *  - A request that carries a Bearer token is deferred to the downstream
+ *    token middleware (verify-server), which validates it.
+ *  - A request with an X-API-Key is validated in constant time.
+ *  - Anything else (no credential) is rejected, EXCEPT for loopback callers
+ *    where a downstream policy may still permit local dev access.
  */
 export function apiKeyAuth(req: Request, res: Response, next: NextFunction): void {
   // Skip auth for health endpoint
@@ -75,12 +100,13 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
 
   // Check for API key in header
   const apiKey = req.headers['x-api-key'] as string | undefined;
-  
-  // If no API key provided, check if auth is required
+
+  // Defer Bearer-token requests to the dedicated token middleware.
+  const authHeader = req.headers['authorization'] as string | undefined;
+  const hasBearer = !!authHeader && /^bearer\s+\S+/i.test(authHeader);
+
   if (!apiKey) {
-    // If no keys configured, allow all requests (backward compat)
-    const keys = loadKeys();
-    if (keys.length === 0) {
+    if (hasBearer || isLocalTrust(req)) {
       next();
       return;
     }
@@ -88,9 +114,9 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
     return;
   }
 
-  // Validate key
+  // Validate key in constant time to avoid timing oracles.
   const keys = loadKeys();
-  const found = keys.find(k => k.key === apiKey);
+  const found = keys.find(k => safeEqual(k.key, apiKey));
   if (!found) {
     res.status(401).json({ error: 'Invalid API key' });
     return;
