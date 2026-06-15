@@ -1,3 +1,12 @@
+/**
+ * AUTO-GENERATED TEST SCRIPT (explorer-output artifact).
+ *
+ * The credentials below (`admin` / `admin123`) are throwaway test-suite
+ * credentials for the local LogMonitor fixture — NOT real secrets. They are
+ * documented in /.env.example as TEST_USERNAME / TEST_PASSWORD. Do not commit
+ * real credentials to generated scripts.
+ */
+
 import { chromium } from '@playwright/test';
 
 async function main() {

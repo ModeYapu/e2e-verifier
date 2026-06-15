@@ -9,6 +9,58 @@ import { JobService } from '../services/job-service';
 import { ReportExporter, ExportFormat, ReportData, ReportSummary, FailureDetail } from '../../services/report-exporter';
 import { logger } from '../../utils/logger';
 
+// =====================================================
+// RESULT DATA TYPES
+// =====================================================
+//
+// The data backing an export/report originates from heterogeneous sources:
+// the in-memory job result (`JobResult`, a union of TestResult |
+// AgentResult | OrchestratedResult | MatrixResult) or a `TestResult`
+// read back from storage. Every backend populates a slightly different
+// subset of fields, so rather than `any` we model only the fields this
+// module actually consumes and narrow to it with a single controlled cast
+// at the boundary (`as unknown as ReportResultData`).
+
+/** A single check/result entry within a job result (fields vary by backend). */
+interface ResultCheckEntry {
+  name?: string;
+  check?: string;
+  passed?: boolean;
+  expected?: string;
+  actual?: string;
+  message?: string;
+  severity?: string;
+  critical?: boolean;
+}
+
+/** A per-step performance timing point attached to some job results. */
+interface ResultPerformanceEntry {
+  step?: string;
+  name?: string;
+  duration?: number;
+  time?: number;
+}
+
+/** A historical trend point attached to some job results. */
+interface ResultTrendEntry {
+  date?: string;
+  timestamp?: string | number;
+  passRate?: number;
+}
+
+/**
+ * Structural view of the job-result data consumed when building an export
+ * report. Callers narrow the concrete (union-typed) runtime value to this
+ * view with one controlled cast at the boundary.
+ */
+interface ReportResultData {
+  checks?: ResultCheckEntry[];
+  results?: ResultCheckEntry[];
+  performance?: ResultPerformanceEntry[];
+  trend?: ResultTrendEntry[];
+  timestamp?: string;
+}
+
 export function createExportRoutes(
   storageService: StorageService,
   jobService: JobService
@@ -56,9 +108,9 @@ export function createExportRoutes(
       }
 
       // Get result from storage if job is completed
-      let resultData: any = null;
+      let resultData: ReportResultData | null = null;
       if (job.status === 'completed' && job.result) {
-        resultData = job.result;
+        resultData = job.result as unknown as ReportResultData;
       } else {
         // Try to get result from storage
         const resultStore = storageService.getResultStore();
@@ -66,7 +118,7 @@ export function createExportRoutes(
         const now = new Date();
         const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         const results = resultStore.getBySite(siteName, { start: yesterday, end: now });
-        resultData = results.length > 0 ? results[0] : null;
+        resultData = results.length > 0 ? (results[0] as unknown as ReportResultData) : null;
 
         if (!resultData) {
           res.status(400).json({
@@ -152,9 +204,9 @@ export function createExportRoutes(
       }
 
       // Get result from storage if job is completed
-      let resultData: any = null;
+      let resultData: ReportResultData | null = null;
       if (job.status === 'completed' && job.result) {
-        resultData = job.result;
+        resultData = job.result as unknown as ReportResultData;
       } else {
         // Try to get result from storage
         const resultStore = storageService.getResultStore();
@@ -162,7 +214,7 @@ export function createExportRoutes(
         const now = new Date();
         const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         const results = resultStore.getBySite(siteName, { start: yesterday, end: now });
-        resultData = results.length > 0 ? results[0] : null;
+        resultData = results.length > 0 ? (results[0] as unknown as ReportResultData) : null;
 
         if (!resultData) {
           res.status(400).json({
@@ -223,10 +275,10 @@ export function createExportRoutes(
 /**
  * Build report data from job result
  */
-function buildReportData(jobId: string, site: string, resultData: any): ReportData {
-  const checks = resultData.checks || resultData.results || [];
+function buildReportData(jobId: string, site: string, resultData: ReportResultData): ReportData {
+  const checks: ResultCheckEntry[] = resultData.checks || resultData.results || [];
   const total = checks.length;
-  const passed = checks.filter((c: any) => c.passed !== false).length;
+  const passed = checks.filter((c: ResultCheckEntry) => c.passed !== false).length;
   const failed = total - passed;
   const passRate = total > 0 ? (passed / total) * 100 : 0;
 
@@ -252,7 +304,7 @@ function buildReportData(jobId: string, site: string, resultData: any): ReportDa
 
   // Extract performance data if available
   const performance = resultData.performance
-    ? resultData.performance.map((p: any) => ({
+    ? resultData.performance.map((p: ResultPerformanceEntry) => ({
         step: p.step || p.name || 'unknown',
         duration: p.duration || p.time || 0
       }))
@@ -261,8 +313,8 @@ function buildReportData(jobId: string, site: string, resultData: any): ReportDa
   // Build trend data from storage if available
   // This would require additional storage service calls for historical data
   const trend = resultData.trend
-    ? resultData.trend.map((t: any) => ({
-        date: t.date || new Date(t.timestamp).toLocaleDateString(),
+    ? resultData.trend.map((t: ResultTrendEntry) => ({
+        date: t.date || (t.timestamp != null ? new Date(t.timestamp).toLocaleDateString() : 'unknown'),
         passRate: t.passRate || 0
       }))
     : undefined;

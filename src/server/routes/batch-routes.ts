@@ -89,8 +89,16 @@ function ensureBatchDir(): void {
 
 /**
  * Save batch state to file
+ *
+ * SECURITY: `batchId` is used directly as the on-disk filename, so reject any
+ * value outside the safe charset (BATCH_ID_RE) before the path join. This is
+ * defense-in-depth — batchIds are internally generated and already match the
+ * pattern, but the guard ensures a tainted id can never reach the filesystem.
  */
 function saveBatchState(state: BatchState): void {
+  if (typeof state.batchId !== 'string' || !BATCH_ID_RE.test(state.batchId)) {
+    throw new Error(`Invalid batchId: ${String(state.batchId)}`);
+  }
   ensureBatchDir();
   const filePath = path.join(BATCH_DIR, `${state.batchId}.json`);
   fs.writeFileSync(filePath, JSON.stringify(state, null, 2));

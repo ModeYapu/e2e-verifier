@@ -9,9 +9,22 @@ import {
   PerformanceBenchmark,
   PerformanceRecord,
   PerformanceBaseline,
-  PerformanceRegression
+  PerformanceRegression,
+  StepTiming
 } from '../../services/performance-benchmark';
 import { logger } from '../../utils/logger';
+
+/**
+ * Shape of a POSTed performance record. Fields are optional because this
+ * models untrusted request-body input that is validated in the handler
+ * before being turned into a fully-typed `PerformanceRecord`.
+ */
+interface PerformanceRecordInput {
+  jobId?: string;
+  steps?: Array<{ step?: string; duration?: number }>;
+  totalDuration?: number;
+  timestamp?: string;
+}
 
 // Singleton instance for performance benchmarking
 const benchmarkService = new PerformanceBenchmark();
@@ -195,7 +208,7 @@ export function createBenchmarkRoutes(storageService: StorageService): Router {
   router.post('/benchmarks/:site/record', async (req: Request, res: Response): Promise<void> => {
     try {
       const site = typeof req.params.site === "string" ? req.params.site : req.params.site[0];
-      const recordData = req.body;
+      const recordData = req.body as PerformanceRecordInput;
 
       // Check if user has access to this site when project context exists
       if (req.project && req.project.sites.length > 0) {
@@ -243,12 +256,22 @@ export function createBenchmarkRoutes(storageService: StorageService): Router {
         }
       }
 
+      // Build a fully-typed record from the validated input. Each input step
+      // is normalized into a StepTiming (validation above guarantees `step`
+      // is a non-empty string and `duration` is a non-negative number).
+      const resolvedTimestamp = recordData.timestamp || new Date().toISOString();
+      const steps: StepTiming[] = recordData.steps.map(s => ({
+        step: s.step ?? 'unknown',
+        duration: s.duration ?? 0,
+        timestamp: resolvedTimestamp,
+      }));
+
       const record: PerformanceRecord = {
         jobId: recordData.jobId,
         site,
-        steps: recordData.steps,
-        totalDuration: recordData.totalDuration || recordData.steps.reduce((sum: number, s: any) => sum + s.duration, 0),
-        timestamp: recordData.timestamp || new Date().toISOString()
+        steps,
+        totalDuration: recordData.totalDuration || steps.reduce((sum, s) => sum + s.duration, 0),
+        timestamp: resolvedTimestamp
       };
 
       benchmarkService.recordPerformance(record);
