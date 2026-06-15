@@ -4,7 +4,7 @@
  */
 
 import { Browser } from '@playwright/test';
-import { TestResult } from '../../types';
+import { TestResult, MatrixResult } from '../../types';
 import { ResultStore } from '../../storage/result-store';
 import { BrowserPool } from '../../browser/browser-pool';
 import { logger } from '../../utils/logger';
@@ -22,6 +22,7 @@ import {
   MultiAgentVerifyRequest
 } from './intelligent-verify';
 import { IntelligenceRunResult } from '../../intelligence/types';
+import { MultiAgentResult } from '../../intelligence/multi-test-orchestrator';
 
 // Re-export types for backward compatibility
 export type {
@@ -75,7 +76,7 @@ export class VerifyService {
    * Use JobService.createAndEnqueueJob('deep', { deepVerify: {...} }) instead.
    * The actual implementation is in scheduler.executeDeepVerify().
    */
-  async deepVerify(request: DeepVerifyRequest): Promise<any> {
+  async deepVerify(request: DeepVerifyRequest): Promise<never> {
     throw new Error('Deep verification must use JobService. See scheduler.executeDeepVerify() for implementation.');
   }
 
@@ -85,14 +86,14 @@ export class VerifyService {
    * Use JobService.createAndEnqueueJob('orchestrated', { orchestratedVerify: {...} }) instead.
    * The actual implementation is in scheduler.executeOrchestratedVerify().
    */
-  async orchestratedVerify(request: OrchestratedVerifyRequest): Promise<any> {
+  async orchestratedVerify(request: OrchestratedVerifyRequest): Promise<never> {
     throw new Error('Orchestrated verification must use JobService. See scheduler.executeOrchestratedVerify() for implementation.');
   }
 
   /**
    * Perform matrix verification (synchronous)
    */
-  async matrixVerify(request: MatrixVerifyRequest): Promise<any> {
+  async matrixVerify(request: MatrixVerifyRequest): Promise<MatrixResult> {
     return matrixVerify(request, this.resultStore);
   }
 
@@ -106,7 +107,7 @@ export class VerifyService {
   /**
    * Perform multi-agent verification
    */
-  async multiAgentVerify(request: MultiAgentVerifyRequest): Promise<any> {
+  async multiAgentVerify(request: MultiAgentVerifyRequest): Promise<MultiAgentResult> {
     return multiAgentVerify(request);
   }
 

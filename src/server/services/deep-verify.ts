@@ -11,7 +11,7 @@
  * This file exports types and the matrixVerify implementation.
  */
 
-import { SiteConfig } from '../../types';
+import { SiteConfig, MatrixResult } from '../../types';
 import type { ResultStore } from '../../storage/result-store';
 import { logger } from '../../utils/logger';
 
@@ -52,7 +52,7 @@ export interface MatrixVerifyRequest {
 export async function matrixVerify(
   request: MatrixVerifyRequest,
   resultStore: ResultStore
-): Promise<any> {
+): Promise<MatrixResult> {
   // Lazy import to avoid pulling playwright into unit tests
   const { MatrixRunner } = await import('../../runner/matrix-runner');
 

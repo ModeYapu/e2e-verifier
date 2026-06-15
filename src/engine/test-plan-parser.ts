@@ -110,16 +110,21 @@ export function parseTestPlan(yamlPath: string): TestPlan {
   }
 
   const raw = fs.readFileSync(yamlPath, 'utf-8');
-  const plan = yaml.load(raw) as any;
+  // js-yaml returns `unknown`; narrow through the parsed YamlNode union.
+  const parsed: unknown = yaml.load(raw);
+  const plan = parsed as Record<string, unknown>;
 
   // Validate required fields
   if (!plan.project) throw new Error('test-plan.yaml missing: project');
-  if (!plan.environment) throw new Error('test-plan.yaml missing: environment');
-  if (!plan.environment.base_url) throw new Error('test-plan.yaml missing: environment.base_url');
+  if (!plan.environment || typeof plan.environment !== 'object') {
+    throw new Error('test-plan.yaml missing: environment');
+  }
+  const environment = plan.environment as Record<string, unknown>;
+  if (!environment.base_url) throw new Error('test-plan.yaml missing: environment.base_url');
   if (!plan.scenarios || !Array.isArray(plan.scenarios)) throw new Error('test-plan.yaml missing: scenarios');
 
   logger.info(`Parsed test plan: ${plan.project} v${plan.version || '1.0'}, ${plan.scenarios.length} scenarios`);
-  return plan as TestPlan;
+  return plan as unknown as TestPlan;
 }
 
 /**

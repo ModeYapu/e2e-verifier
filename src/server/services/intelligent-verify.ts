@@ -6,7 +6,7 @@
 import { TestResult } from '../../types';
 import { TestTarget, IntelligenceRunResult } from '../../intelligence/types';
 import { IntelligentOrchestrator } from '../../intelligence/orchestrator';
-import { MultiAgentOrchestrator, MultiAgentConfig, OrchestrationMode } from '../../intelligence/multi-test-orchestrator';
+import { MultiAgentOrchestrator, MultiAgentConfig, OrchestrationMode, MultiAgentResult } from '../../intelligence/multi-test-orchestrator';
 import { TestRoleType } from '../../intelligence/test-roles';
 import { ResultStore } from '../../storage/result-store';
 import { logger } from '../../utils/logger';
@@ -177,7 +177,7 @@ export async function intelligentVerify(
  */
 export async function multiAgentVerify(
   request: MultiAgentVerifyRequest
-): Promise<any> {
+): Promise<MultiAgentResult> {
   // Validate orchestration mode
   const validModes: OrchestrationMode[] = ['sequential', 'parallel', 'hierarchical', 'debate'];
   if (!validModes.includes(request.mode)) {

@@ -10,6 +10,17 @@ import * as path from 'path';
 import { logger } from '../utils/logger';
 
 /**
+ * Raw shape of a single assertion entry as emitted by an agent script inside
+ * the `__assertions__.results` array. Fields are all optional because the
+ * script output is untrusted.
+ */
+interface RawAssertionResult {
+  readonly name?: string;
+  readonly passed?: unknown;
+  readonly message?: unknown;
+}
+
+/**
  * Self-Reflection Gate to validate agent completion claims
  */
 export class SelfReflectionGate {
@@ -213,13 +224,13 @@ export class SelfReflectionGate {
         const passed = Number(a.passed) || 0;
         const failed = Number(a.failed) || 0;
         const results = Array.isArray(a.results)
-          ? a.results
-              .map((r: any) => ({
+          ? (a.results as RawAssertionResult[])
+              .map((r) => ({
                 name: typeof (r && r.name) === 'string' ? r.name : 'unnamed',
                 passed: !!((r && r.passed)),
                 message: r && typeof r.message === 'string' ? r.message : undefined,
               }))
-              .filter((r: any) => r)
+              .filter((r) => r)
           : undefined;
 
         return {

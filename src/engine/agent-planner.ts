@@ -20,6 +20,20 @@ import * as path from 'path';
 
 const logger = new Logger({ prefix: 'AgentPlanner' });
 
+/**
+ * OpenAI/GLM-compatible chat completion response shape.
+ * Only the fields we consume are declared; `reasoning_content` is a GLM
+ * extension used as a fallback when `content` is empty.
+ */
+interface ChatCompletionResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+      reasoning_content?: string;
+    };
+  }>;
+}
+
 export interface PlannerConfig {
   testPlan: TestPlan;
   outputDir: string;
@@ -233,7 +247,7 @@ RULES:
         throw new Error(`LLM API ${resp.status}: ${errText.slice(0, 200)}`);
       }
 
-      const data = await resp.json() as any;
+      const data = await resp.json() as ChatCompletionResponse;
       const content = data.choices?.[0]?.message?.content || '';
       // GLM may put content in reasoning_content when max_tokens is too low
       const raw = content || data.choices?.[0]?.message?.reasoning_content || '';
